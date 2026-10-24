@@ -27,3 +27,4 @@ problems:
   webhook-signature-invalid: {status: 400, code: WEBHOOK_SIGNATURE_INVALID, title: "Razorpay webhook HMAC check failed"}
   review-not-eligible:      {status: 403, code: REVIEW_NOT_ELIGIBLE, title: "Only buyers with a delivered booking from this dealer can review"}
   dependency-unavailable:   {status: 503, code: DEPENDENCY_UNAVAILABLE, title: "A required downstream dependency is unavailable; retry with the same Idempotency-Key"}
+  not-implemented-in-p1:    {status: 501, code: NOT_IMPLEMENTED_IN_P1, title: "This command is specified but not built in Phase 1"}  # P1 only (walking skeleton); removed when every command is built
