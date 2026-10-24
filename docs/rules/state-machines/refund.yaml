@@ -1,0 +1,91 @@
+machine: refund
+owner: payment
+aggregate: payment.refunds
+version_field: version
+initial: REFUND_REQUESTED
+plan_ref: "PLAN.md §2.3 (REFUND_REQUESTED -> REFUND_INITIATED -> REFUNDED | REFUND_FAILED; retry with backoff, then alert + admin queue)"
+notes: "Full refunds only (deposit amount). UNIQUE (payment_id). Retry schedule: 1 min, 5 min, 30 min, 2 h, 12 h (5 attempts) then REFUND_FAILED stays and alarm REFUND_STUCK + admin queue. Razorpay refund call carries receipt = refund_id; before any (re)try the worker looks up existing refunds on the payment and adopts one whose receipt matches, so a crash after the API call never creates a second refund."
+states:
+  - {name: REFUND_REQUESTED, terminal: false, description: "Refund recorded with reason code; worker not yet called Razorpay"}
+  - {name: REFUND_INITIATED, terminal: false, description: "Razorpay refund created (refund_id stored); waiting for refund.processed"}
+  - {name: REFUND_FAILED, terminal: false, description: "Razorpay reported failure; retry scheduled or admin queue"}
+  - {name: REFUNDED, terminal: true, description: "refund.processed webhook received (or admin manual resolution with evidence)"}
+transitions:
+  - id: REF-T01
+    from: "(none)"
+    to: REFUND_REQUESTED
+    trigger: {kind: event, by: system, via: "inside PAY-T07 / PAY-T10"}
+    guard: "UNIQUE (payment_id)"
+    effects: ["INSERT payment.refunds(state='REFUND_REQUESTED', reason_code, amount_paise=payment.amount_paise)"]
+    emits: [RefundRequested]
+    idempotent_repeat: "Unique key"
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Worker picks up within 60 s."
+    detected_by: "payment refund worker"
+  - id: REF-T02
+    from: [REFUND_REQUESTED, REFUND_FAILED]
+    to: REFUND_INITIATED
+    trigger: {kind: system, by: payment, via: "refund worker (FOR UPDATE SKIP LOCKED on due rows) or admin POST /admin/refunds/{id}/retry"}
+    guard: "state IN listed AND (next_attempt_at <= now_db() OR admin retry) AND attempts < 5 (system) "
+    effects: ["lookup GET /v1/payments/{pid}/refunds for receipt=refund_id; else POST /v1/payments/{pid}/refund {amount, receipt: refund_id, speed: normal}", "UPDATE payment.refunds SET state='REFUND_INITIATED', razorpay_refund_id, attempts=attempts+1"]
+    emits: []
+    idempotent_repeat: "Receipt lookup before create (see notes)"
+    late_arrival: "Not applicable."
+    crash_points: EXTERNAL_CALL_THEN_COMMIT
+    timeout: "Razorpay call 5 s; a timeout keeps REFUND_REQUESTED with next_attempt_at per schedule."
+    detected_by: "refund worker"
+  - id: REF-T03
+    from: REFUND_INITIATED
+    to: REFUNDED
+    trigger: {kind: event, by: system, via: "webhook refund.processed"}
+    guard: "signature valid AND event id new AND refund id matches"
+    effects: ["INSERT payment.webhook_inbox(event_id)", "UPDATE payment.refunds SET state='REFUNDED', processed_at", "PAY-T08 in the same transaction", "INSERT ledger journal J-REFUND", "INSERT payment.outbox(RefundCompleted)"]
+    emits: [RefundCompleted]
+    idempotent_repeat: "Duplicate webhook -> no effect"
+    late_arrival: "refund.processed arriving while REFUND_FAILED (out-of-order webhooks): accepted - processed is authoritative; REFUND_FAILED -> REFUNDED via REF-T05."
+    crash_points: INBOX_CONSUMER
+    timeout: "No webhook 24 h after initiation -> sweeper alarm STUCK_REFUND_WEBHOOK; nightly reconciliation lists it."
+    detected_by: "payment webhook endpoint; sweeper"
+  - id: REF-T04
+    from: REFUND_INITIATED
+    to: REFUND_FAILED
+    trigger: {kind: event, by: system, via: "webhook refund.failed or non-retryable API error"}
+    guard: "signature valid AND event id new"
+    effects: ["UPDATE payment.refunds SET state='REFUND_FAILED', failure_reason, next_attempt_at = schedule[attempts]", "INSERT payment.outbox(RefundFailed)"]
+    emits: [RefundFailed]
+    idempotent_repeat: "Duplicate webhook -> no effect"
+    late_arrival: "refund.failed after REFUNDED is stale: ignored and counted."
+    crash_points: INBOX_CONSUMER
+    timeout: "attempts = 5 -> alarm REFUND_STUCK, row appears in admin refunds queue."
+    detected_by: "payment webhook endpoint"
+  - id: REF-T05
+    from: REFUND_FAILED
+    to: REFUNDED
+    trigger: {kind: event, by: system, via: "late refund.processed webhook"}
+    guard: "signature valid AND event id new"
+    effects: ["as REF-T03"]
+    emits: [RefundCompleted]
+    idempotent_repeat: "Duplicate webhook -> no effect"
+    late_arrival: "This is the out-of-order handler."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment webhook endpoint"
+  - id: REF-T06
+    from: REFUND_FAILED
+    to: REFUNDED
+    trigger: {kind: actor, by: platform_admin, via: "POST /admin/refunds/{id}/resolve-manually {evidence_ref, note} (Idempotency-Key)"}
+    guard: "attempts >= 5 AND caller platform_admin AND (amount_paise < second_approval_threshold OR approved by a second admin)"
+    effects: ["UPDATE payment.refunds SET state='REFUNDED', manual=true, resolved_by", "PAY-T08", "INSERT ledger journal J-REFUND-MANUAL", "INSERT payment.outbox(RefundCompleted{manual: true})", "audit sensitive action"]
+    emits: [RefundCompleted]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "If refund.processed arrives afterwards it is stale (already REFUNDED) and reconciliation flags a possible double refund for review."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous."
+    detected_by: "admin API"
+invalid_transitions:
+  - {from: [REFUND_REQUESTED, REFUND_INITIATED], attempt: "admin manual resolve", error: invalid-transition}
+  - {from: [REFUND_FAILED], attempt: "manual resolve above threshold without second admin", error: second-approval-required}
+  - {from: [REFUNDED], attempt: "any command", error: invalid-transition}
+  - {from: ["*"], attempt: "webhook with bad signature", error: webhook-signature-invalid}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

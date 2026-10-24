@@ -1,0 +1,148 @@
+machine: order
+owner: order
+aggregate: order.orders
+version_field: version
+initial: CONFIRMATION_PENDING
+plan_ref: "PLAN.md §2.2, §2.3, §2.6, §3.1(7-8); ADR-004 (order saga is orchestrated)"
+notes: "One order per accepting buyer per pool, created from AcceptancesFrozen. order is the saga orchestrator: it owns confirmation, tier resolution (one transaction per pool, order.pool_resolutions), booking issue, and asks payment to apply or refund the deposit. Saga state is persisted in order.saga_steps (step, status, attempts, next_attempt_at)."
+states:
+  - {name: CONFIRMATION_PENDING, terminal: false, description: "Ceiling price shown; waiting for buyer to confirm before confirmation_deadline"}
+  - {name: CONFIRMED, terminal: false, description: "Buyer confirmed at ceiling or lower; counted for the tier at the deadline"}
+  - {name: DECLINED, terminal: true, description: "Buyer declined or missed the confirmation deadline; deposit refunded"}
+  - {name: VOIDED, terminal: true, description: "Quote VOID (confirmed < minimum fulfilment); deposit refunded"}
+  - {name: BOOKED, terminal: false, description: "Tier resolved, final price <= ceiling, booking issued; booking machine runs"}
+  - {name: COMPLETED, terminal: true, description: "Booking delivered"}
+  - {name: CANCELLED, terminal: true, description: "Cancelled before or after booking with a reason code; deposit refunded"}
+transitions:
+  - id: ORD-T01
+    from: "(none)"
+    to: CONFIRMATION_PENDING
+    trigger: {kind: event, by: system, via: "order consumes AcceptancesFrozen (one order per accepted buyer)"}
+    guard: "UNIQUE (pool_id, buyer_id, round_set); quote replica is FINAL"
+    effects: ["INSERT order.orders(state='CONFIRMATION_PENDING', quote_id, variant_id, confirmation_deadline=event.confirmation_deadline)", "INSERT order.price_snapshots(kind='CEILING', engine output + hash)", "INSERT order.inbox(event_id)", "INSERT order.outbox(OrderCreated)"]
+    emits: [OrderCreated]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "If not consumed within 2 min of POOL-T07 commit, alarm ORDER_CREATION_LAG; confirmation_deadline is absolute, so lag shortens the buyer's window - the alarm threshold protects it."
+    detected_by: "order inbox consumer"
+  - id: ORD-T02
+    from: CONFIRMATION_PENDING
+    to: CONFIRMED
+    trigger: {kind: actor, by: buyer, via: "POST /orders/{id}/confirm {ceiling_snapshot_hash} (Idempotency-Key, If-Match)"}
+    guard: "version=:v AND buyer owns order AND now_db() < confirmation_deadline AND ceiling_snapshot_hash matches the stored CEILING snapshot AND quote replica not WITHDRAWN AND (quote.max_units IS NULL OR confirmed_count(quote) < max_units, checked under SELECT ... FOR UPDATE on order.quote_capacity)"
+    effects: ["UPDATE order.orders SET state='CONFIRMED', confirmed_at=now_db(), version=version+1", "UPDATE order.quote_capacity SET confirmed_count=confirmed_count+1", "INSERT order.outbox(ConfirmationRecorded)"]
+    emits: [ConfirmationRecorded]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed. If capacity reached: 409 capacity-reached."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+    notes: "The deposit was captured at commit time (membership COMMITTED is a precondition of acceptance), so 'confirmation recorded and deposit captured' (PLAN §2.2.4) holds by construction; order also checks its PaymentCaptured replica and returns 409 deposit-not-captured if missing (should never happen; alarm)."
+  - id: ORD-T03
+    from: CONFIRMED
+    to: CANCELLED
+    trigger: {kind: actor, by: buyer, via: "POST /orders/{id}/cancel (Idempotency-Key, If-Match)"}
+    guard: "version=:v AND buyer owns order AND state='CONFIRMED' (tier not yet resolved)"
+    effects: ["UPDATE order.orders SET state='CANCELLED', cancel_reason='BUYER_CANCELLED_AFTER_CONFIRM'", "decrement quote_capacity.confirmed_count if now_db() < confirmation_deadline", "INSERT order.outbox(OrderCancelled, DepositRefundRequested{reason: BUYER_CANCELLED})"]
+    emits: [OrderCancelled, DepositRefundRequested]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "If the cancel commits before the deadline the buyer is not counted. If after the deadline but before resolution commits, resolution counts confirmations as of the deadline (confirmed_at < deadline AND (cancelled_at IS NULL OR cancelled_at >= deadline)), so the tier is unaffected (PLAN §2.2.7)."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+  - id: ORD-T04
+    from: CONFIRMATION_PENDING
+    to: DECLINED
+    trigger: {kind: actor, by: buyer, via: "POST /orders/{id}/decline (Idempotency-Key)"}
+    guard: "buyer owns order AND now_db() < confirmation_deadline"
+    effects: ["UPDATE order.orders SET state='DECLINED', decline_reason='BUYER_DECLINED'", "INSERT order.outbox(ConfirmationDeclined, DepositRefundRequested{reason: BUYER_DECLINED})"]
+    emits: [ConfirmationDeclined, DepositRefundRequested]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "After the deadline ORD-T05 has applied or will apply; the call returns the current DECLINED representation."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+  - id: ORD-T05
+    from: CONFIRMATION_PENDING
+    to: DECLINED
+    trigger: {kind: deadline, by: system, via: "resolution job at confirmation_deadline (wake-up + sweeper), same transaction as ORD-T06/T07"}
+    guard: "now_db() >= confirmation_deadline"
+    effects: ["UPDATE order.orders SET state='DECLINED', decline_reason='MISSED_CONFIRMATION_DEADLINE'", "INSERT order.outbox(ConfirmationDeclined, DepositRefundRequested{reason: MISSED_CONFIRMATION_DEADLINE})"]
+    emits: [ConfirmationDeclined, DepositRefundRequested]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "This is the late-arrival handler; confirm calls committing after the deadline get 409 deadline-passed."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Resolution job alarm RESOLUTION_LATE if not done 5 min after deadline."
+    detected_by: "order scheduler wake-up; order sweeper"
+  - id: ORD-T06
+    from: CONFIRMED
+    to: VOIDED
+    trigger: {kind: deadline, by: system, via: "resolution job (one transaction per pool, order.pool_resolutions row locked FOR UPDATE)"}
+    guard: "now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) < quote.min_fulfilment"
+    effects: ["UPDATE order.orders SET state='VOIDED'", "INSERT order.outbox(TierResolved{outcome: VOID}, DepositRefundRequested{reason: QUOTE_VOID})", "UPDATE order.pool_resolutions SET state='DONE' (with BookingsIssued summary)"]
+    emits: [TierResolved, DepositRefundRequested, BookingsIssued]
+    idempotent_repeat: "pool_resolutions.state='DONE' makes a re-run a no-op"
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As ORD-T05."
+    detected_by: "order scheduler wake-up; order sweeper"
+  - id: ORD-T07
+    from: CONFIRMED
+    to: BOOKED
+    trigger: {kind: deadline, by: system, via: "resolution job (same transaction as ORD-T05/T06 for the pool)"}
+    guard: "now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) >= quote.min_fulfilment"
+    effects: ["INSERT order.price_snapshots(kind='FINAL', tier=resolve(confirmed_count), engine output + hash); assert final.cash_payable <= ceiling.cash_payable", "INSERT order.bookings (BKG-T01)", "UPDATE order.orders SET state='BOOKED'", "INSERT order.saga_steps(APPLY_DEPOSIT, RESERVE_STOCK)", "INSERT order.outbox(TierResolved{outcome: RESOLVED}, BookingIssued, DepositApplyRequested, StockReservationRequested, BookingsIssued)"]
+    emits: [TierResolved, BookingIssued, DepositApplyRequested, StockReservationRequested, BookingsIssued]
+    idempotent_repeat: "pool_resolutions.state='DONE' makes a re-run a no-op"
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Saga steps: APPLY_DEPOSIT expects DepositApplied within 10 min, RESERVE_STOCK expects StockReserved/StockUnavailable within 10 min; retries with backoff (1, 5, 15 min), then alarm + admin queue."
+    detected_by: "order scheduler wake-up; saga step sweeper"
+    notes: "BookingsIssued (one per pool, bookings_count, void_quote_count) is emitted once by whichever of ORD-T05/T06/T07 commits the resolution - in practice the single resolution transaction emits it once."
+  - id: ORD-T08
+    from: BOOKED
+    to: COMPLETED
+    trigger: {kind: event, by: system, via: "same transaction as BKG-T05 (booking DELIVERED)"}
+    guard: "booking.state='DELIVERED'"
+    effects: ["UPDATE order.orders SET state='COMPLETED'", "if every booking of the pool is DELIVERED/CANCELLED and no dispute is open: INSERT order.outbox(AllBookingsClosed)"]
+    emits: [AllBookingsClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Not applicable."
+    detected_by: "order"
+  - id: ORD-T09
+    from: BOOKED
+    to: CANCELLED
+    trigger: {kind: event, by: system, via: "same transaction as BKG-T03/T06 (booking CANCELLED)"}
+    guard: "booking.state='CANCELLED'"
+    effects: ["UPDATE order.orders SET state='CANCELLED', cancel_reason=booking.cancel_reason", "INSERT order.outbox(OrderCancelled, DepositRefundRequested{reason: booking.cancel_reason})", "AllBookingsClosed check as ORD-T08"]
+    emits: [OrderCancelled, DepositRefundRequested, AllBookingsClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Not applicable."
+    detected_by: "order"
+  - id: ORD-T10
+    from: [CONFIRMATION_PENDING, CONFIRMED]
+    to: CANCELLED
+    trigger: {kind: event, by: system, via: "order consumes QuoteWithdrawn(after_final=true)"}
+    guard: "order.quote_id = event.quote_id"
+    effects: ["UPDATE order.orders SET state='CANCELLED', cancel_reason='DEALER_CANCELLED'", "INSERT order.disputes (DSP-T01, auto, category DEALER_CANCELLED)", "INSERT order.outbox(OrderCancelled, DepositRefundRequested{reason: DEALER_CANCELLED}, DisputeOpened)"]
+    emits: [OrderCancelled, DepositRefundRequested, DisputeOpened]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "If the order was already BOOKED, the booking is cancelled instead (BKG-T06 actor=system reason DEALER_CANCELLED)."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "order inbox consumer"
+invalid_transitions:
+  - {from: [CONFIRMATION_PENDING], attempt: "confirm committing at/after confirmation_deadline", error: deadline-passed}
+  - {from: [CONFIRMATION_PENDING], attempt: "confirm when capacity full", error: capacity-reached}
+  - {from: [CONFIRMATION_PENDING], attempt: "confirm with stale ceiling_snapshot_hash", error: version-conflict}
+  - {from: [CONFIRMED, BOOKED], attempt: confirm, error: invalid-transition, note: "Idempotent retry with the same key returns the stored 200 instead"}
+  - {from: [CONFIRMATION_PENDING], attempt: "cancel (use decline)", error: invalid-transition}
+  - {from: [BOOKED], attempt: "cancel on order (cancel the booking)", error: invalid-transition}
+  - {from: [DECLINED, VOIDED, COMPLETED, CANCELLED], attempt: "any command", error: invalid-transition}
+  - {from: ["*"], attempt: "stale If-Match", error: version-conflict}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

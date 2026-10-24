@@ -1,0 +1,145 @@
+machine: payment
+owner: payment
+aggregate: payment.payments
+version_field: version
+initial: INITIATED
+plan_ref: "PLAN.md §2.3 (INITIATED -> PENDING -> CAPTURED | FAILED; CAPTURED -> APPLIED_TO_BOOKING); deposit-contract.md"
+notes: "One row per deposit attempt = one Razorpay order (test mode). Idempotency key deposit:{buyer_id}:{pool_id}:{round_set} is UNIQUE. Terminal outcomes are SETTLED (applied and delivered) or REFUNDED; SETTLED, REFUND_PENDING and VOIDED_UNPAID are P0 additions (Q-010). Every state change that moves money posts a balanced journal entry in the same transaction (deposit-contract.md §Ledger)."
+states:
+  - {name: INITIATED, terminal: false, description: "Local row + Razorpay order created (order_id stored)"}
+  - {name: PENDING, terminal: false, description: "Browser callback with verified checkout signature, or payment.authorized webhook; UI shows pending"}
+  - {name: CAPTURED, terminal: false, description: "Signed payment.captured webhook received (only path to CAPTURED)"}
+  - {name: FAILED, terminal: false, description: "payment.failed webhook; the Razorpay order can still be paid by a retry within its validity"}
+  - {name: VOIDED_UNPAID, terminal: false, description: "No capture within 24 h, or buyer left / pool closed before capture; quiescent - only a late capture moves it"}
+  - {name: APPLIED_TO_BOOKING, terminal: false, description: "Deposit applied to an issued booking"}
+  - {name: REFUND_PENDING, terminal: false, description: "A refund aggregate exists and is not yet REFUNDED"}
+  - {name: SETTLED, terminal: true, description: "Booking delivered; deposit permanently applied"}
+  - {name: REFUNDED, terminal: true, description: "Refund processed"}
+transitions:
+  - id: PAY-T01
+    from: "(none)"
+    to: INITIATED
+    trigger: {kind: system, by: pool, via: "POST /internal/deposits {buyer_id, pool_id, round_set, amount_paise} (service token, Idempotency-Key = deposit key)"}
+    guard: "UNIQUE deposit key; amount_paise = configured deposit (default 99900)"
+    effects: ["INSERT payment.payments(state='INITIATED') and COMMIT", "call Razorpay POST /v1/orders {amount, currency: INR, receipt: payment_id, notes: {pool_id, buyer_id}}", "UPDATE payment.payments SET razorpay_order_id"]
+    emits: []
+    idempotent_repeat: "Same key returns the existing row; if razorpay_order_id is NULL the order call is retried; at most one order id is ever stored (an orphan Razorpay order without payments is harmless and listed by reconciliation)"
+    late_arrival: "Not applicable."
+    crash_points: EXTERNAL_CALL_THEN_COMMIT
+    timeout: "Razorpay call 3 s, 2 retries; then 503 dependency-unavailable to pool."
+    detected_by: "payment API"
+  - id: PAY-T02
+    from: INITIATED
+    to: PENDING
+    trigger: {kind: actor, by: buyer, via: "POST /payments/{id}/checkout-callback {razorpay_payment_id, razorpay_order_id, razorpay_signature} or webhook payment.authorized"}
+    guard: "HMAC-SHA256(order_id|payment_id, key_secret) == signature (callback) or webhook signature valid"
+    effects: ["UPDATE payment.payments SET state='PENDING', razorpay_payment_id"]
+    emits: []
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "If the capture webhook already arrived (CAPTURED), the callback is a no-op returning CAPTURED."
+    crash_points: OUTBOX_STD
+    timeout: "If no webhook 15 min after PENDING, payment sweeper calls GET /v1/orders/{id}/payments and alarms STUCK_WEBHOOK; it never sets CAPTURED from the poll (webhook-only rule) - it only alerts and the nightly reconciliation lists it."
+    detected_by: "payment API; payment sweeper"
+  - id: PAY-T03
+    from: [INITIATED, PENDING, FAILED]
+    to: CAPTURED
+    trigger: {kind: event, by: system, via: "POST /webhooks/razorpay event payment.captured"}
+    guard: "X-Razorpay-Signature valid over raw body AND x-razorpay-event-id not in payment.webhook_inbox AND entity.order_id = razorpay_order_id AND amount = amount_paise AND currency = INR"
+    effects: ["INSERT payment.webhook_inbox(event_id)", "UPDATE payment.payments SET state='CAPTURED', captured_at", "INSERT ledger journal J-CAPTURE", "INSERT payment.outbox(PaymentCaptured)"]
+    emits: [PaymentCaptured]
+    idempotent_repeat: "Duplicate webhook: event id already in webhook_inbox -> 200, no effect"
+    late_arrival: "Capture for a buyer who left / pool closed: still recorded as CAPTURED (money did move) and pool answers MemberReleased LATE_CAPTURE -> PAY-T07 refund."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment webhook endpoint"
+  - id: PAY-T04
+    from: [INITIATED, PENDING]
+    to: FAILED
+    trigger: {kind: event, by: system, via: "webhook payment.failed"}
+    guard: "signature valid AND event id new AND order_id matches"
+    effects: ["INSERT payment.webhook_inbox(event_id)", "UPDATE payment.payments SET state='FAILED', failure_code", "INSERT payment.outbox(PaymentFailed)"]
+    emits: [PaymentFailed]
+    idempotent_repeat: "Duplicate webhook -> no effect"
+    late_arrival: "payment.failed after CAPTURED is stale (an earlier attempt failed): ignored, counted."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment webhook endpoint"
+  - id: PAY-T05
+    from: [INITIATED, PENDING, FAILED]
+    to: VOIDED_UNPAID
+    trigger: {kind: deadline, by: system, via: "payment sweeper (created_at + 24 h) or consumes MemberLeft / PoolClosed / AcceptancesFrozen.released for an uncaptured deposit"}
+    guard: "state IN listed"
+    effects: ["UPDATE payment.payments SET state='VOIDED_UNPAID', refund_on_capture=true", "INSERT payment.outbox(PaymentVoided)"]
+    emits: [PaymentVoided]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "A capture after this goes through PAY-T10."
+    crash_points: OUTBOX_STD
+    timeout: "Sweeper every 5 min."
+    detected_by: "payment sweeper; payment inbox consumer"
+  - id: PAY-T06
+    from: CAPTURED
+    to: APPLIED_TO_BOOKING
+    trigger: {kind: event, by: system, via: "payment consumes DepositApplyRequested (order saga step APPLY_DEPOSIT)"}
+    guard: "state='CAPTURED' AND event.payment matches buyer+pool"
+    effects: ["UPDATE payment.payments SET state='APPLIED_TO_BOOKING', booking_id", "INSERT ledger journal J-APPLY", "INSERT payment.inbox(event_id)", "INSERT payment.outbox(DepositApplied)"]
+    emits: [DepositApplied]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "If a refund was already requested (REFUND_PENDING) the apply is rejected: outbox DepositApplyRejected{reason: REFUND_IN_PROGRESS}; order compensates (cancels the booking, reason DEPOSIT_UNAVAILABLE). Should not occur; alarm."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment inbox consumer"
+  - id: PAY-T07
+    from: [CAPTURED, APPLIED_TO_BOOKING]
+    to: REFUND_PENDING
+    trigger: {kind: event, by: system, via: "payment consumes MemberLeft, MemberReleased, PoolClosed, AcceptancesFrozen.released_buyers, DepositRefundRequested"}
+    guard: "state IN listed AND no refund exists for payment_id (UNIQUE refunds.payment_id)"
+    effects: ["INSERT payment.refunds(state='REFUND_REQUESTED', reason_code) (REF-T01)", "UPDATE payment.payments SET state='REFUND_PENDING'", "INSERT payment.inbox(event_id)", "INSERT payment.outbox(RefundRequested)"]
+    emits: [RefundRequested]
+    idempotent_repeat: "INBOX_DEDUPE; a second trigger for the same payment from a different event finds the existing refund and is a no-op (first reason wins, later reasons appended to refund.related_reasons)"
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment inbox consumer"
+  - id: PAY-T08
+    from: REFUND_PENDING
+    to: REFUNDED
+    trigger: {kind: event, by: system, via: "same transaction as REF-T03 / REF-T06"}
+    guard: "refund.state='REFUNDED'"
+    effects: ["UPDATE payment.payments SET state='REFUNDED'"]
+    emits: []
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Not applicable."
+    detected_by: "payment"
+  - id: PAY-T09
+    from: APPLIED_TO_BOOKING
+    to: SETTLED
+    trigger: {kind: event, by: system, via: "payment consumes BookingDelivered"}
+    guard: "booking_id matches"
+    effects: ["UPDATE payment.payments SET state='SETTLED'", "INSERT ledger journal J-SETTLE", "INSERT payment.inbox(event_id)", "INSERT payment.outbox(DepositSettled)"]
+    emits: [DepositSettled]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment inbox consumer"
+  - id: PAY-T10
+    from: VOIDED_UNPAID
+    to: REFUND_PENDING
+    trigger: {kind: event, by: system, via: "webhook payment.captured on a VOIDED_UNPAID payment"}
+    guard: "signature valid AND event id new AND refund_on_capture=true"
+    effects: ["INSERT payment.webhook_inbox(event_id)", "INSERT ledger journal J-CAPTURE", "INSERT payment.refunds(reason_code='LATE_CAPTURE')", "UPDATE payment.payments SET state='REFUND_PENDING', captured_at", "INSERT payment.outbox(PaymentCaptured{late: true}, RefundRequested)"]
+    emits: [PaymentCaptured, RefundRequested]
+    idempotent_repeat: "Duplicate webhook -> no effect"
+    late_arrival: "This is the late-capture handler (PLAN §2.3 LATE_CAPTURE)."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "payment webhook endpoint"
+invalid_transitions:
+  - {from: [INITIATED, PENDING], attempt: "set CAPTURED from browser callback or API poll", error: invalid-transition, note: "Webhook-only success rule"}
+  - {from: ["*"], attempt: "webhook with bad signature", error: webhook-signature-invalid}
+  - {from: [INITIATED, PENDING, FAILED, VOIDED_UNPAID], attempt: "apply to booking", error: deposit-not-captured}
+  - {from: [SETTLED, REFUNDED], attempt: "any command", error: invalid-transition}
+  - {from: [REFUND_PENDING], attempt: "apply to booking", error: invalid-transition}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}
