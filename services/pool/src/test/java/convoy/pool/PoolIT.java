@@ -104,6 +104,26 @@ class PoolIT extends ServiceTest {
     }
 
     @Test
+    void fiftyConcurrentCreatesForOneKeyMakeExactlyOnePool() throws Exception {
+        String month = java.time.YearMonth.now(Pools.IST).plusMonths(6).toString(); // no other test uses this key
+        String body = "{\"model_slug\":\"maruti-swift\",\"city\":\"Mumbai\",\"purchase_month\":\"" + month + "\"}";
+        List<Resp> rs = parallel(50, () -> send("POST", "/pools", buyer(UUID.randomUUID()), body, Map.of("Idempotency-Key", UUID.randomUUID().toString())));
+        assertThat(rs).extracting(Resp::status).containsOnly(200, 201);
+        assertThat(rs.stream().filter(r -> r.status() == 201).count()).isEqualTo(1);
+        assertThat(rs.stream().map(r -> {
+            try {
+                return JSON.readTree(r.body()).at("/pool/id").asText();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        }).distinct().count()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from pools where model_slug = 'maruti-swift' and city = 'Mumbai' and purchase_month = ?",
+                Integer.class, month)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from outbox o join pools p on p.id = o.aggregate_id where o.event_type = 'PoolCreated' "
+                + "and p.city = 'Mumbai' and p.purchase_month = ?", Integer.class, month)).isEqualTo(1);
+    }
+
+    @Test
     void hundredParallelJoinsGiveAnExactCount() throws Exception {
         UUID pool = freshPool();
         List<Integer> codes = parallel(100, () -> send("POST", "/pools/" + pool + "/members", buyer(UUID.randomUUID()), null,

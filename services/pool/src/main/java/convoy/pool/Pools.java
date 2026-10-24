@@ -148,13 +148,21 @@ public class Pools {
         // Purchase window ends on the last day of the month, 23:59:59 IST (Q-025).
         ZonedDateTime windowEnd = ZonedDateTime.of(month.atEndOfMonth(), LocalTime.of(23, 59, 59), IST);
         UUID id = Uuid7.next();
-        Map<String, Object> row = jdbc.queryForMap("""
+        // A concurrent create for the same key waits on one_forming_pool, then finds the winner's pool.
+        List<Map<String, Object>> inserted = jdbc.queryForList("""
                 insert into pools(id, model_id, model_slug, brand, city, state_code, accepted_variant_ids, variants, min_members, state, purchase_month,
                                   forming_deadline, dealer_wait_deadline, purchase_window_end, created_by)
                 values (?, ?, ?, ?, ?, ?, ?::uuid[], ?::jsonb, ?, 'FORMING', ?, clock_timestamp() + ?::interval, clock_timestamp() + ?::interval + ?::interval, ?, ?)
+                on conflict (model_slug, city, purchase_month) where state = 'FORMING' do nothing
                 returning forming_deadline""", id, UUID.fromString((String) model.get("id")), modelSlug, model.get("brand"), city, state,
                 "{" + String.join(",", variants) + "}", json(model.get("variants")), settings.minMembers(), purchaseMonth, interval(settings.durations().forming()),
                 interval(settings.durations().forming()), interval(settings.durations().dealerWait()), Timestamp.from(windowEnd.toInstant()), c.userId());
+        if (inserted.isEmpty()) {
+            UUID winner = jdbc.queryForObject("select id from pools where model_slug = ? and city = ? and purchase_month = ? and state = 'FORMING'",
+                    UUID.class, modelSlug, city, purchaseMonth);
+            return Map.of("created", false, "pool", snapshot(winner, c));
+        }
+        Map<String, Object> row = inserted.get(0);
         outbox.append(id, 1, new PoolCreated(id.toString(), (String) model.get("id"), city, "FORMING", (long) settings.minMembers(),
                 ((Timestamp) row.get("forming_deadline")).toInstant(), windowEnd.toInstant(), variants));
         return Map.of("created", true, "pool", snapshot(id, c));
