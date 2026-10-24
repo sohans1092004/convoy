@@ -52,7 +52,7 @@ test('order -> checkout signature -> signed authorized + captured webhooks -> re
   await waitFor(() => received.some((w) => JSON.parse(w.raw).event === 'payment.captured'));
   for (const w of received) {
     assert.equal(w.headers['x-razorpay-signature'], hmac('contract_webhook_secret', w.raw), 'webhook signed over raw body');
-    assert.match(w.headers['x-razorpay-event-id'], /^evt_/);
+    assert.match(w.headers['x-razorpay-event-id'], /^[A-Za-z0-9]{14}$/, 'event ids look like the real ones (no prefix)');
   }
   const captured = JSON.parse(received.find((w) => JSON.parse(w.raw).event === 'payment.captured').raw);
   assert.equal(captured.payload.payment.entity.order_id, order.id);
@@ -78,4 +78,15 @@ test('failed payment emits payment.failed', async () => {
   await fetch(`${base}/fake/pay`, { method: 'POST', body: JSON.stringify({ order_id: order.id, outcome: 'fail' }) });
   await waitFor(() => received.length > n);
   assert.equal(JSON.parse(received.at(-1).raw).event, 'payment.failed');
+});
+
+test('refunds disabled on the account: generic 400 (as observed on real test mode)', async () => {
+  process.env.FAKE_REFUNDS_DISABLED = 'true';
+  try {
+    const r = await fetch(`${base}/v1/payments/pay_any/refund`, { method: 'POST', headers: auth, body: JSON.stringify({ amount: 99900 }) });
+    assert.equal(r.status, 400);
+    assert.equal((await r.json()).error.description, 'invalid request sent');
+  } finally {
+    delete process.env.FAKE_REFUNDS_DISABLED;
+  }
 });
