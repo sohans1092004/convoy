@@ -27,21 +27,21 @@ public class DealerApplication {
     /** E055: verified dealerships of the brand in the city with at least one active staff member. Service token only. */
     @GetMapping("/internal/eligibility")
     @convoy.platform.security.RequiresScope("eligibility:read")
-    public Map<String, Object> eligibility(@RequestParam String brand, @RequestParam String city) {
+    public Api.Eligibility eligibility(@RequestParam String brand, @RequestParam String city) {
         Caller.current().requireScope("eligibility:read");
         List<UUID> ids = jdbc.queryForList("select id from dealerships where status = 'VERIFIED' and city = ? and ? = any(brands) "
                 + "and active_staff_count >= 1 order by id", UUID.class, city, brand);
-        return Map.of("brand", brand, "city", city, "dealership_ids", ids, "count", ids.size());
+        return convoy.platform.web.Dto.as(Map.of("brand", brand, "city", city, "dealership_ids", ids, "count", ids.size()), Api.Eligibility.class);
     }
 
     /** E052 (built early for P1 as the dealer read API): public dealership profile. */
     @GetMapping("/dealerships/{id}")
-    public Map<String, Object> profile(@PathVariable UUID id) throws java.sql.SQLException {
+    public Api.Dealership profile(@PathVariable UUID id) throws java.sql.SQLException {
         List<Map<String, Object>> rows = jdbc.queryForList("select id, trade_name, city, state_code, brands, status, synthetic, verified_at "
                 + "from dealerships where id = ? and status <> 'PENDING'", id);
         if (rows.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such dealership.");
         Map<String, Object> r = new java.util.LinkedHashMap<>(rows.get(0));
         r.put("brands", List.of((String[]) ((java.sql.Array) r.get("brands")).getArray()));
-        return r;
+        return convoy.platform.web.Dto.as(r, Api.Dealership.class);
     }
 }

@@ -92,24 +92,24 @@ public class OrderApplication {
     }
 
     @GetMapping("/me/orders")
-    public Map<String, Object> mine() {
+    public Api.OrderList mine() {
         UUID buyer = Caller.current().require("buyer").userId();
-        return Map.of("orders", orders.jdbc().queryForList("select id::text as id, pool_id::text as pool_id, quote_id::text as quote_id, state, confirmation_deadline, version "
-                + "from orders where buyer_id = ? order by created_at desc", buyer).stream().map(Orders::iso).toList());
+        return convoy.platform.web.Dto.as(Map.of("orders", orders.jdbc().queryForList("select id::text as id, pool_id::text as pool_id, quote_id::text as quote_id, state, confirmation_deadline, version "
+                + "from orders where buyer_id = ? order by created_at desc", buyer).stream().map(Orders::iso).toList()), Api.OrderList.class);
     }
 
     @GetMapping("/orders/{id}")
-    public ResponseEntity<Map<String, Object>> get(@PathVariable UUID id) {
+    public ResponseEntity<Api.Order> get(@PathVariable UUID id) {
         Map<String, Object> o = orders.view(id, Caller.current().require("buyer").userId());
-        return ResponseEntity.ok().eTag("\"" + o.get("version") + "\"").body(o);
+        return ResponseEntity.ok().eTag("\"" + o.get("version") + "\"").body(convoy.platform.web.Dto.as(o, Api.Order.class));
     }
 
     public record ConfirmBody(@NotBlank String ceilingSnapshotHash) {}
 
     @PostMapping("/orders/{id}/confirm")
     @Idempotent
-    public Map<String, Object> confirm(@PathVariable UUID id, @Valid @RequestBody ConfirmBody b, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return orders.confirm(id, b.ceilingSnapshotHash(), version(ifMatch));
+    public Api.Order confirm(@PathVariable UUID id, @Valid @RequestBody ConfirmBody b, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(orders.confirm(id, b.ceilingSnapshotHash(), version(ifMatch)), Api.Order.class);
     }
 
     @PostMapping({"/orders/{id}/decline", "/orders/{id}/cancel"})
@@ -118,22 +118,22 @@ public class OrderApplication {
     }
 
     @GetMapping("/orders/{id}/voucher")
-    public Map<String, Object> voucher(@PathVariable UUID id) {
-        return orders.voucher(id, Caller.current().require("buyer").userId());
+    public Api.Voucher voucher(@PathVariable UUID id) {
+        return convoy.platform.web.Dto.as(orders.voucher(id, Caller.current().require("buyer").userId()), Api.Voucher.class);
     }
 
     @GetMapping("/dealer/bookings")
-    public Map<String, Object> dealerBookings() {
+    public Api.DealerBookings dealerBookings() {
         Caller c = Caller.current().require("dealer_staff", "dealer_admin");
         if (c.dealershipId() == null) throw ApiProblem.of(ProblemType.FORBIDDEN, "Your account is not linked to a dealership.");
-        return Map.of("bookings", orders.jdbc().queryForList("select id from bookings where dealership_id = ? order by created_at desc", UUID.class,
-                UUID.fromString(c.dealershipId())).stream().map(orders::dealerBooking).toList());
+        return convoy.platform.web.Dto.as(Map.of("bookings", orders.jdbc().queryForList("select id from bookings where dealership_id = ? order by created_at desc", UUID.class,
+                UUID.fromString(c.dealershipId())).stream().map(orders::dealerBooking).toList()), Api.DealerBookings.class);
     }
 
     @PostMapping("/dealer/bookings/{id}/confirm")
     @Idempotent
-    public Map<String, Object> dealerConfirm(@PathVariable UUID id, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return orders.dealerConfirm(id, version(ifMatch));
+    public Api.DealerBooking dealerConfirm(@PathVariable UUID id, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(orders.dealerConfirm(id, version(ifMatch)), Api.DealerBooking.class);
     }
 
     static long version(String ifMatch) {

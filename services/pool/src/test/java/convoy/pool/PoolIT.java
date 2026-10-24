@@ -307,4 +307,7 @@ class PoolIT extends ServiceTest {
             return "?" + r.status();
         }
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("pool"); }
 }

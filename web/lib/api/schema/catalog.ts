@@ -83,7 +83,144 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        InternalModel: {
+            id: string;
+            slug: string;
+            name: string;
+            brand: string;
+            variant_ids: string[];
+            variants: components["schemas"]["VariantFacts"][];
+        };
+        VariantFacts: {
+            id: string;
+            code: string;
+            name: string;
+            fuel: string | null;
+            transmission: string | null;
+            /** Format: int32 */
+            engine_cc: number | null;
+            /** Format: int64 */
+            catalogue_ex_showroom_paise: number | null;
+            catalogue_evidence: string | null;
+            city_confirmed: boolean | null;
+        };
+        Estimate: {
+            variant: components["schemas"]["VariantRef"];
+            city: string;
+            city_confirmed: boolean;
+            source: components["schemas"]["Source"];
+            snapshot: components["schemas"]["Snapshot"];
+        };
+        Line: {
+            code: string;
+            /** Format: int64 */
+            amount_paise: number;
+            /** @enum {string} */
+            evidence: "DEALER_CONFIRMED" | "CATALOGUE_ESTIMATE" | "UNVERIFIED";
+            in_cash_payable: boolean;
+            flags: string[];
+        };
+        PriceOutput: {
+            status: string;
+            /** Format: int64 */
+            vehicle_price_paise: number;
+            lines: components["schemas"]["Line"][];
+            /** Format: int64 */
+            cash_payable_paise: number;
+            /** Format: int64 */
+            tcs_paise: number;
+            /** Format: int64 */
+            estimated_net_cost_paise: number;
+            warnings: string[];
+        };
+        Snapshot: {
+            inputs: {
+                [key: string]: Record<string, never>;
+            };
+            ruleset_version: string;
+            output: components["schemas"]["PriceOutput"];
+            sha256: string;
+            computed_at: string;
+        };
+        Source: {
+            url: string;
+            accessed_on: string;
+        };
+        VariantRef: {
+            id: string;
+            code: string;
+            name: string;
+        };
+        CityPrice: {
+            city: string;
+            state_code: string;
+            /** Format: int64 */
+            ex_showroom_paise: number;
+            /** @enum {string} */
+            evidence: "DEALER_CONFIRMED" | "CATALOGUE_ESTIMATE" | "UNVERIFIED";
+            city_confirmed: boolean;
+            source_url: string;
+            accessed_on: string;
+        };
+        ComparedVariant: {
+            id: string;
+            code: string;
+            name: string;
+            fuel: string | null;
+            transmission: string | null;
+            /** Format: int32 */
+            engine_cc: number | null;
+            model_slug: string;
+            model: string;
+            prices: components["schemas"]["CityPrice"][];
+        };
+        Comparison: {
+            variants: components["schemas"]["ComparedVariant"][];
+        };
+        ModelList: {
+            models: components["schemas"]["ModelSummary"][];
+            cities: string[];
+            ruleset_version: string;
+        };
+        ModelSummary: {
+            slug: string;
+            name: string;
+            brand: string;
+            body_type: string;
+            /** Format: int64 */
+            variant_count: number;
+            /** Format: int64 */
+            from_ex_showroom_paise: number;
+            any_city_confirmed: boolean;
+            /** @enum {string} */
+            evidence: "DEALER_CONFIRMED" | "CATALOGUE_ESTIMATE" | "UNVERIFIED";
+        };
+        Model: {
+            id: string;
+            slug: string;
+            name: string;
+            brand: string;
+            body_type: string;
+            source_url: string;
+            source_title: string;
+            accessed_on: string;
+            price_label: string;
+            city_basis: string;
+            variants: components["schemas"]["Variant"][];
+        };
+        Variant: {
+            id: string;
+            code: string;
+            name: string;
+            fuel: string | null;
+            transmission: string | null;
+            /** Format: int32 */
+            engine_cc: number | null;
+            note: string | null;
+            prices: components["schemas"]["CityPrice"][];
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -111,9 +248,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["InternalModel"];
                 };
             };
         };
@@ -137,9 +272,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Estimate"];
                 };
             };
         };
@@ -162,9 +295,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Comparison"];
                 };
             };
         };
@@ -186,9 +317,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["ModelList"];
                 };
             };
         };
@@ -210,9 +339,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Model"];
                 };
             };
         };

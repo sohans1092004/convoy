@@ -23,4 +23,7 @@ class DealerIT extends ServiceTest {
         assertThat(get("/dealerships/0190f3a0-0000-7000-8000-00000000d001", TestTokens.anonymous("dealer")).body()).contains("\"synthetic\":true");
         assertThat(AuthzDenyChecks.run("dealer", this::send, (m, p) -> null)).isEmpty();
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("dealer"); }
 }

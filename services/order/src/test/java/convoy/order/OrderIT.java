@@ -209,4 +209,7 @@ class OrderIT extends ServiceTest {
         setup(1, 1, null, 60);
         assertThat(Outboxes.assertAllValid(jdbc, "order")).isPositive();
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("order"); }
 }

@@ -35,8 +35,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/InternalModel"
                 }
               }
             }
@@ -75,8 +74,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Estimate"
                 }
               }
             }
@@ -118,8 +116,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Comparison"
                 }
               }
             }
@@ -149,8 +146,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/ModelList"
                 }
               }
             }
@@ -180,8 +176,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Model"
                 }
               }
             }
@@ -190,5 +185,556 @@
       }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "InternalModel": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "variant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VariantFacts"
+            }
+          }
+        },
+        "required": [
+          "brand",
+          "id",
+          "name",
+          "slug",
+          "variant_ids",
+          "variants"
+        ]
+      },
+      "VariantFacts": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fuel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transmission": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine_cc": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "catalogue_ex_showroom_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "catalogue_evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city_confirmed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "catalogue_evidence",
+          "catalogue_ex_showroom_paise",
+          "city_confirmed",
+          "code",
+          "engine_cc",
+          "fuel",
+          "id",
+          "name",
+          "transmission"
+        ]
+      },
+      "Estimate": {
+        "properties": {
+          "variant": {
+            "$ref": "#/components/schemas/VariantRef"
+          },
+          "city": {
+            "type": "string"
+          },
+          "city_confirmed": {
+            "type": "boolean"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Snapshot"
+          }
+        },
+        "required": [
+          "city",
+          "city_confirmed",
+          "snapshot",
+          "source",
+          "variant"
+        ]
+      },
+      "Line": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "DEALER_CONFIRMED",
+              "CATALOGUE_ESTIMATE",
+              "UNVERIFIED"
+            ]
+          },
+          "in_cash_payable": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "amount_paise",
+          "code",
+          "evidence",
+          "flags",
+          "in_cash_payable"
+        ]
+      },
+      "PriceOutput": {
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "vehicle_price_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Line"
+            }
+          },
+          "cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tcs_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estimated_net_cost_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "estimated_net_cost_paise",
+          "lines",
+          "status",
+          "tcs_paise",
+          "vehicle_price_paise",
+          "warnings"
+        ]
+      },
+      "Snapshot": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "ruleset_version": {
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/PriceOutput"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "computed_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "computed_at",
+          "inputs",
+          "output",
+          "ruleset_version",
+          "sha256"
+        ]
+      },
+      "Source": {
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "accessed_on": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessed_on",
+          "url"
+        ]
+      },
+      "VariantRef": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "id",
+          "name"
+        ]
+      },
+      "CityPrice": {
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "state_code": {
+            "type": "string"
+          },
+          "ex_showroom_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "DEALER_CONFIRMED",
+              "CATALOGUE_ESTIMATE",
+              "UNVERIFIED"
+            ]
+          },
+          "city_confirmed": {
+            "type": "boolean"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "accessed_on": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessed_on",
+          "city",
+          "city_confirmed",
+          "evidence",
+          "ex_showroom_paise",
+          "source_url",
+          "state_code"
+        ]
+      },
+      "ComparedVariant": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fuel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transmission": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine_cc": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "model_slug": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "prices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CityPrice"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "engine_cc",
+          "fuel",
+          "id",
+          "model",
+          "model_slug",
+          "name",
+          "prices",
+          "transmission"
+        ]
+      },
+      "Comparison": {
+        "properties": {
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComparedVariant"
+            }
+          }
+        },
+        "required": [
+          "variants"
+        ]
+      },
+      "ModelList": {
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelSummary"
+            }
+          },
+          "cities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ruleset_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cities",
+          "models",
+          "ruleset_version"
+        ]
+      },
+      "ModelSummary": {
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "body_type": {
+            "type": "string"
+          },
+          "variant_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "from_ex_showroom_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "any_city_confirmed": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "DEALER_CONFIRMED",
+              "CATALOGUE_ESTIMATE",
+              "UNVERIFIED"
+            ]
+          }
+        },
+        "required": [
+          "any_city_confirmed",
+          "body_type",
+          "brand",
+          "evidence",
+          "from_ex_showroom_paise",
+          "name",
+          "slug",
+          "variant_count"
+        ]
+      },
+      "Model": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "body_type": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "source_title": {
+            "type": "string"
+          },
+          "accessed_on": {
+            "type": "string"
+          },
+          "price_label": {
+            "type": "string"
+          },
+          "city_basis": {
+            "type": "string"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variant"
+            }
+          }
+        },
+        "required": [
+          "accessed_on",
+          "body_type",
+          "brand",
+          "city_basis",
+          "id",
+          "name",
+          "price_label",
+          "slug",
+          "source_title",
+          "source_url",
+          "variants"
+        ]
+      },
+      "Variant": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fuel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transmission": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine_cc": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CityPrice"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "engine_cc",
+          "fuel",
+          "id",
+          "name",
+          "note",
+          "prices",
+          "transmission"
+        ]
+      }
+    }
+  }
 }

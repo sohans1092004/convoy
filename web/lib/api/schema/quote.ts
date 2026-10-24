@@ -179,7 +179,221 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        DeclaredCover: {
+            /** Format: int32 */
+            idv_bp: number | null;
+            addons: string[] | null;
+        };
+        DraftLine: {
+            variant_id: string | null;
+            /** Format: int64 */
+            ex_showroom_paise: number | null;
+            /** Format: int64 */
+            registration_paise: number | null;
+            insurance: components["schemas"]["Insurance"] | null;
+            insurance_addons: components["schemas"]["Item"][] | null;
+            fees: components["schemas"]["Item"][] | null;
+            accessories: components["schemas"]["Item"][] | null;
+            extended_warranty: components["schemas"]["Item"] | null;
+            other_charges: components["schemas"]["Item"][] | null;
+            stock: components["schemas"]["Stock"] | null;
+        };
+        DraftTier: {
+            /** Format: int64 */
+            min: number | null;
+            /** Format: int64 */
+            max: number | null;
+            /** Format: int64 */
+            discount_paise: number | null;
+        };
+        Insurance: {
+            /** Format: int64 */
+            od_paise: number | null;
+            /** Format: int64 */
+            tp_paise: number | null;
+            /** Format: int64 */
+            gst_paise: number | null;
+            binding: boolean | null;
+            declared_cover: components["schemas"]["DeclaredCover"] | null;
+        };
+        Item: {
+            code?: string;
+            label?: string;
+            /** Format: int64 */
+            amount_paise?: number;
+            basis?: string;
+            required?: boolean;
+            selected?: boolean;
+            evidence?: string;
+        };
+        QuoteDraft: {
+            variants: components["schemas"]["DraftLine"][] | null;
+            tiers: components["schemas"]["DraftTier"][] | null;
+            /** Format: int64 */
+            min_fulfilment: number | null;
+            /** Format: int64 */
+            max_units: number | null;
+            valid_until: string | null;
+        };
+        Stock: {
+            /** Format: int64 */
+            units: number;
+            colours: string[] | null;
+            delivery_date: string | null;
+        };
+        DealerQuote: {
+            id: string;
+            pool_id: string;
+            state: string;
+            /** Format: int64 */
+            version: number;
+            draft: components["schemas"]["QuoteDraft"];
+            /** Format: int32 */
+            current_version: number;
+            submitted_at: string | null;
+            snapshots?: {
+                [key: string]: components["schemas"]["TierSnapshot"][];
+            };
+        };
+        Line: {
+            code: string;
+            /** Format: int64 */
+            amount_paise: number;
+            /** @enum {string} */
+            evidence: "DEALER_CONFIRMED" | "CATALOGUE_ESTIMATE" | "UNVERIFIED";
+            in_cash_payable: boolean;
+            flags: string[];
+        };
+        PriceOutput: {
+            status: string;
+            /** Format: int64 */
+            vehicle_price_paise: number;
+            lines: components["schemas"]["Line"][];
+            /** Format: int64 */
+            cash_payable_paise: number;
+            /** Format: int64 */
+            tcs_paise: number;
+            /** Format: int64 */
+            estimated_net_cost_paise: number;
+            warnings: string[];
+        };
+        TierSnapshot: {
+            /** Format: int64 */
+            tier_index: number;
+            /** Format: int64 */
+            discount_paise: number;
+            /** Format: int64 */
+            cash_payable_paise: number;
+            sha256: string;
+            output: components["schemas"]["PriceOutput"];
+        };
+        Ceiling: {
+            /** Format: int32 */
+            tier_index: number;
+            /** Format: int64 */
+            cash_payable_paise: number;
+            output: components["schemas"]["PriceOutput"];
+            snapshot_sha256: string;
+        };
+        Offer: {
+            quote_id: string;
+            dealership_id: string;
+            state: string;
+            /** Format: int32 */
+            version_no: number;
+            committed_at: string;
+            /** Format: int64 */
+            min_fulfilment: number;
+            /** Format: int64 */
+            max_units: number | null;
+            snapshot_sha256: string;
+            variants: components["schemas"]["OfferVariant"][];
+        };
+        OfferVariant: {
+            variant_id: string;
+            variant_code: string;
+            ceiling: components["schemas"]["Ceiling"];
+            projection: components["schemas"]["Projection"];
+            tiers: components["schemas"]["TierView"][];
+            stock: components["schemas"]["Stock"];
+        };
+        Offers: {
+            pool_id: string;
+            quotes: components["schemas"]["Offer"][];
+            ranking_rule: string;
+        };
+        Projection: {
+            label: string;
+            /** Format: int64 */
+            count: number;
+            guaranteed: boolean;
+            /** Format: int64 */
+            cash_payable_paise: number | null;
+            note: string;
+        };
+        TierView: {
+            /** Format: int64 */
+            min: number;
+            /** Format: int64 */
+            max: number | null;
+            /** Format: int64 */
+            cash_payable_paise: number;
+            is_ceiling: boolean;
+        };
+        RoundSummary: {
+            round_id: string;
+            kind: string;
+            /** Format: int64 */
+            valid_count: number;
+            /** Format: int64 */
+            final_count: number;
+            quotes: components["schemas"]["SummaryQuote"][];
+        };
+        SummaryQuote: {
+            quote_id: string;
+            dealership_id: string;
+            state: string;
+            variant_ids: string[];
+        };
+        Inbox: {
+            requests: components["schemas"]["Request"][];
+        };
+        Request: {
+            round_id: string;
+            pool_id: string;
+            /** Format: int32 */
+            round_set: number;
+            /** Format: int32 */
+            round_no: number;
+            kind: string;
+            deadline: string;
+            state: string;
+            state_code: string;
+            variants: components["schemas"]["RoundVariant"][];
+            /** Format: int64 */
+            committed_count: number;
+            quote_id: string | null;
+            quote_state: string | null;
+            /** Format: int64 */
+            quote_version: number | null;
+            server_time: string;
+            ruleset_version: string;
+        };
+        RoundVariant: {
+            id: string;
+            code: string;
+            name: string;
+            fuel: string | null;
+            transmission: string | null;
+            /** Format: int32 */
+            engine_cc: number | null;
+            /** Format: int64 */
+            catalogue_ex_showroom_paise: number | null;
+            catalogue_evidence: string | null;
+            city_confirmed: boolean | null;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -201,9 +415,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["QuoteDraft"];
             };
         };
         responses: {
@@ -213,9 +425,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["DealerQuote"];
                 };
             };
         };
@@ -239,9 +449,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["DealerQuote"];
                 };
             };
         };
@@ -323,9 +531,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["DealerQuote"];
                 };
             };
         };
@@ -347,9 +553,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Offers"];
                 };
             };
         };
@@ -372,9 +576,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Offer"];
                 };
             };
         };
@@ -396,9 +598,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["RoundSummary"];
                 };
             };
         };
@@ -420,9 +620,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["DealerQuote"];
                 };
             };
         };
@@ -442,9 +640,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Inbox"];
                 };
             };
         };

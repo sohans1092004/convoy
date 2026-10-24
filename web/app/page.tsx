@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { EvidenceBadge } from '@/components/ui/badge';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
 import { rupees } from '@/lib/format';
+import type { Schemas } from '@/lib/api';
 import { gatewayGet } from '@/lib/gateway';
 
-interface ModelRow { slug: string; name: string; brand: string; body_type: string; variant_count: number; from_ex_showroom_paise: number; any_city_confirmed: boolean }
+type ModelRow = Schemas['catalog']['ModelSummary'];
 
 export default async function Home() {
   const t = await getTranslations('home');

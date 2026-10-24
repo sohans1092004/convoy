@@ -184,23 +184,91 @@ export interface components {
             granted: boolean;
             notice_version: string;
         };
+        ConsentEntry: {
+            granted: boolean;
+            notice_version: string;
+            at: string;
+        };
+        ConsentHistory: {
+            purpose: string;
+            granted: boolean;
+            history: components["schemas"]["ConsentEntry"][];
+        };
         ValidateBody: {
             session_id: string;
         };
+        SessionValidation: {
+            user_id: string;
+            roles: string[];
+            dealership_id: string | null;
+            sid: string;
+            session_expires_at: string;
+        };
         TokenBody: {
-            grant_type?: string;
+            grant_type: string;
             client_id: string;
             client_secret: string;
             audience: string;
+        };
+        ServiceToken: {
+            access_token: string;
+            token_type: string;
+            /** Format: int64 */
+            expires_in: number;
+            scope: string[];
         };
         OtpVerify: {
             /** Format: email */
             email: string;
             code: string;
         };
+        Session: {
+            session_id: string;
+            session_expires_at: string;
+            user: components["schemas"]["User"];
+        };
+        User: {
+            id: string;
+            roles: string[];
+        };
         OtpStart: {
             /** Format: email */
             email: string;
+        };
+        OtpStarted: {
+            status: string;
+            /** Format: int32 */
+            expires_in_seconds: number;
+        };
+        Status: {
+            status: string;
+        };
+        Consent: {
+            purpose: string;
+            granted: boolean;
+            notice_version: string;
+            at: string;
+        };
+        Me: {
+            id: string;
+            email: string;
+            roles: string[];
+            dealership_id: string | null;
+            consents: components["schemas"]["Consent"][];
+        };
+        Jwks: {
+            keys: components["schemas"]["Key"][];
+        };
+        Key: {
+            kty: string;
+            crv: string;
+            x: string;
+            y: string;
+            kid: string;
+            use: string;
+            alg: string;
+            /** Format: int64 */
+            nbf: number;
         };
     };
     responses: never;
@@ -232,9 +300,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["ConsentHistory"];
                 };
             };
         };
@@ -258,9 +324,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["SessionValidation"];
                 };
             };
         };
@@ -284,9 +348,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["ServiceToken"];
                 };
             };
         };
@@ -364,9 +426,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Session"];
                 };
             };
         };
@@ -390,9 +450,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["OtpStarted"];
                 };
             };
         };
@@ -412,9 +470,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Status"];
                 };
             };
         };
@@ -434,9 +490,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Me"];
                 };
             };
         };
@@ -456,9 +510,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Jwks"];
                 };
             };
         };

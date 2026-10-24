@@ -133,4 +133,7 @@ class IdentityIT extends ServiceTest {
             default -> "{}";
         })).isEmpty();
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("identity"); }
 }

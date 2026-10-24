@@ -8,19 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
 import { Countdown } from '@/components/ui/countdown';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, call } from '@/lib/api';
+import { api, call, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
-interface Membership { id: string; state: string; version: number; current_payment_id: string | null }
-interface Round { kind: string; state: string; deadline: string }
-interface Pool {
-  id: string; model_slug: string; brand: string; city: string; state: string; min_members: number; interested_count: number; committed_count: number;
-  forming_deadline: string; decision_deadline: string | null; confirmation_deadline: string | null; purchase_month: string; rounds: Round[];
-  deposit_amount_paise: number; terms_version: string; my_membership: Membership | null; version: number; server_time: string;
-}
-interface Deposit { payment_id: string; razorpay_order_id: string; razorpay_key_id: string; amount_paise: number }
+type Membership = Schemas['pool']['Membership'];
+type Deposit = Schemas['pool']['Deposit'];
 
 declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => { open(): void; on(e: string, f: (x: unknown) => void): void } } }
 
@@ -42,19 +36,19 @@ function loadScript(src: string) {
 
 export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl: string }) {
   const t = useTranslations('precommit');
-  const snap = useSnapshot(() => call<Pool>(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
+  const snap = useSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
 
   const join = useCommand(async (key: string) => {
-    const r = await call<Membership>(api.POST('/pools/{id}/members', { params: { path: { id: poolId } }, headers: { 'Idempotency-Key': key } }));
+    const r = await call(api.POST('/pools/{id}/members', { params: { path: { id: poolId } }, headers: { 'Idempotency-Key': key } }));
     await snap.refresh();
     return r;
   });
 
   const commit = useCommand(async (key: string) => {
-    const r = await call<{ deposit: Deposit }>(api.POST('/pools/{id}/commitment', { params: { path: { id: poolId } }, body: { terms_version: pool!.terms_version }, headers: { 'Idempotency-Key': key } }));
+    const r = await call(api.POST('/pools/{id}/commitment', { params: { path: { id: poolId } }, body: { terms_version: pool!.terms_version }, headers: { 'Idempotency-Key': key } }));
     await snap.refresh();
     return r.data.deposit;
   });
@@ -81,7 +75,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
         const until = Date.now() + 90_000;
         while (Date.now() < until) {
           await new Promise((r) => setTimeout(r, 1500));
-          const m = await call<Membership>(api.GET('/pools/{id}/members/me', { params: { path: { id: poolId } } }));
+          const m = await call(api.GET('/pools/{id}/members/me', { params: { path: { id: poolId } } }));
           if (m.data.state === 'COMMITTED') { commit.setState({ kind: 'success', message: 'You are committed. Your ₹999 test deposit is held, not paid to anyone.' }); await snap.refresh(); return; }
         }
         commit.setState({ kind: 'pending', message: 'Still confirming with Razorpay. You can leave this page; we will show it here once confirmed.' });

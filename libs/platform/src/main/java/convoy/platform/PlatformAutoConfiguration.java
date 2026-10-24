@@ -70,6 +70,9 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 .setPropertyNamingStrategy(com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE));
     }
 
+    /** Required / nullable markers from record components (see RecordSchemas). */
+    @Bean convoy.platform.web.RecordSchemas recordSchemas() { return new convoy.platform.web.RecordSchemas(); }
+
     @Bean DbClock dbClock(JdbcTemplate jdbc) { return new DbClock(jdbc); }
 
     @Bean IdempotencyStore idempotencyStore(JdbcTemplate jdbc) { return new IdempotencyStore(jdbc); }

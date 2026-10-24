@@ -15,7 +15,7 @@ function SignInForm() {
   const [code, setCode] = React.useState('');
   const [step, setStep] = React.useState<'email' | 'code'>('email');
   const start = useCommand(async () => call(api.POST('/auth/otp/start', { body: { email } })));
-  const verify = useCommand(async () => call<{ user: { roles: string[] } }>(api.POST('/auth/otp/verify', { body: { email, code } })));
+  const verify = useCommand(async () => call(api.POST('/auth/otp/verify', { body: { email, code } })));
 
   return (
     <Card className="mx-auto flex w-full max-w-md flex-col gap-4">

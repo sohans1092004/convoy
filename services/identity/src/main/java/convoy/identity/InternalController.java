@@ -43,7 +43,7 @@ public class InternalController {
     /** E008: only the gateway (scope sessions:validate, AZ-SVC-01). Touches last_seen at most once a minute. */
     @PostMapping("/internal/sessions/validate")
     @convoy.platform.security.RequiresScope("sessions:validate")
-    public Map<String, Object> validate(@Valid @RequestBody ValidateBody body) {
+    public Api.SessionValidation validate(@Valid @RequestBody ValidateBody body) {
         Caller.current().requireScope("sessions:validate");
         String hash = Crypto.sha256(body.sessionId());
         List<Map<String, Object>> rows = jdbc.queryForList("update sessions set last_seen_at = case when last_seen_at < clock_timestamp() - interval '1 minute' "
@@ -58,14 +58,14 @@ public class InternalController {
         out.put("dealership_id", u.dealershipId() == null ? null : u.dealershipId().toString());
         out.put("sid", hash);
         out.put("session_expires_at", ((java.sql.Timestamp) rows.get(0).get("expires_at")).toInstant().toString());
-        return out;
+        return convoy.platform.web.Dto.as(out, Api.SessionValidation.class);
     }
 
     public record TokenBody(String grantType, @NotBlank String clientId, @NotBlank String clientSecret, @NotBlank String audience) {}
 
     /** E009: client credentials -> ES256 service token {iss convoy-identity, sub client, aud callee, scope}. Public path. */
     @PostMapping("/internal/oauth/token")
-    public Map<String, Object> token(@Valid @RequestBody TokenBody body) throws Exception {
+    public Api.ServiceToken token(@Valid @RequestBody TokenBody body) throws Exception {
         List<Map<String, Object>> rows = jdbc.queryForList("select secret_hash, scopes::text as scopes from service_clients where client_id = ?", body.clientId());
         if (rows.isEmpty() || !Crypto.constantTimeEquals((String) rows.get(0).get("secret_hash"), Crypto.sha256(body.clientSecret()))) {
             throw ApiProblem.of(ProblemType.UNAUTHENTICATED, "Unknown client or wrong secret.");
@@ -77,9 +77,9 @@ public class InternalController {
         String jwt = keys.sign(new JWTClaimsSet.Builder().issuer(JwtVerifier.IDENTITY).subject(body.clientId()).audience(body.audience())
                 .claim("scope", granted).issueTime(Date.from(now)).notBeforeTime(Date.from(now))
                 .expirationTime(Date.from(now.plusSeconds(SERVICE_TOKEN_SECONDS))).jwtID(Uuid7.next().toString()).build());
-        return Map.of("access_token", jwt, "token_type", "Bearer", "expires_in", SERVICE_TOKEN_SECONDS, "scope", granted);
+        return convoy.platform.web.Dto.as(Map.of("access_token", jwt, "token_type", "Bearer", "expires_in", SERVICE_TOKEN_SECONDS, "scope", granted), Api.ServiceToken.class);
     }
 
     @GetMapping("/.well-known/jwks.json")
-    public Map<String, Object> jwks() { return keys.jwks(); }
+    public convoy.contracts.api.Jwks jwks() { return convoy.platform.web.Dto.as(keys.jwks(), convoy.contracts.api.Jwks.class); }
 }

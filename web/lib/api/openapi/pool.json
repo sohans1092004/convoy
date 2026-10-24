@@ -70,8 +70,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Membership"
                 }
               }
             }
@@ -108,8 +107,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Membership"
                 }
               }
             }
@@ -139,8 +137,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PoolCreated"
                 }
               }
             }
@@ -171,8 +168,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Membership"
                 }
               }
             }
@@ -213,8 +209,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Commitment"
                 }
               }
             }
@@ -245,8 +240,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Pool"
                 }
               }
             }
@@ -277,8 +271,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Membership"
                 }
               }
             }
@@ -315,8 +308,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Membership"
                 }
               }
             }
@@ -343,6 +335,64 @@
           "variant_id"
         ]
       },
+      "Membership": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "current_payment_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "terms_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accepted_quote_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accepted_variant_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "release_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "accepted_quote_id",
+          "accepted_variant_id",
+          "current_payment_id",
+          "id",
+          "pool_id",
+          "release_reason",
+          "state",
+          "terms_version",
+          "version"
+        ]
+      },
       "CreateBody": {
         "properties": {
           "model_slug": {
@@ -364,6 +414,190 @@
           "purchase_month"
         ]
       },
+      "Pool": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "model_slug": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state_code": {
+            "type": "string"
+          },
+          "accepted_variant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "min_members": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "state": {
+            "type": "string"
+          },
+          "end_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "round_set": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "purchase_month": {
+            "type": "string"
+          },
+          "forming_deadline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_deadline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confirmation_deadline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_window_end": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interested_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "committed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "server_time": {
+            "type": "string"
+          },
+          "rounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Round"
+            }
+          },
+          "deposit_amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "terms_version": {
+            "type": "string"
+          },
+          "my_membership": {
+            "$ref": "#/components/schemas/Membership"
+          },
+          "acceptance_counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        "required": [
+          "accepted_variant_ids",
+          "brand",
+          "city",
+          "committed_count",
+          "confirmation_deadline",
+          "decision_deadline",
+          "deposit_amount_paise",
+          "end_reason",
+          "forming_deadline",
+          "id",
+          "interested_count",
+          "min_members",
+          "model_slug",
+          "purchase_month",
+          "purchase_window_end",
+          "round_set",
+          "rounds",
+          "server_time",
+          "state",
+          "state_code",
+          "terms_version",
+          "version"
+        ]
+      },
+      "PoolCreated": {
+        "properties": {
+          "created": {
+            "type": "boolean"
+          },
+          "pool": {
+            "$ref": "#/components/schemas/Pool"
+          }
+        },
+        "required": [
+          "created",
+          "pool"
+        ]
+      },
+      "Round": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "round_set": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "round_no": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "closed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "closed_at",
+          "deadline",
+          "id",
+          "kind",
+          "round_no",
+          "round_set",
+          "state"
+        ]
+      },
       "CommitBody": {
         "properties": {
           "terms_version": {
@@ -373,6 +607,58 @@
         },
         "required": [
           "terms_version"
+        ]
+      },
+      "Commitment": {
+        "properties": {
+          "membership": {
+            "$ref": "#/components/schemas/Membership"
+          },
+          "deposit": {
+            "$ref": "#/components/schemas/Deposit"
+          }
+        },
+        "required": [
+          "deposit",
+          "membership"
+        ]
+      },
+      "Deposit": {
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "razorpay_order_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "razorpay_key_id": {
+            "type": "string"
+          },
+          "test_mode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "amount_paise",
+          "currency",
+          "payment_id",
+          "razorpay_key_id",
+          "razorpay_order_id",
+          "state",
+          "test_mode"
         ]
       }
     }

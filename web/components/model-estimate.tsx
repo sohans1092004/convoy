@@ -8,15 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiError, api, call, type Problem } from '@/lib/api';
+import { ApiError, api, call, type Problem, type Schemas } from '@/lib/api';
 import { ist } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 
-export interface Variant { id: string; code: string; name: string; fuel: string | null; transmission: string | null; engine_cc: number | null;
-  prices: { city: string; ex_showroom_paise: number; evidence: 'CATALOGUE_ESTIMATE'; city_confirmed: boolean }[] }
+export type Variant = Schemas['catalog']['Variant'];
 
 const CITIES = ['Mumbai', 'Pune', 'Delhi', 'Bengaluru'] as const;
-type Estimate = { city_confirmed: boolean; snapshot: { output: EngineOutput; sha256: string; computed_at: string; ruleset_version: string } };
+type Estimate = Schemas['catalog']['Estimate'];
 
 /** Variant + city picker, on-road estimate (engine snapshot), and "join or start a pool". */
 export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: string; variants: Variant[]; canJoin: boolean; signedIn: boolean }) {
@@ -28,14 +27,14 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
   React.useEffect(() => {
     let live = true;
     setEstimate({ loading: true });
-    call<Estimate>(api.GET('/catalog/variants/{id}/price-estimate', { params: { path: { id: variantId }, query: { city } } }))
+    call(api.GET('/catalog/variants/{id}/price-estimate', { params: { path: { id: variantId }, query: { city } } }))
       .then(({ data }) => live && setEstimate({ loading: false, data }))
       .catch((e) => live && setEstimate({ loading: false, problem: e instanceof ApiError ? e.problem : { status: 0, detail: 'Network error.' } }));
     return () => { live = false; };
   }, [variantId, city]);
 
   const month = new Date().toISOString().slice(0, 7);
-  const start = useCommand(async (key: string) => call<{ created: boolean; pool: { id: string } }>(
+  const start = useCommand(async (key: string) => call(
     api.POST('/pools', { body: { model_slug: slug, city, purchase_month: month }, headers: { 'Idempotency-Key': key } })));
 
   const variant = variants.find((v) => v.id === variantId);

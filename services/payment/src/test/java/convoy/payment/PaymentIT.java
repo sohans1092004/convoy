@@ -228,4 +228,7 @@ class PaymentIT extends ServiceTest {
             EventContext.clear();
         }
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("payment"); }
 }

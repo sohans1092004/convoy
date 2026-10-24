@@ -7,19 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
 import { Countdown } from '@/components/ui/countdown';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, call } from '@/lib/api';
+import { api, call, type Schemas } from '@/lib/api';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
-export interface RoundVariant { id: string; code: string; name: string; fuel: string | null; transmission: string | null; engine_cc: number | null; catalogue_ex_showroom_paise: number | null }
-export interface Request {
-  round_id: string; pool_id: string; round_no: number; kind: string; deadline: string; state: string; state_code: string; committed_count: number;
-  variants: RoundVariant[]; quote_id: string | null; quote_state: string | null; quote_version: number | null; ruleset_version: string;
-}
+export type RoundVariant = Schemas['quote']['RoundVariant'];
+export type Request = Schemas['quote']['Request'];
 
 function RequestCard({ r }: { r: Request }) {
   const router = useRouter();
-  const start = useCommand(async (key: string) => call<{ id: string }>(api.POST('/dealer/pools/{poolId}/quotes', { params: { path: { poolId: r.pool_id } }, headers: { 'Idempotency-Key': key } })));
+  const start = useCommand(async (key: string) => call(api.POST('/dealer/pools/{poolId}/quotes', { params: { path: { poolId: r.pool_id } }, headers: { 'Idempotency-Key': key } })));
   const open = r.state === 'OPEN' && Date.parse(r.deadline) > Date.now();
   return (
     <Card className="flex flex-col gap-2">
@@ -43,7 +40,7 @@ function RequestCard({ r }: { r: Request }) {
 }
 
 export function DealerInbox() {
-  const inbox = useSnapshot(() => call<{ requests: Request[] }>(api.GET('/dealer/inbox')), []);
+  const inbox = useSnapshot(() => call(api.GET('/dealer/inbox')), []);
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-extrabold">Requests for quotes</h1>

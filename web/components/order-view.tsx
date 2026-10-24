@@ -10,23 +10,21 @@ import { Card, CardText, CardTitle } from '@/components/ui/card';
 import { Countdown } from '@/components/ui/countdown';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, call, etagVersion } from '@/lib/api';
+import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
-interface Snap { tier_index: number; output: EngineOutput; sha256: string; computed_at: string }
-interface Order {
-  id: string; pool_id: string; state: string; confirmation_deadline: string; confirmed_at: string | null; version: number;
-  snapshots: { ceiling?: Snap; final?: Snap }; booking: { id: string; state: string; promised_delivery_date: string | null; dealer_confirm_deadline: string } | null;
-}
-interface Voucher { id: string; state: string; qr_payload: string; promised_delivery_date: string | null }
+type Snap = Schemas['order']['Snapshot'];
+/** snapshots: "ceiling" once the order exists, "final" once bookings are issued. */
+type Order = Omit<Schemas['order']['Order'], 'snapshots'> & { snapshots: { ceiling?: Snap; final?: Snap } };
+type Voucher = Schemas['order']['Voucher'];
 
 function VoucherCard({ orderId }: { orderId: string }) {
   const [v, setV] = React.useState<Voucher | null>(null);
   const [svg, setSvg] = React.useState('');
   React.useEffect(() => {
-    call<Voucher>(api.GET('/orders/{id}/voucher', { params: { path: { id: orderId } } })).then(async (r) => {
+    call(api.GET('/orders/{id}/voucher', { params: { path: { id: orderId } } })).then(async (r) => {
       setV(r.data);
       setSvg(await QRCode.toString(r.data.qr_payload, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }));
     }).catch(() => {});
@@ -47,9 +45,9 @@ function VoucherCard({ orderId }: { orderId: string }) {
 
 export function OrderView({ orderId }: { orderId: string }) {
   const t = useTranslations('confirm');
-  const snap = useSnapshot(() => call<Order>(api.GET('/orders/{id}', { params: { path: { id: orderId } } })), [orderId]);
+  const snap = useSnapshot(() => call(api.GET('/orders/{id}', { params: { path: { id: orderId } } })), [orderId]);
   const confirm = useCommand(async (key: string) => {
-    const fresh = await call<Order>(api.GET('/orders/{id}', { params: { path: { id: orderId } } }));
+    const fresh = await call(api.GET('/orders/{id}', { params: { path: { id: orderId } } }));
     await call(api.POST('/orders/{id}/confirm', {
       params: { path: { id: orderId } }, body: { ceiling_snapshot_hash: fresh.data.snapshots.ceiling!.sha256 },
       headers: { 'Idempotency-Key': key, 'If-Match': `"${etagVersion(fresh.response)}"` },

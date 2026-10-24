@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ist } from '@/lib/format';
+import type { Schemas } from '@/lib/api';
 import { gatewayGet } from '@/lib/gateway';
 
-interface OrderRow { id: string; pool_id: string; state: string; confirmation_deadline: string }
+type OrderRow = Schemas['order']['OrderRow'];
 
 export default async function OrdersPage() {
   const { data } = await gatewayGet<{ orders: OrderRow[] }>('/me/orders');

@@ -36,7 +36,7 @@ public class MeController {
     }
 
     @GetMapping("/me")
-    public Map<String, Object> me() {
+    public Api.Me me() {
         Users.User u = users.find(human().userId()).orElseThrow(() -> ApiProblem.of(ProblemType.UNAUTHENTICATED, "Account not active."));
         Map<String, Object> out = new HashMap<>();
         out.put("id", u.id().toString());
@@ -45,20 +45,20 @@ public class MeController {
         out.put("dealership_id", u.dealershipId() == null ? null : u.dealershipId().toString());
         out.put("consents", jdbc.queryForList("select distinct on (purpose) purpose, granted, notice_version, at from consents "
                 + "where user_id = ? order by purpose, at desc", u.id()));
-        return out;
+        return convoy.platform.web.Dto.as(out, Api.Me.class);
     }
 
     public record ConsentBody(@NotNull Boolean granted, @NotBlank String noticeVersion) {}
 
     /** Append-only: every change is a new row, so the history per purpose is kept. */
     @PutMapping("/me/consents/{purpose}")
-    public Map<String, Object> consent(@PathVariable String purpose, @Valid @RequestBody ConsentBody body) {
+    public Api.ConsentHistory consent(@PathVariable String purpose, @Valid @RequestBody ConsentBody body) {
         if (!PURPOSES.contains(purpose)) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Unknown purpose " + purpose + ".");
         Caller c = human();
         jdbc.update("insert into consents(user_id, purpose, granted, notice_version) values (?, ?, ?, ?)",
                 c.userId(), purpose, body.granted(), body.noticeVersion());
         List<Map<String, Object>> history = jdbc.queryForList("select granted, notice_version, at from consents where user_id = ? and purpose = ? order by at",
                 c.userId(), purpose);
-        return Map.of("purpose", purpose, "granted", body.granted(), "history", history);
+        return convoy.platform.web.Dto.as(Map.of("purpose", purpose, "granted", body.granted(), "history", history), Api.ConsentHistory.class);
     }
 }

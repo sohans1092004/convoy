@@ -56,7 +56,7 @@ public class AuthController {
     /** E001. Always 202, whether or not the address has an account (no enumeration). Rate limited at the gateway. */
     @PostMapping("/auth/otp/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public Map<String, Object> start(@Valid @RequestBody OtpStart body) {
+    public Api.OtpStarted start(@Valid @RequestBody OtpStart body) {
         String email = Users.normalise(body.email());
         String code = Crypto.otpCode();
         jdbc.update("insert into otp_challenges(id, email_hash, code_hash, expires_at) values (?, ?, ?, clock_timestamp() + make_interval(mins => ?))",
@@ -73,13 +73,13 @@ public class AuthController {
             log.warn("OTP mail failed: {}", e.getMessage());
             throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "We could not send the code. Try again in a minute.");
         }
-        return Map.of("status", "SENT", "expires_in_seconds", settings.otpMinutes() * 60);
+        return convoy.platform.web.Dto.as(Map.of("status", "SENT", "expires_in_seconds", settings.otpMinutes() * 60), Api.OtpStarted.class);
     }
 
     /** E002. Checks the latest unexpired challenge (5 attempts), then creates a session. */
     @PostMapping("/auth/otp/verify")
     @Transactional(noRollbackFor = ApiProblem.class)
-    public Map<String, Object> verify(@Valid @RequestBody OtpVerify body) {
+    public Api.Session verify(@Valid @RequestBody OtpVerify body) {
         String email = Users.normalise(body.email());
         List<Map<String, Object>> rows = jdbc.queryForList("select id, code_hash, attempts from otp_challenges where email_hash = ? "
                 + "and used_at is null and expires_at > clock_timestamp() order by created_at desc limit 1 for update", crypto.hash(email));
@@ -97,18 +97,18 @@ public class AuthController {
         OffsetDateTime expires = jdbc.queryForObject("insert into sessions(id_hash, user_id, expires_at) values (?, ?, clock_timestamp() + make_interval(days => ?)) "
                 + "returning expires_at", OffsetDateTime.class, Crypto.sha256(sessionId), userId, settings.sessionDays());
         Users.User u = users.find(userId).orElseThrow();
-        return Map.of("session_id", sessionId, "session_expires_at", expires.toInstant().toString(),
-                "user", Map.of("id", u.id().toString(), "roles", u.roles()));
+        return convoy.platform.web.Dto.as(Map.of("session_id", sessionId, "session_expires_at", expires.toInstant().toString(),
+                "user", Map.of("id", u.id().toString(), "roles", u.roles())), Api.Session.class);
     }
 
     /** E006. Revokes the caller's session; the gateway cache entry expires within 30 s (or on SessionRevoked). */
     @PostMapping("/auth/logout")
     @Transactional
-    public Map<String, Object> logout() {
+    public Api.Status logout() {
         Caller c = Caller.current();
         int n = jdbc.update("update sessions set revoked_at = clock_timestamp() where id_hash = ? and revoked_at is null", c.sessionHash());
         if (n == 1) outbox.append(c.userId(), Instant.now().toEpochMilli(), new SessionRevoked(c.subject(), c.sessionHash(), "LOGOUT"));
-        return Map.of("status", "LOGGED_OUT");
+        return convoy.platform.web.Dto.as(Map.of("status", "LOGGED_OUT"), Api.Status.class);
     }
 
     @PostMapping({"/auth/passkeys/register/options", "/auth/passkeys/register", "/auth/passkeys/authenticate"})

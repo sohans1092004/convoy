@@ -77,7 +77,7 @@ public class Payments {
     // ------------------------------------------------------------------ PAY-T01
 
     /** E110: same deterministic key -> same row -> same Razorpay order (a double click yields one order). */
-    public Map<String, Object> createDeposit(UUID buyer, UUID pool, int roundSet, long amountPaise) {
+    public Api.PaymentView createDeposit(UUID buyer, UUID pool, int roundSet, long amountPaise) {
         String key = "deposit:" + buyer + ":" + pool + ":" + roundSet;
         Payment p = one("deposit_key = ?", key).orElseGet(() -> {
             PAYMENT.check("(none)", "INITIATED");
@@ -96,15 +96,14 @@ public class Payments {
         return view(p);
     }
 
-    public Map<String, Object> view(Payment p) {
-        return Map.of("payment_id", p.id().toString(), "state", p.state(), "amount_paise", p.amountPaise(), "currency", "INR",
-                "razorpay_order_id", String.valueOf(p.razorpayOrderId()), "razorpay_key_id", razorpay.keyId(), "test_mode", true);
+    public Api.PaymentView view(Payment p) {
+        return new Api.PaymentView(p.id().toString(), p.state(), p.amountPaise(), "INR", p.razorpayOrderId(), razorpay.keyId(), true);
     }
 
     // ------------------------------------------------------------------ PAY-T02 (browser callback)
 
     @Transactional
-    public Map<String, Object> checkoutCallback(UUID paymentId, UUID buyer, String orderId, String rpPaymentId, String signature) {
+    public Api.PaymentView checkoutCallback(UUID paymentId, UUID buyer, String orderId, String rpPaymentId, String signature) {
         Payment p = one("id = ? and buyer_id = ? for update", paymentId, buyer)
                 .orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "No such payment."));
         if (!orderId.equals(p.razorpayOrderId()) || !razorpay.checkoutSignatureValid(orderId, rpPaymentId, signature)) {

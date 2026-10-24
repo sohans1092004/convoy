@@ -35,8 +35,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/WebhookAck"
                 }
               }
             }
@@ -77,8 +76,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PaymentView"
                 }
               }
             }
@@ -108,8 +106,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PaymentView"
                 }
               }
             }
@@ -140,8 +137,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PaymentView"
                 }
               }
             }
@@ -152,6 +148,16 @@
   },
   "components": {
     "schemas": {
+      "WebhookAck": {
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "CallbackBody": {
         "properties": {
           "razorpay_payment_id": {
@@ -171,6 +177,44 @@
           "razorpay_order_id",
           "razorpay_payment_id",
           "razorpay_signature"
+        ]
+      },
+      "PaymentView": {
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "razorpay_order_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "razorpay_key_id": {
+            "type": "string"
+          },
+          "test_mode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "amount_paise",
+          "currency",
+          "payment_id",
+          "razorpay_key_id",
+          "razorpay_order_id",
+          "state",
+          "test_mode"
         ]
       },
       "DepositBody": {

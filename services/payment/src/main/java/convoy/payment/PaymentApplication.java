@@ -78,7 +78,7 @@ public class PaymentApplication {
     @PostMapping("/internal/deposits")
     @convoy.platform.security.RequiresScope("deposits:create")
     @Idempotent
-    public Map<String, Object> deposit(@Valid @RequestBody DepositBody b) {
+    public Api.PaymentView deposit(@Valid @RequestBody DepositBody b) {
         Caller.current().requireScope("deposits:create");
         if (b.amountPaise() != settings.depositAmountPaise()) {
             throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Deposit amount must be " + settings.depositAmountPaise() + " paise.");
@@ -90,14 +90,14 @@ public class PaymentApplication {
 
     /** E111: checkout handler result. Verified, but it only moves INITIATED to PENDING (webhook-only success rule). */
     @PostMapping("/payments/{id}/checkout-callback")
-    public Map<String, Object> callback(@PathVariable UUID id, @Valid @RequestBody CallbackBody b) {
+    public Api.PaymentView callback(@PathVariable UUID id, @Valid @RequestBody CallbackBody b) {
         Caller c = Caller.current().require("buyer");
         return payments.checkoutCallback(id, c.userId(), b.razorpayOrderId(), b.razorpayPaymentId(), b.razorpaySignature());
     }
 
     /** E112: the buyer's own payment (404 for anyone else's). */
     @GetMapping("/me/payments/{id}")
-    public Map<String, Object> mine(@PathVariable UUID id) {
+    public Api.PaymentView mine(@PathVariable UUID id) {
         Caller c = Caller.current().require("buyer");
         return payments.find(id).filter(p -> p.buyerId().equals(c.userId())).map(payments::view)
                 .orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "No such payment."));
@@ -105,7 +105,7 @@ public class PaymentApplication {
 
     /** E113: signature over the raw body, dedupe on x-razorpay-event-id. Public path (no JWT). */
     @PostMapping("/webhooks/razorpay")
-    public Map<String, Object> webhook(HttpServletRequest req, @RequestHeader(value = "X-Razorpay-Signature", required = false) String signature,
+    public Api.WebhookAck webhook(HttpServletRequest req, @RequestHeader(value = "X-Razorpay-Signature", required = false) String signature,
                                        @RequestHeader(value = "x-razorpay-event-id", required = false) String eventId) throws IOException {
         byte[] raw = req.getInputStream().readAllBytes();
         if (signature == null || !razorpay.webhookSignatureValid(raw, signature)) {
@@ -115,7 +115,7 @@ public class PaymentApplication {
         if (eventId == null || eventId.isBlank()) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Missing x-razorpay-event-id.");
         Map<String, Object> body = json.readValue(raw, new TypeReference<>() {});
         boolean fresh = payments.webhook(eventId, body);
-        return Map.of("status", fresh ? "PROCESSED" : "DUPLICATE");
+        return new Api.WebhookAck(fresh ? "PROCESSED" : "DUPLICATE");
     }
 
     @Scheduled(fixedDelay = 2_000, initialDelay = 5_000)

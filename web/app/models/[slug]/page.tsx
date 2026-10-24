@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { ModelEstimate, type Variant } from '@/components/model-estimate';
+import { ModelEstimate } from '@/components/model-estimate';
+import type { Schemas } from '@/lib/api';
 import { gatewayGet } from '@/lib/gateway';
 
-interface Model { slug: string; name: string; brand: string; body_type: string; source_url: string; source_title: string; accessed_on: string; price_label: string; variants: Variant[] }
+type Model = Schemas['catalog']['Model'];
 
 export default async function ModelPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

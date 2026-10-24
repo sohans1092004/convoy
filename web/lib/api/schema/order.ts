@@ -135,6 +135,100 @@ export interface components {
         ConfirmBody: {
             ceiling_snapshot_hash: string;
         };
+        BookingRef: {
+            id: string;
+            state: string;
+            promised_delivery_date: string | null;
+            dealer_confirm_deadline: string;
+            dealership_id: string;
+        };
+        Line: {
+            code: string;
+            /** Format: int64 */
+            amount_paise: number;
+            /** @enum {string} */
+            evidence: "DEALER_CONFIRMED" | "CATALOGUE_ESTIMATE" | "UNVERIFIED";
+            in_cash_payable: boolean;
+            flags: string[];
+        };
+        Order: {
+            id: string;
+            pool_id: string;
+            /** Format: int32 */
+            round_set: number;
+            buyer_id: string;
+            quote_id: string;
+            variant_id: string;
+            state: string;
+            confirmation_deadline: string;
+            confirmed_at: string | null;
+            cancelled_at: string | null;
+            decline_reason: string | null;
+            cancel_reason: string | null;
+            /** Format: int64 */
+            version: number;
+            created_at: string;
+            snapshots: {
+                [key: string]: components["schemas"]["Snapshot"];
+            };
+            booking: components["schemas"]["BookingRef"] | null;
+            server_time: string;
+        };
+        PriceOutput: {
+            status: string;
+            /** Format: int64 */
+            vehicle_price_paise: number;
+            lines: components["schemas"]["Line"][];
+            /** Format: int64 */
+            cash_payable_paise: number;
+            /** Format: int64 */
+            tcs_paise: number;
+            /** Format: int64 */
+            estimated_net_cost_paise: number;
+            warnings: string[];
+        };
+        Snapshot: {
+            /** Format: int32 */
+            tier_index: number;
+            output: components["schemas"]["PriceOutput"];
+            sha256: string;
+            computed_at: string;
+        };
+        DealerBooking: {
+            id: string;
+            order_id: string;
+            state: string;
+            /** Format: int64 */
+            version: number;
+            promised_delivery_date: string | null;
+            dealer_confirm_deadline: string;
+            variant_id: string;
+            /** Format: int64 */
+            final_cash_payable_paise: number;
+        };
+        Voucher: {
+            id: string;
+            state: string;
+            qr_payload: string;
+            promised_delivery_date: string | null;
+            dealership_id: string;
+            verification: string;
+        };
+        OrderList: {
+            orders: components["schemas"]["OrderRow"][];
+        };
+        OrderRow: {
+            id: string;
+            pool_id: string;
+            quote_id: string;
+            state: string;
+            confirmation_deadline: string;
+            /** Format: int64 */
+            version: number;
+        };
+        DealerBookings: {
+            bookings: components["schemas"]["DealerBooking"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -207,9 +301,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Order"];
                 };
             };
         };
@@ -233,9 +325,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["DealerBooking"];
                 };
             };
         };
@@ -257,9 +347,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Order"];
                 };
             };
         };
@@ -281,9 +369,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Voucher"];
                 };
             };
         };
@@ -303,9 +389,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["OrderList"];
                 };
             };
         };
@@ -325,9 +409,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["DealerBookings"];
                 };
             };
         };

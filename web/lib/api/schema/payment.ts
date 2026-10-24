@@ -68,10 +68,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        WebhookAck: {
+            status: string;
+        };
         CallbackBody: {
             razorpay_payment_id: string;
             razorpay_order_id: string;
             razorpay_signature: string;
+        };
+        PaymentView: {
+            payment_id: string;
+            state: string;
+            /** Format: int64 */
+            amount_paise: number;
+            currency: string;
+            razorpay_order_id: string | null;
+            razorpay_key_id: string;
+            test_mode: boolean;
         };
         DepositBody: {
             /** Format: uuid */
@@ -110,9 +123,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["WebhookAck"];
                 };
             };
         };
@@ -138,9 +149,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["PaymentView"];
                 };
             };
         };
@@ -164,9 +173,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["PaymentView"];
                 };
             };
         };
@@ -188,9 +195,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["PaymentView"];
                 };
             };
         };
