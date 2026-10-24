@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accept and confirm</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>4 · Accept and confirm</h1>
+  <p>Flagship buyer screen 4: ceiling price, deposit status, tier status, deadline, cancellation terms. Never a bare spinner. <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360" checked><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop"><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Order for Baner Motors' offer, Creta EX(O) IVT. Confirming sends the ceiling snapshot hash; if the offer changed, the server answers 409 and the conflict state appears.</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="test-banner">TEST MODE: no real money</div>
+    <div class="app-bar"><span class="logo">Convoy</span><nav aria-label="App"><a href="#">Pool</a><a href="#">Offers</a><a href="#">Orders</a></nav></div>
+
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading</span>
+      <div class="skeleton w-60"></div><div class="skeleton h-l" style="margin-top:12px"></div>
+      <button class="btn block" type="button" disabled style="margin-top:12px">Confirm at most ₹16,26,629</button>
+    </section>
+
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · no acceptance made</span>
+      <h2>You haven't accepted an offer</h2>
+      <p>The decision window closed on Sun 22 Nov, 6:00 PM IST without an acceptance from you, so you've been released from this pool. Your ₹999 test deposit is being refunded (reason: no acceptance).</p>
+      <a class="btn secondary" href="#">Find similar pools</a>
+    </section>
+
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error · confirm request failed, nothing changed</span>
+      <div class="alert" role="alert"><strong>Your confirmation didn't go through.</strong>Nothing changed: you are not confirmed yet. Deadline still Tue 24 Nov, 6:00 PM IST (5 h 12 m). <button class="btn link" type="button">Try again</button></div>
+      <p class="small muted">Retrying is safe; the same request can only confirm you once.</p>
+    </section>
+
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale · live count paused</span>
+      <div class="alert soft"><strong>Confirmed count last updated 2 min ago.</strong>Live updates paused — refreshing every 10 s.</div>
+      <p style="margin-top:12px">Confirmed so far: <strong>6</strong> <span class="badge dashed">may have changed</span></p>
+    </section>
+
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · confirmation sent</span>
+      <div class="alert soft" role="status"><strong>Confirming…</strong>Your confirmation reached us at 12:47:03 IST and is being recorded. Don't worry about double taps — only one confirmation is ever recorded.</div>
+      <dl class="kv" style="margin-top:12px"><dt>Test deposit</dt><dd>₹999 · captured 14 Nov</dd><dt>Ceiling</dt><dd>₹16,26,629</dd></dl>
+    </section>
+
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · deadline passed / offer changed</span>
+      <div class="alert" role="alert"><strong>Confirmations closed at 18:00:00 IST.</strong>Your confirmation reached our database at 18:00:00.231 IST, after the deadline, so it wasn't recorded. You've been marked as declined and your ₹999 test deposit is being refunded.</div>
+      <div class="alert soft" style="margin-top:12px"><strong>Other conflict: the dealer cancelled this offer.</strong>Baner Motors cancelled after the final round. You won't be charged; your deposit is refunded and we opened a support case for you.</div>
+    </section>
+
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>Confirming needs a connection and must reach us before Tue 24 Nov, 6:00 PM IST.</div>
+      <button class="btn block" type="button" disabled style="margin-top:12px">Confirm (offline)</button>
+    </section>
+
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · confirmed; tier resolves at the deadline</span>
+      <div class="alert" role="status"><strong>You're confirmed at ₹16,26,629 or lower.</strong>Next: at Tue 24 Nov, 6:00 PM IST we count confirmed buyers and issue your booking at the final price. Nothing to do until then.</div>
+      <div class="cols" style="margin-top:12px">
+        <div class="stack">
+          <h2>Baner Motors · Creta EX(O) IVT</h2>
+          <div class="card emph">
+            <p>Your maximum cash payable (ceiling)</p>
+            <p class="big-number">₹16,26,629</p>
+            <p class="small">Estimated net cost ₹16,12,732 after creditable TCS of ₹13,897 — generally claimable as credit against your income tax. Assumes you furnish PAN. Not tax advice.</p>
+          </div>
+          <div class="card">
+            <h3>Tier status — the price can only fall</h3>
+            <p><span class="big-number">6</span> buyers confirmed for this offer <span class="small muted">(minimum 5 reached)</span></p>
+            <ol class="ladder small">
+              <li>1–4: ₹16,61,979 (offer can't go ahead below 5)</li>
+              <li class="ceiling current">5–9: ₹16,26,629 — <strong>current and your ceiling</strong></li>
+              <li>10+: ₹16,11,479 — <strong>4 more confirmations</strong> lower everyone's price by ₹15,150</li>
+            </ol>
+            <p class="small muted">Counted: confirmations recorded before the deadline by our database clock. Cancellations after booking never change anyone's price.</p>
+          </div>
+        </div>
+        <aside class="stack">
+          <div class="card"><h3>Deadline</h3><p class="countdown">5 h 12 m 40 s</p><p class="small">Tue 24 Nov 2026, 6:00 PM IST · server time 12:47 IST</p></div>
+          <div class="card"><h3>Test deposit</h3><dl class="kv small"><dt>Amount</dt><dd>₹999</dd><dt>Status</dt><dd>Captured (confirmed by Razorpay) 14 Nov</dd></dl></div>
+          <div class="card"><h3>If you change your mind</h3><p class="small">You can cancel after confirming and still get your ₹999 back (test mode). It's recorded as a buyer cancellation and never changes anyone else's price.</p><button class="btn secondary block" type="button">Cancel my confirmation</button></div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

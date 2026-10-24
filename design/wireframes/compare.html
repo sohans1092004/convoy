@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compare offers</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>3 · Compare offers</h1>
+  <p>Flagship buyer screen 3: dealer cards, itemised breakdown, evidence per line, tier ladder. <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360" checked><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop"><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Creta 1.5 MPi Petrol IVT EX(O), Pune. All three offers computed by the reference engine (ruleset 2026.10.24-p0); the dealers are synthetic (seeded simulator). Cards on mobile, never a squeezed table.</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="app-bar"><span class="logo">Convoy</span><nav aria-label="App"><a href="#">Pool</a><a href="#">Offers</a><a href="#">Orders</a></nav></div>
+
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading</span>
+      <div class="skeleton w-60"></div>
+      <div class="grid-cards" style="margin-top:12px"><div class="card"><div class="skeleton h-l"></div></div><div class="card"><div class="skeleton h-l"></div></div><div class="card only-desktop"><div class="skeleton h-l"></div></div></div>
+    </section>
+
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · sealed round open, no offers yet</span>
+      <h2>No offers yet</h2>
+      <p>4 verified dealers were invited. The sealed round closes <strong>Thu 19 Nov 2026, 6:00 PM IST</strong> (<span class="countdown">2 d 03 h</span>, server time). We'll notify you when the first offer arrives.</p>
+      <p class="small muted">If no valid offer arrives, the pool closes and your ₹999 test deposit is refunded.</p>
+    </section>
+
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error</span>
+      <div class="alert" role="alert"><strong>Offers couldn't load.</strong>Your sort (lowest cash payable) and expanded cards are kept. <button class="btn link" type="button">Try again</button></div>
+    </section>
+
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale · a dealer revised an offer</span>
+      <div class="alert soft" role="status"><strong>Baner Motors revised its offer at 16:41 IST.</strong>You're viewing version 2; version 3 is available. <button class="btn link" type="button">Show latest</button></div>
+      <div class="card" style="margin-top:12px"><h3>Baner Motors <span class="badge dashed">outdated · v2</span></h3><p>Cash payable at ceiling: ₹16,31,629</p></div>
+    </section>
+
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · sending a clarification</span>
+      <div class="card"><h3>Ask Deccan Hyundai</h3><p class="small">Question type: “Is registration amount final?”</p><button class="btn secondary" type="button" aria-disabled="true"><span class="spin" aria-hidden="true">◌</span> Sending…</button><p class="small muted">Answers are visible to all buyers in this pool. No contact details are shared.</p></div>
+    </section>
+
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · offer withdrawn while viewing</span>
+      <div class="alert" role="alert"><strong>Deccan Hyundai withdrew its offer at 17:59 IST</strong> (allowed before the round deadline; recorded). It's no longer comparable. 2 offers remain.</div>
+    </section>
+
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>Showing offers as of 17:20 IST. Accepting needs a connection.</div>
+    </section>
+
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · final offers, decision window open</span>
+      <div class="row" style="justify-content:space-between">
+        <h2>3 final offers</h2>
+        <label class="small" for="sort">Sort by <select id="sort" style="width:auto;min-height:36px"><option>Cash payable at your ceiling</option><option>Estimated net cost</option><option>Delivery date</option><option>Evidence strength</option></select></label>
+      </div>
+      <p class="small">Decide by <strong>Sun 22 Nov 2026, 6:00 PM IST</strong> · <span class="countdown">1 d 23 h 41 m</span> (server time 18:19 IST). Accepting is not binding.</p>
+      <div class="grid-cards">
+        <article class="card emph" aria-labelledby="d1">
+          <h3 id="d1">Baner Motors</h3>
+          <p class="small">Verified dealer · reliability: no cancellations (simulated)</p>
+          <p>Cash payable at your ceiling<br><span class="big-number">₹16,26,629</span></p>
+          <p class="small">Est. net cost ₹16,12,732 (after creditable TCS ₹13,897)</p>
+          <p class="small"><strong>₹3,643 less than the next-best offer in this pool (Pune Hyundai, Kothrud)</strong> · ₹57,389 below the catalogue estimate dated 24 Oct 2026</p>
+          <h4>Price can only fall</h4>
+          <ol class="ladder small" aria-label="Tier ladder">
+            <li>1–4 confirmed: ₹16,61,979 <span class="muted">(offer void below 5)</span></li>
+            <li class="ceiling current">5–9 confirmed: <strong>₹16,26,629 — your ceiling</strong></li>
+            <li>10+ confirmed: ₹16,11,479</li>
+          </ol>
+          <p class="small">Minimum 5 confirmed buyers · stock: 9 units, white/grey, from 2 Dec <span class="ev ev-dc">dealer-confirmed</span></p>
+          <details><summary>Itemised breakdown</summary>
+            <table><caption class="sr-only">Baner Motors breakdown at ceiling tier</caption>
+              <tbody>
+                <tr><th scope="row">Ex-showroom</th><td class="num">₹14,49,700</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">Discount (on ex-showroom)</th><td class="num">−₹60,000</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">Registration / RTO</th><td class="num">₹1,78,500</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">Insurance OD yr 1</th><td class="num">₹27,100</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">Insurance TP 3 yr</th><td class="num">₹10,640</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">GST on insurance</th><td class="num">₹6,792</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">TCS 1% (creditable)</th><td class="num">₹13,897</td><td><span class="ev ev-dc">dealer</span></td></tr>
+                <tr><th scope="row">Optional: zero-dep add-on</th><td class="num">₹4,000</td><td>optional, not included</td></tr>
+              </tbody>
+            </table>
+          </details>
+          <button class="btn block" type="button">Accept this offer</button>
+        </article>
+        <article class="card" aria-labelledby="d2">
+          <h3 id="d2">Pune Hyundai, Kothrud</h3>
+          <p>Cash payable at your ceiling<br><span class="big-number">₹16,30,272</span></p>
+          <p class="small">Est. net cost ₹16,16,325</p>
+          <ol class="ladder small" aria-label="Tier ladder"><li>1–4: ₹16,55,522</li><li class="ceiling current">5–9: <strong>₹16,30,272 — ceiling</strong></li><li>10+: ₹16,15,122</li></ol>
+          <p class="small"><strong>Dealer-required:</strong> mud flaps ₹1,800 <span class="badge">required by dealer</span></p>
+          <p class="small">Delivery from 28 Nov <span class="ev ev-dc">dealer-confirmed</span></p>
+          <button class="btn secondary block" type="button">Accept this offer</button>
+        </article>
+        <article class="card" aria-labelledby="d3">
+          <h3 id="d3">Deccan Hyundai</h3>
+          <p>Cash payable at your ceiling<br><span class="big-number">₹16,38,818</span></p>
+          <p class="small">Est. net cost ₹16,24,721</p>
+          <ol class="ladder small" aria-label="Tier ladder"><li class="ceiling current">1–4: <strong>₹16,38,818 — ceiling</strong> (minimum 3)</li><li>5–9: ₹16,27,518</li><li>10+: ₹16,16,218</li></ol>
+          <p class="small">Registration ₹1,69,964 and insurance ₹45,057 are <span class="ev ev-ce">catalogue estimates</span>; smart-card fee <span class="ev ev-uv">unverified</span>. <a href="#">Ask the dealer to confirm</a></p>
+          <p class="small">Stock not confirmed <span class="ev ev-uv">unverified</span></p>
+          <button class="btn secondary block" type="button">Accept this offer</button>
+        </article>
+      </div>
+      <p class="small muted" style="margin-top:12px">Legend: <span class="ev ev-dc">dealer-confirmed</span> · <span class="ev ev-ce">catalogue estimate</span> · <span class="ev ev-uv">unverified</span>. Rule-based, not a score. “Saved” amounts compare against another offer in this pool or your invoice only.</p>
+    </section>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dealer quote builder</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>6 · Dealer quote builder</h1>
+  <p>Second flagship (PLAN §5.3): live summary from the shared price engine, validation, tier editor with what-if preview, confirmation, immutable versions, rank with the published rule. <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360"><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop" checked><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Baner Motors (synthetic dealership) quoting the Creta pool in Pune, final round. Figures from the reference engine; the TypeScript engine must match the shared vectors.</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="app-bar"><span class="logo">Convoy Dealer</span><nav aria-label="Dealer"><a href="#">Inbox</a><a href="#" aria-current="page">Quotes</a><a href="#">Bookings</a></nav></div>
+
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading</span>
+      <div class="cols"><div class="skeleton h-l"></div><div class="skeleton h-l"></div></div>
+    </section>
+
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · new draft</span>
+      <h2>New quote · Creta pool, Pune</h2>
+      <p>The pool accepts 3 variants. Add at least one variant you can price and stock. Ex-showroom is pre-filled from the catalogue (official page, 24 Oct 2026) — change it if your price differs.</p>
+      <button class="btn" type="button">Add variant: 1.5 MPi Petrol IVT EX(O)</button>
+      <p class="small muted">Sealed round closes Thu 19 Nov, 6:00 PM IST. Buyers see your quote; other dealers never do.</p>
+    </section>
+
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error · validation; inputs kept</span>
+      <div class="alert" role="alert"><strong>2 things to fix before submitting</strong>
+        <ul class="small"><li><a href="#tiers">Tier 2 starts at 6 but tier 1 ends at 4 — tiers must be continuous (5 is missing).</a></li><li><a href="#reg">Registration is empty. For this state and fuel we can show an estimate, but buyers will see it marked “estimate”. Enter your figure to mark it dealer-confirmed.</a></li></ul>
+      </div>
+    </section>
+
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale · catalogue price updated</span>
+      <div class="alert soft"><strong>The catalogue ex-showroom for EX(O) IVT changed on 24 Oct 2026, 11:20 IST.</strong>Your draft uses ₹14,49,700. Keep yours (it's your quote) or use the catalogue value. <button class="btn link" type="button">Review change</button></div>
+    </section>
+
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · confirmation dialog, then submitting</span>
+      <div class="card emph" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+        <h3 id="dlg-h">Submit version 3 as your best and final?</h3>
+        <p class="small">Once submitted, version 3 can't be edited — only revised again before Fri 20 Nov, 6:00 PM IST. Buyers see it immediately. After the deadline it becomes FINAL; withdrawing then counts as a dealer cancellation.</p>
+        <p class="small">Changes vs version 2: discount at 5–9 buyers ₹55,000 → <strong>₹60,000</strong>; delivery date 4 Dec → <strong>2 Dec</strong>.</p>
+        <div class="row"><button class="btn" type="button" aria-disabled="true"><span class="spin" aria-hidden="true">◌</span> Submitting…</button><button class="btn secondary" type="button" disabled>Back</button></div>
+      </div>
+    </section>
+
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · round closed while editing</span>
+      <div class="alert" role="alert"><strong>The final round closed at 18:00:00 IST, while you were editing.</strong>Your submission reached our database at 18:00:01.084 IST, so version 4 wasn't saved. <strong>Version 3 (submitted 17:42 IST) is your final quote.</strong> Your unsaved edits are kept below for reference.</div>
+      <div class="alert soft" style="margin-top:12px"><strong>Other conflict: a colleague submitted a newer version (v3) at 17:42.</strong>Your edits were based on v2. Review the diff and re-apply.</div>
+    </section>
+
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline · draft kept locally</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>The live summary still updates (it runs in your browser), but submitting needs a connection and must reach us before Fri 20 Nov, 6:00 PM IST.</div>
+    </section>
+
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · version 3 submitted in the final round</span>
+      <div class="alert" role="status"><strong>Version 3 submitted at 17:42:10 IST.</strong>Your rank for EX(O) IVT is now <strong>1st of 3</strong>. You can revise until Fri 20 Nov, 6:00 PM IST (<span class="countdown">17 m 50 s</span>, server time). Quote valid until 10 Dec 2026.</div>
+      <div class="cols" style="margin-top:12px">
+        <div class="stack">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Line items for EX(O) IVT">
+            <table>
+              <caption>Line items · 1.5 MPi Petrol IVT EX(O) · Maharashtra</caption>
+              <thead><tr><th scope="col">Item</th><th scope="col">Type</th><th scope="col" class="num">Amount (₹)</th><th scope="col">Evidence buyers see</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><label for="li-ex">Ex-showroom</label></th><td>mandatory</td><td><input id="li-ex" type="text" inputmode="numeric" value="14,49,700"></td><td><span class="ev ev-dc">dealer-confirmed</span></td></tr>
+                <tr><th scope="row"><label for="li-reg" id="reg">Registration / RTO</label></th><td>mandatory</td><td><input id="li-reg" type="text" inputmode="numeric" value="1,78,500"></td><td><span class="ev ev-dc">dealer-confirmed</span> <span class="small muted">(estimate would be ₹1,67,564)</span></td></tr>
+                <tr><th scope="row"><label for="li-od">Insurance OD yr 1</label></th><td>baseline cover</td><td><input id="li-od" type="text" inputmode="numeric" value="27,100"></td><td><span class="ev ev-dc">dealer-confirmed</span></td></tr>
+                <tr><th scope="row"><label for="li-tp">Insurance TP 3 yr</label></th><td>baseline cover</td><td><input id="li-tp" type="text" inputmode="numeric" value="10,640"></td><td><span class="ev ev-dc">dealer-confirmed</span></td></tr>
+                <tr><th scope="row"><label for="li-gst">GST on insurance</label></th><td>baseline cover</td><td><input id="li-gst" type="text" inputmode="numeric" value="6,792"></td><td><span class="ev ev-dc">dealer-confirmed</span></td></tr>
+                <tr><th scope="row"><label for="li-zd">Zero-dep add-on</label></th><td>optional</td><td><input id="li-zd" type="text" inputmode="numeric" value="4,000"></td><td>optional, excluded from rank</td></tr>
+                <tr><th scope="row"><label for="li-hd">Handling charges</label></th><td>other charge</td><td><input id="li-hd" type="text" inputmode="numeric" value="0"></td><td class="small">flagged to buyers as “ask the dealer” if &gt; 0</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card" id="tiers">
+            <h3>Tiers — the price can only fall</h3>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Tier editor">
+              <table>
+                <caption class="sr-only">Tier editor</caption>
+                <thead><tr><th scope="col">Confirmed buyers</th><th scope="col">Discount on ex-showroom (₹)</th><th scope="col" class="num">Buyer cash payable</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">1–4</th><td><input type="text" aria-label="Discount for 1 to 4 buyers" value="25,000"></td><td class="num">₹16,61,979</td></tr>
+                  <tr><th scope="row">5–9</th><td><input type="text" aria-label="Discount for 5 to 9 buyers" value="60,000"></td><td class="num">₹16,26,629</td></tr>
+                  <tr><th scope="row">10+</th><td><input type="text" aria-label="Discount for 10 or more buyers" value="75,000"></td><td class="num">₹16,11,479</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="row" style="margin-top:8px"><label class="field" for="minf">Minimum you'll honour</label><input id="minf" type="number" value="5" style="width:96px"><label class="field" for="maxu">Units available (max)</label><input id="maxu" type="number" value="9" style="width:96px"></div>
+            <p class="small"><strong>What if…</strong> 3 confirm: <em>offer can't go ahead (below your minimum of 5), deposits refunded</em> · 7 confirm: ₹16,26,629 each · 12 confirm: capped at your 9 units, ₹16,26,629 each (tier 5–9).</p>
+            <p class="small alert soft">If buyers cancel after booking, the price you set for the confirmed count still applies to everyone else. Set tiers you can honour.</p>
+          </div>
+          <details><summary>Version history (3 versions, immutable)</summary>
+            <ul class="small"><li>v3 · 17:42:10 IST Fri 20 Nov · R. Kulkarni · discount 5–9: 55,000 → 60,000; delivery 4 Dec → 2 Dec</li><li>v2 · 14:05 IST Fri 20 Nov · R. Kulkarni · registration 1,80,000 → 1,78,500</li><li>v1 · 11:30 IST Wed 18 Nov · S. Patil · first submission (sealed round)</li></ul>
+          </details>
+        </div>
+        <aside class="stack sticky-summary" aria-label="Live summary">
+          <div class="card emph" aria-live="polite">
+            <h3>Live summary (5–9 tier)</h3>
+            <dl class="kv small"><dt>Vehicle price</dt><dd>₹13,89,700</dd><dt>Registration</dt><dd>₹1,78,500</dd><dt>Insurance (baseline)</dt><dd>₹44,532</dd><dt>TCS 1% (creditable)</dt><dd>₹13,897</dd><dt><strong>Cash payable</strong></dt><dd><strong>₹16,26,629</strong></dd><dt>Est. net cost</dt><dd>₹16,12,732</dd></dl>
+            <p class="small muted">Engine ruleset 2026.10.24-p0 · cross-checked with the server before submit.</p>
+          </div>
+          <div class="card">
+            <h3>Your rank: 1st of 3</h3>
+            <p class="small"><strong>Published ranking rule (same for every dealer):</strong> cash payable for the pool's reference configuration — mandatory items only, baseline insurance, at your ceiling tier — per variant. Ties: earliest promised delivery, then earliest submission of the ranked version. You see only your own rank, never other dealers' prices.</p>
+          </div>
+          <div class="card"><h3>Deadlines</h3><dl class="kv small"><dt>Final round closes</dt><dd>Fri 20 Nov, 6:00 PM IST</dd><dt>Remaining (server)</dt><dd class="countdown">17 m 50 s</dd><dt>Quote valid until</dt><dd>10 Dec 2026</dd></dl></div>
+          <button class="btn block" type="button">Review and submit version 4</button>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

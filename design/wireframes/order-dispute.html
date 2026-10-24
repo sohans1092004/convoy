@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order with dispute</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>7 · Order timeline with a dispute opened</h1>
+  <p>Delivery overdue past promised date + 7-day grace; buyer opened a support case (PLAN §2.6, §3.1(9)). <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360" checked><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop"><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Dispute machine: OPEN → UNDER_REVIEW → AWAITING_PARTY → RESOLVED → CLOSED (dispute.yaml). Evidence uploads go to S3 via presigned URLs.</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="test-banner">TEST MODE: no real money</div>
+    <div class="app-bar"><span class="logo">Convoy</span><nav aria-label="App"><a href="#">Discover</a><a href="#">My pools</a><a href="#" aria-current="page">Orders</a></nav></div>
+
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading</span><div class="skeleton w-60"></div><div class="skeleton h-l" style="margin-top:12px"></div>
+    </section>
+
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · no support cases</span>
+      <h2>No support cases</h2><p>If something goes wrong with this booking, open a case. Choose a category, describe what happened and attach photos or PDFs (up to 10 files, 10 MB each).</p>
+      <button class="btn" type="button">Open a support case</button>
+    </section>
+
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error · upload failed, text kept</span>
+      <div class="alert" role="alert"><strong>2 of 3 files uploaded; “invoice-scan.pdf” failed.</strong>Your description and the uploaded files are kept. <button class="btn link" type="button">Retry upload</button></div>
+    </section>
+
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale</span>
+      <div class="alert soft"><strong>Case status last updated Sun 13 Dec, 10:20 IST.</strong>The admin may have replied since. <button class="btn link" type="button">Refresh</button></div>
+    </section>
+
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · opening case</span>
+      <div class="alert soft" role="status"><strong>Opening your case…</strong>Category “Delivery overdue”. Uploading 3 files (2 of 3 done).</div>
+    </section>
+
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · case changed while replying</span>
+      <div class="alert" role="alert"><strong>This case was resolved while you were writing.</strong>Your draft reply is kept below. You can appeal once within 7 days (until Sun 27 Dec, 4:00 PM IST).</div>
+      <label class="field" for="draft" style="margin-top:12px">Your draft</label><textarea id="draft" rows="3">The dealer called on 14 Dec but gave no new date.</textarea>
+    </section>
+
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>You can read the case. Replies and uploads are kept on this device as a draft and are not sent until you reconnect and press Send.</div>
+    </section>
+
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · case open and under review</span>
+      <div class="alert" role="status"><strong>Case DSP-1042 opened · Sun 13 Dec 2026, 10:14 IST.</strong>Next: an admin reviews it within 1 business day. You'll be notified of every update. Your booking stays active.</div>
+      <div class="cols" style="margin-top:12px">
+        <div class="stack">
+          <h2>Creta EX(O) IVT · Baner Motors</h2>
+          <ol class="timeline" aria-label="Order timeline">
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Booking issued</strong> · final price ₹16,26,629<br><span class="small muted">Tue 24 Nov, 18:00 IST</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Dealer confirmed</strong><br><span class="small muted">Wed 25 Nov, 10:20 IST</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Delivery scheduled</strong> Sat 5 Dec, 11:00 AM (promised by 5 Dec)<br><span class="small muted">Rescheduled once by dealer on 4 Dec: “transport delay”, no new date</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Delivery overdue</strong> (promised date + 7 days passed)<br><span class="small muted">Sun 13 Dec, 09:00 IST · you were prompted to open a case</span></div></li>
+            <li class="now" aria-current="step"><span class="dot" aria-hidden="true"></span><div><strong>Support case DSP-1042 · Under review</strong><br><span class="small muted">Owner: Convoy support (Admin A.) · since Sun 13 Dec, 10:20 IST</span></div></li>
+            <li><span class="dot" aria-hidden="true"></span><div><strong>Resolution</strong><br><span class="small muted">Possible outcomes: dealer delivers with a firm date, booking cancelled with full refund, or other recorded outcome</span></div></li>
+          </ol>
+        </div>
+        <aside class="stack">
+          <div class="card emph">
+            <h3>Case DSP-1042</h3>
+            <dl class="kv small"><dt>Category</dt><dd>Delivery overdue</dd><dt>Status</dt><dd>Under review</dd><dt>Opened by</dt><dd>You</dd><dt>Evidence</dt><dd>3 files</dd><dt>Dealer notified</dt><dd>Yes, 10:15 IST</dd></dl>
+          </div>
+          <div class="card">
+            <h3>History</h3>
+            <ul class="small">
+              <li>10:14 — You opened the case: “Delivery was promised for 5 Dec. Dealer postponed on 4 Dec without a new date.” (3 files)</li>
+              <li>10:20 — Assigned to Admin A.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Actions</h3>
+            <div class="row"><button class="btn secondary" type="button">Add a reply or file</button><button class="btn link" type="button">Withdraw case</button></div>
+            <p class="small muted">Withdrawing is only possible for cases you opened. Cases the system opened (e.g. dealer cancellation) stay open until an admin closes them.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>
