@@ -1,0 +1,171 @@
+package convoy.quote;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import convoy.contracts.events.AcceptanceChanged;
+import convoy.contracts.events.MemberCommitted;
+import convoy.contracts.events.QuoteRoundOpened;
+import convoy.contracts.events.RoundClosed;
+import convoy.platform.messaging.EventContext;
+import convoy.platform.messaging.Uuid7;
+import convoy.platform.problem.ApiProblem;
+import convoy.platform.testing.AuthzDenyChecks;
+import convoy.platform.testing.Outboxes;
+import convoy.platform.testing.ServiceTest;
+import convoy.platform.testing.TestTokens;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/** Draft and submit validated by the Java engine, DB-clock round deadline, sealed visibility, buyer comparison, summary. */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "convoy.messaging.enabled=false", "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused"})
+@Import(ServiceTest.Config.class)
+class QuoteIT extends ServiceTest {
+    static final ObjectMapper JSON = new ObjectMapper();
+    static final String SWIFT = "11111111-1111-7111-8111-111111111111", WINDSOR = "33333333-3333-7333-8333-333333333333";
+
+    @Autowired JdbcTemplate jdbc;
+    @Autowired TransactionTemplate tx;
+    @Autowired Quotes quotes;
+
+    void inTx(Runnable r) {
+        try {
+            EventContext.set(Uuid7.next(), null);
+            tx.executeWithoutResult(s -> r.run());
+        } finally {
+            EventContext.clear();
+        }
+    }
+
+    record Round(UUID pool, UUID round, UUID dealership) {}
+
+    Round openRound(int seconds) {
+        UUID pool = Uuid7.next(), round = Uuid7.next(), d = UUID.randomUUID();
+        List<Map<String, Object>> variants = List.of(
+                Map.of("id", SWIFT, "code", "swift-lxi-mt", "name", "LXi MT", "fuel", "PETROL", "engine_cc", 1197),
+                Map.of("id", WINDSOR, "code", "windsor-excite", "name", "Excite", "fuel", "EV"));
+        inTx(() -> quotes.roundOpened(new QuoteRoundOpened(pool.toString(), round.toString(), 1L, 1L, "SEALED", Instant.now().plusSeconds(seconds),
+                List.of(d.toString()), List.of(SWIFT, WINDSOR), 1L, "MH", variants)));
+        return new Round(pool, round, d);
+    }
+
+    static String draft(String variant, long discount1, long discount2, String tiersOverride) {
+        String tiers = tiersOverride != null ? tiersOverride
+                : "[{\"min\":1,\"max\":4,\"discount_paise\":" + discount1 + "},{\"min\":5,\"max\":null,\"discount_paise\":" + discount2 + "}]";
+        return "{\"variants\":[{\"variant_id\":\"" + variant + "\",\"ex_showroom_paise\":58390000,\"registration_paise\":null,\"insurance\":null,\"accessories\":[],\"fees\":[],"
+                + "\"other_charges\":[],\"stock\":{\"units\":3,\"colours\":[\"White\"],\"delivery_date\":\"2026-11-20\"}}],\"tiers\":" + tiers + ",\"min_fulfilment\":1,\"max_units\":3}";
+    }
+
+    String dealer(UUID d) { return TestTokens.dealer("quote", UUID.randomUUID(), d); }
+
+    JsonNode create(Round r) throws Exception {
+        Resp c = send("POST", "/dealer/pools/" + r.pool() + "/quotes", dealer(r.dealership()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+        assertThat(c.status()).as(c.body()).isEqualTo(201);
+        return JSON.readTree(c.body());
+    }
+
+    Resp saveAndSubmit(Round r, String id, String body) throws Exception {
+        long v = JSON.readTree(get("/dealer/quotes/" + id, dealer(r.dealership())).body()).path("version").asLong();
+        Resp s = send("PUT", "/dealer/quotes/" + id + "/draft", dealer(r.dealership()), body, Map.of("If-Match", "\"" + v + "\""));
+        assertThat(s.status()).as(s.body()).isEqualTo(200);
+        return send("POST", "/dealer/quotes/" + id + "/submit", dealer(r.dealership()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString(),
+                "If-Match", "\"" + JSON.readTree(s.body()).path("version").asLong() + "\""));
+    }
+
+    static String code(Resp r) throws Exception { return JSON.readTree(r.body()).path("code").asText(); }
+
+    @Test
+    void submitValidatesWithTheEngineAndRejectsBadQuotesWithSpecificProblems() throws Exception {
+        Round r = openRound(600);
+        String id = create(r).path("id").asText();
+        assertThat(code(saveAndSubmit(r, id, draft(SWIFT, 20000000, 25000000, null)))).isEqualTo("DISCOUNT_EXCEEDS_LIMIT"); // Rs 2 lakh > 25% of 5,83,900
+        assertThat(code(saveAndSubmit(r, id, draft(SWIFT, 0, 0, "[{\"min\":1,\"max\":4,\"discount_paise\":0},{\"min\":6,\"max\":null,\"discount_paise\":0}]")))).isEqualTo("INVALID_TIERS"); // gap
+        assertThat(code(saveAndSubmit(r, id, draft(SWIFT, 2000000, 1000000, null)))).isEqualTo("INVALID_TIERS"); // price would rise
+        assertThat(code(saveAndSubmit(r, id, draft(WINDSOR, 0, 0, null)))).isEqualTo("QUOTE_INVALID"); // EV without insurance figure: engine refuses
+        Resp ok = saveAndSubmit(r, id, draft(SWIFT, 1000000, 2500000, null));
+        assertThat(ok.status()).as(ok.body()).isEqualTo(200);
+        JsonNode q = JSON.readTree(ok.body());
+        assertThat(q.path("state").asText()).isEqualTo("SUBMITTED");
+        assertThat(q.at("/snapshots/" + SWIFT + "/0/cash_payable_paise").asLong()).isEqualTo(66347500L); // same as the order ceiling and the API journey
+        assertThat(jdbc.queryForObject("select count(*) from quote_versions where quote_id = ?::uuid", Integer.class, id)).isEqualTo(1);
+        // Second quote for the same pool from the same dealership is refused; other dealerships cannot read it (AZ-E067-X).
+        assertThat(code(send("POST", "/dealer/pools/" + r.pool() + "/quotes", dealer(r.dealership()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString())))).isEqualTo("INVALID_TRANSITION");
+        assertThat(get("/dealer/quotes/" + id, dealer(UUID.randomUUID())).status()).isEqualTo(404);
+        assertThat(code(send("POST", "/dealer/quotes/" + id + "/revisions", dealer(r.dealership()), "{}", Map.of()))).isEqualTo("NOT_IMPLEMENTED_IN_P1");
+    }
+
+    @Test
+    void roundNotOpenAndDeadlinePassedUseTheDatabaseClock() throws Exception {
+        assertThat(code(send("POST", "/dealer/pools/" + UUID.randomUUID() + "/quotes", dealer(UUID.randomUUID()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString()))))
+                .isEqualTo("ROUND_NOT_OPEN");
+        Round r = openRound(3);
+        String id = create(r).path("id").asText();
+        long v = JSON.readTree(get("/dealer/quotes/" + id, dealer(r.dealership())).body()).path("version").asLong();
+        Resp s = send("PUT", "/dealer/quotes/" + id + "/draft", dealer(r.dealership()), draft(SWIFT, 1000000, 2500000, null), Map.of("If-Match", "\"" + v + "\""));
+        Thread.sleep(3500);
+        Resp late = send("POST", "/dealer/quotes/" + id + "/submit", dealer(r.dealership()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString(),
+                "If-Match", "\"" + JSON.readTree(s.body()).path("version").asLong() + "\""));
+        JsonNode p = JSON.readTree(late.body());
+        assertThat(p.path("code").asText()).isEqualTo("DEADLINE_PASSED");
+        assertThat(Instant.parse(p.path("server_time").asText())).isAfterOrEqualTo(Instant.parse(p.path("deadline").asText()));
+        assertThat(jdbc.queryForObject("select state from quotes where id = ?::uuid", String.class, id)).isEqualTo("DRAFT"); // nothing saved
+        assertThat(jdbc.queryForObject("select count(*) from quote_versions where quote_id = ?::uuid", Integer.class, id)).isZero();
+    }
+
+    @Test
+    void buyersOfThePoolSeeTheCeilingAndALabelledProjectionAndFinalRoundSummaryFinalises() throws Exception {
+        Round r = openRound(600);
+        String id = create(r).path("id").asText();
+        assertThat(saveAndSubmit(r, id, draft(SWIFT, 1000000, 2500000, null)).status()).isEqualTo(200);
+        UUID buyer = UUID.randomUUID();
+        String token = TestTokens.buyer("quote", buyer);
+        assertThat(get("/pools/" + r.pool() + "/quotes", token).status()).isEqualTo(404); // AZ-E069-X: not a committed member
+        inTx(() -> quotes.memberCommitted(new MemberCommitted(r.pool().toString(), Uuid7.next().toString(), buyer.toString(), Uuid7.next().toString(), 1L, 1L, false)));
+        JsonNode offers = JSON.readTree(get("/pools/" + r.pool() + "/quotes", token).body());
+        JsonNode v = offers.at("/quotes/0/variants/0");
+        assertThat(v.at("/ceiling/cash_payable_paise").asLong()).isEqualTo(66347500L);
+        assertThat(v.at("/projection/guaranteed").asBoolean()).isFalse();
+        assertThat(v.at("/projection/label").asText()).startsWith("If the count stays at 0");
+        // 6 buyers accepting: projection falls to the 5+ tier, ceiling unchanged (AMENDMENT-005).
+        inTx(() -> quotes.acceptanceChanged(new AcceptanceChanged(r.pool().toString(), Uuid7.next().toString(), id, SWIFT, Map.of(id, 6L))));
+        JsonNode after = JSON.readTree(get("/pools/" + r.pool() + "/quotes/" + id, token).body()).at("/variants/0");
+        assertThat(after.at("/projection/cash_payable_paise").asLong()).isLessThan(after.at("/ceiling/cash_payable_paise").asLong());
+        assertThat(after.at("/ceiling/cash_payable_paise").asLong()).isEqualTo(66347500L);
+        // Sealed round closes; final round (zero length in demo) opens and its deadline passes: the summary finalises the quote.
+        inTx(() -> quotes.roundClosed(new RoundClosed(r.pool().toString(), r.round().toString(), "SEALED", Instant.now(), Instant.now(), 1L)));
+        UUID r2 = Uuid7.next();
+        inTx(() -> quotes.roundOpened(new QuoteRoundOpened(r.pool().toString(), r2.toString(), 1L, 2L, "FINAL", Instant.now().minusSeconds(1),
+                List.of(r.dealership().toString()), List.of(SWIFT), 1L, "MH", List.of(Map.of("id", SWIFT, "code", "swift-lxi-mt", "name", "LXi MT", "fuel", "PETROL", "engine_cc", 1197)))));
+        JsonNode sum = JSON.readTree(get("/internal/rounds/" + r2 + "/summary", TestTokens.service("quote", "pool", List.of("rounds:summary"))).body());
+        assertThat(sum.path("final_count").asInt()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select state from quotes where id = ?::uuid", String.class, id)).isEqualTo("FINAL");
+        assertThat(jdbc.queryForObject("select payload->>'min_fulfilment' from outbox where event_type = 'QuoteFinalised' and aggregate_id = ?::uuid", String.class, id)).isEqualTo("1");
+        // AZ-SVC-02: the summary needs the rounds:summary scope.
+        assertThat(get("/internal/rounds/" + r2 + "/summary", TestTokens.service("quote", "pool", List.of("deposits:create"))).status()).isEqualTo(403);
+        assertThat(Outboxes.assertAllValid(jdbc, "quote")).isPositive();
+    }
+
+    @Test
+    void authorisationMatrixForEveryP1Endpoint() {
+        assertThat(AuthzDenyChecks.run("quote", this::send, (m, p) -> p.endsWith("/draft") ? "{}" : null)).isEmpty();
+    }
+
+    @Test
+    void transitionTableRejectsEveryInvalidPair() throws Exception {
+        for (var p : JSON.readTree(QuoteIT.class.getResourceAsStream("/convoy/transitions.json")).get("quote").get("invalid_pairs")) {
+            assertThatThrownBy(() -> Quotes.QUOTE.check(p.get("from").asText(), p.get("to").asText()))
+                    .isInstanceOfSatisfying(ApiProblem.class, e -> assertThat(e.type().slug).isEqualTo("invalid-transition"));
+        }
+    }
+}

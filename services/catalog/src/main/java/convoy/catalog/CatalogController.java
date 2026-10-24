@@ -72,6 +72,7 @@ public class CatalogController {
      * check dealer eligibility and the accepted variants of a new pool without trusting the client.
      */
     @GetMapping("/internal/models/{slug}")
+    @convoy.platform.security.RequiresScope("models:read")
     public Map<String, Object> internalModel(@PathVariable String slug, @RequestParam(required = false) String city) {
         convoy.platform.security.Caller.current().requireScope("models:read");
         String c = city(city);

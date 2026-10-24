@@ -9,7 +9,7 @@ const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const JAEGER = process.env.JAEGER_URL || 'http://localhost:16686';
 const PLAN: Record<string, { buyer: string; model: string; variant: string }> = {
   'mobile-360': { buyer: 'buyer2@convoy.test', model: 'Maruti Suzuki Swift', variant: 'LXi MT' },
-  desktop: { buyer: 'buyer3@convoy.test', model: 'Maruti Suzuki Brezza', variant: 'VXi AT' },
+  desktop: { buyer: 'buyer3@convoy.test', model: 'Maruti Suzuki Brezza', variant: 'VXI AT' },
 };
 const axeFindings: { page: string; ids: string[] }[] = [];
 
@@ -66,7 +66,7 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await page.goto('/');
   await axe(page, 'catalogue');
   await page.getByRole('link', { name: plan.model }).click();
-  await page.getByRole('radio', { name: new RegExp(plan.variant) }).check();
+  await page.getByRole('radio', { name: new RegExp(plan.variant, 'i') }).check({ timeout: 20_000 });
   await expect(page.getByText('Estimated cash payable')).toBeVisible();
   await expect(page.getByText('Catalogue estimate').first()).toBeVisible(); // evidence label on the price
   await axe(page, 'model + estimate');

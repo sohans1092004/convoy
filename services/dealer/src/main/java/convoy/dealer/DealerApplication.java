@@ -26,6 +26,7 @@ public class DealerApplication {
 
     /** E055: verified dealerships of the brand in the city with at least one active staff member. Service token only. */
     @GetMapping("/internal/eligibility")
+    @convoy.platform.security.RequiresScope("eligibility:read")
     public Map<String, Object> eligibility(@RequestParam String brand, @RequestParam String city) {
         Caller.current().requireScope("eligibility:read");
         List<UUID> ids = jdbc.queryForList("select id from dealerships where status = 'VERIFIED' and city = ? and ? = any(brands) "

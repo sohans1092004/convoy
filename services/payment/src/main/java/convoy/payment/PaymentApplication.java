@@ -76,6 +76,7 @@ public class PaymentApplication {
 
     /** E110: pool creates (or gets) the deposit. Service token with deposits:create (AZ-SVC-03). */
     @PostMapping("/internal/deposits")
+    @convoy.platform.security.RequiresScope("deposits:create")
     @Idempotent
     public Map<String, Object> deposit(@Valid @RequestBody DepositBody b) {
         Caller.current().requireScope("deposits:create");

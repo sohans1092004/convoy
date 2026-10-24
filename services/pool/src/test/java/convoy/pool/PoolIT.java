@@ -13,7 +13,7 @@ import convoy.platform.security.ServiceTokens;
 import convoy.platform.testing.AuthzDenyChecks;
 import convoy.platform.testing.Outboxes;
 import convoy.platform.testing.ServiceTest;
-import convoy.platform.testing.StubServer;
+import convoy.testing.StubServer;
 import convoy.platform.testing.TestTokens;
 import java.util.ArrayList;
 import java.util.List;

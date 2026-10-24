@@ -76,6 +76,17 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // Authorisation before binding and validation: a caller without the scope learns nothing about the request shape.
+        registry.addInterceptor(new org.springframework.web.servlet.HandlerInterceptor() {
+            @Override
+            public boolean preHandle(jakarta.servlet.http.HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res, Object handler) {
+                if (handler instanceof org.springframework.web.method.HandlerMethod hm) {
+                    convoy.platform.security.RequiresScope s = hm.getMethodAnnotation(convoy.platform.security.RequiresScope.class);
+                    if (s != null) convoy.platform.security.Caller.current().requireScope(s.value());
+                }
+                return true;
+            }
+        });
         registry.addInterceptor(new IdempotencyInterceptor(idempotencyStore.getObject()));
     }
 

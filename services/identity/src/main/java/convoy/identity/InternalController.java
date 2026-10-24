@@ -42,6 +42,7 @@ public class InternalController {
 
     /** E008: only the gateway (scope sessions:validate, AZ-SVC-01). Touches last_seen at most once a minute. */
     @PostMapping("/internal/sessions/validate")
+    @convoy.platform.security.RequiresScope("sessions:validate")
     public Map<String, Object> validate(@Valid @RequestBody ValidateBody body) {
         Caller.current().requireScope("sessions:validate");
         String hash = Crypto.sha256(body.sessionId());

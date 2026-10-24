@@ -5,3 +5,7 @@ dependencies {
 }
 
 tasks.bootJar { archiveFileName.set("dealer.jar") }
+
+dependencies {
+    testImplementation(testFixtures(project(":libs:platform")))
+}

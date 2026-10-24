@@ -185,14 +185,16 @@ public class Quotes {
         if (!((int) round.get("round_no") == 1)) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "New quotes can only be started in the sealed round.");
         if (!((Timestamp) round.get("db_now")).before((Timestamp) round.get("deadline"))) throw deadlinePassed(round, "The sealed round has closed.");
         QUOTE.check("(none)", "DRAFT");
+        List<String> existing = jdbc.queryForList("select id::text from quotes where pool_id = ? and round_set = ? and dealership_id = ? "
+                + "and state not in ('EXPIRED','WITHDRAWN','VOID')", String.class, poolId, round.get("round_set"), d);
+        if (!existing.isEmpty()) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Your dealership already has a quote for this pool.").with("quote_id", existing.get(0));
         UUID id = Uuid7.next();
         try {
             jdbc.update("insert into quotes(id, pool_id, round_set, dealership_id, state, created_by) values (?, ?, ?, ?, 'DRAFT', ?)",
                     id, poolId, round.get("round_set"), d, c.userId());
         } catch (DuplicateKeyException e) {
-            throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Your dealership already has a quote for this pool.")
-                    .with("quote_id", jdbc.queryForObject("select id::text from quotes where pool_id = ? and dealership_id = ? and state not in ('EXPIRED','WITHDRAWN','VOID')",
-                            String.class, poolId, d));
+            // A concurrent create won the unique index; the transaction is aborted, so no further queries here.
+            throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Your dealership already has a quote for this pool.");
         }
         jdbc.update("insert into audit_trail(quote_id, actor, action) values (?, ?, 'CREATE_DRAFT')", id, c.userId());
         return dealerView(id, d);

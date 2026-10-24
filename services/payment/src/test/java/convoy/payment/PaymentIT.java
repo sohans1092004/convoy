@@ -10,7 +10,7 @@ import convoy.platform.problem.ApiProblem;
 import convoy.platform.testing.AuthzDenyChecks;
 import convoy.platform.testing.Outboxes;
 import convoy.platform.testing.ServiceTest;
-import convoy.platform.testing.StubServer;
+import convoy.testing.StubServer;
 import convoy.platform.testing.TestTokens;
 import java.nio.charset.StandardCharsets;
 import java.util.List;

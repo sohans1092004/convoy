@@ -6,6 +6,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation(libs.nimbus.jose.jwt)
     testImplementation("io.projectreactor:reactor-test")
+    testImplementation(testFixtures(project(":libs:contracts")))
 }
 
 tasks.bootJar { archiveFileName.set("gateway.jar") }

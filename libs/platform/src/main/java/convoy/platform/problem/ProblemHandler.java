@@ -59,9 +59,11 @@ public class ProblemHandler {
         return render(ProblemType.VALIDATION_FAILED, "Some fields are invalid.", req, Map.of("errors", errors));
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class, MissingRequestHeaderException.class})
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class, MissingRequestHeaderException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class})
     ResponseEntity<Map<String, Object>> unreadable(Exception e, HttpServletRequest req) {
-        return render(ProblemType.VALIDATION_FAILED, e instanceof MissingRequestHeaderException m ? m.getMessage() : "Malformed request.", req, Map.of());
+        return render(ProblemType.VALIDATION_FAILED, e instanceof MissingRequestHeaderException || e instanceof org.springframework.web.bind.MissingServletRequestParameterException
+                ? e.getMessage() : "Malformed request.", req, Map.of());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

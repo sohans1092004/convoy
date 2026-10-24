@@ -105,6 +105,7 @@ public class QuoteApplication {
     // ------------------------------------------------------------------ internal (E073)
 
     @GetMapping("/internal/rounds/{id}/summary")
+    @convoy.platform.security.RequiresScope("rounds:summary")
     public Map<String, Object> summary(@PathVariable UUID id) {
         Caller.current().requireScope("rounds:summary");
         return quotes.summary(id);

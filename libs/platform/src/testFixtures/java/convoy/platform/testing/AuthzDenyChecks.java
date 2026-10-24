@@ -43,6 +43,9 @@ public final class AuthzDenyChecks {
             Map<String, String> spoof = new java.util.HashMap<>(h);
             spoof.put("X-User-Id", UUID.randomUUID().toString());
             expect(failures, "AZ-INT-03 " + tag + " identity header", s.send(e.method(), path, allowedToken, b, spoof), Set.of(400));
+            if (e.path().equals("/internal/oauth/token")) {
+                continue; // client-credentials grant: authenticated by client secret, not a token (wrong secret -> 401 is tested by identity)
+            }
             if (e.internal()) {
                 expect(failures, tag + " human token on internal", s.send(e.method(), path, TestTokens.admin(service, UUID.randomUUID()), b, h), Set.of(403));
                 expect(failures, tag + " service token without scope", s.send(e.method(), path, TestTokens.service(service, "intruder", List.of()), b, h), Set.of(403));

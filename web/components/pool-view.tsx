@@ -136,11 +136,9 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
           <CardTitle>Your place</CardTitle>
           <p className="text-sm">{me ? <>Status: <strong>{me.state.replace(/_/g, ' ').toLowerCase()}</strong></> : 'You are not in this pool yet.'}</p>
           {!me && joinable ? (
-            <>
-              <Button variant="secondary" loading={join.state.kind === 'loading'} onClick={() => join.execute()}>Join as interested (free)</Button>
-              <CommandStatus state={join.state} successText="You joined as interested." />
-            </>
+            <Button variant="secondary" loading={join.state.kind === 'loading'} onClick={() => join.execute()}>Join as interested (free)</Button>
           ) : null}
+          <CommandStatus state={join.state} successText="You joined as interested." />
           {canCommit ? (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-2 p-3">
               <h3 className="font-bold">{t('title')}</h3>
