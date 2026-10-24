@@ -17,7 +17,8 @@ import { createServer } from 'node:http';
 const KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_fake';
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'fake_key_secret';
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || 'fake_webhook_secret';
-const WEBHOOK_URL = process.env.WEBHOOK_URL || '';
+// Read at delivery time, not import time (the contract test sets it after importing).
+const webhookUrl = () => process.env.WEBHOOK_URL || '';
 const PORT = Number(process.env.PORT || 9090);
 const ACCOUNT = 'acc_TestConvoyFake';
 
@@ -66,6 +67,7 @@ async function webhook(event, entityName, entity) {
 }
 
 async function deliver(eventId) {
+  const WEBHOOK_URL = webhookUrl();
   if (!WEBHOOK_URL) return;
   const { raw, signature } = sent.get(eventId);
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -199,5 +201,5 @@ export const server = createServer(async (req, res) => {
 });
 
 if (process.argv[1] && process.argv[1].endsWith('server.mjs')) {
-  server.listen(PORT, () => console.log(`razorpay-fake listening on :${PORT} (TEST mode stand-in), webhooks -> ${WEBHOOK_URL || '(none)'}`));
+  server.listen(PORT, () => console.log(`razorpay-fake listening on :${PORT} (TEST mode stand-in), webhooks -> ${webhookUrl() || '(none)'}`));
 }
