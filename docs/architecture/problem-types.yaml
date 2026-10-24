@@ -23,7 +23,7 @@ problems:
   idempotency-key-missing:  {status: 428, code: IDEMPOTENCY_KEY_MISSING, title: "This endpoint requires an Idempotency-Key header"}
   precondition-required:    {status: 428, code: PRECONDITION_REQUIRED, title: "This endpoint requires If-Match with the aggregate version"}
   rate-limited:             {status: 429, code: RATE_LIMITED, title: "Too many requests"}
-  second-approval-required: {status: 409, code: SECOND_APPROVAL_REQUIRED, title: "Action above threshold needs a second admin"}
+  second-approval-required: {status: 409, code: SECOND_APPROVAL_REQUIRED, title: "This manual money action needs approval by a second admin"}
   webhook-signature-invalid: {status: 400, code: WEBHOOK_SIGNATURE_INVALID, title: "Razorpay webhook HMAC check failed"}
   review-not-eligible:      {status: 403, code: REVIEW_NOT_ELIGIBLE, title: "Only buyers with a delivered booking from this dealer can review"}
   dependency-unavailable:   {status: 503, code: DEPENDENCY_UNAVAILABLE, title: "A required downstream dependency is unavailable; retry with the same Idempotency-Key"}

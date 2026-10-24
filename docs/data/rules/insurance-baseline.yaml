@@ -8,7 +8,7 @@ idv_depreciation_evidence: ASSUMPTION
 idv_depreciation_note: "5 % for vehicles not older than 6 months per the India Motor Tariff depreciation schedule as commonly applied by insurers; schedule not re-read from a primary source in P0."
 od_rate_bp: 200
 od_rate_evidence: ASSUMPTION
-od_rate_note: "Own-damage premium is priced by each insurer (no single published tariff); 2.00 % of IDV is a placeholder chosen for comparability, not a market rate. It only matters when a dealer gives no insurance figure; ranking uses the dealer's own figure for the standard cover when present (Q-031)."
+od_rate_note: "Own-damage premium is priced by each insurer (no single published tariff); 2.00 % of IDV is a placeholder chosen for comparability, not a market rate. It only matters when a dealer gives no insurance figure; ranking uses the dealer's own figure only when it declares exactly this baseline cover and is binding (AMENDMENT-004)."
 gst_bp: 1800
 gst_evidence: ASSUMPTION
 gst_note: "18 % GST on motor insurance premium; not re-verified after the 2025 GST rate changes (which exempted individual life/health policies, not motor)."

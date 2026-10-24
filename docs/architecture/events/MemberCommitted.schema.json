@@ -25,6 +25,7 @@
         "buyer_id",
         "committed_count",
         "interested_count",
+        "kept_from_previous_round",
         "membership_id",
         "payment_id",
         "pool_id"
@@ -51,6 +52,9 @@
         },
         "committed_count": {
           "type": "integer"
+        },
+        "kept_from_previous_round": {
+          "type": "boolean"
         }
       }
     }

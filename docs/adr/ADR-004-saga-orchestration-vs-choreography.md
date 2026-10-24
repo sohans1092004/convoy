@@ -13,7 +13,7 @@ After the confirmation deadline, several services must act for each confirmed bu
 Other cross-service flows are simple reactions, for example refunding when a member leaves.
 
 ## Decision
-The **order service orchestrates** the post-confirmation saga. Its steps are persisted in `order.saga_steps` (APPLY_DEPOSIT, RESERVE_STOCK; with status, attempts and next_attempt_at), and compensations are explicit. All other cross-service flows use **choreography**: services react to the events they subscribe to.
+The **order service orchestrates** the post-confirmation saga. Its steps are persisted in `order.saga_steps` (HOLD_DEPOSIT, RESERVE_STOCK; with status, attempts and next_attempt_at), and compensations are explicit. All other cross-service flows use **choreography**: services react to the events they subscribe to.
 
 ## Alternatives considered
 - **Choreography everywhere:** fewer central components. But the booking flow's state would be spread across order, payment and quote; answering "where is this booking stuck?" would need correlation across three services; and compensations would become implicit.

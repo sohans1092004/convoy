@@ -4,7 +4,7 @@ aggregate: payment.refunds
 version_field: version
 initial: REFUND_REQUESTED
 plan_ref: "PLAN.md §2.3 (REFUND_REQUESTED -> REFUND_INITIATED -> REFUNDED | REFUND_FAILED; retry with backoff, then alert + admin queue)"
-notes: "Full refunds only (deposit amount). UNIQUE (payment_id). Retry schedule: 1 min, 5 min, 30 min, 2 h, 12 h (5 attempts) then REFUND_FAILED stays and alarm REFUND_STUCK + admin queue. Razorpay refund call carries receipt = refund_id; before any (re)try the worker looks up existing refunds on the payment and adopts one whose receipt matches, so a crash after the API call never creates a second refund."
+notes: "Full refunds only (deposit amount). UNIQUE (payment_id). kind = REFUND (purchase did not go ahead -> payment REFUNDED) or RELEASE (booking delivered -> payment RELEASED, AMENDMENT-003); the Razorpay call and webhooks are identical for both. Retry schedule: 1 min, 5 min, 30 min, 2 h, 12 h (5 attempts) then REFUND_FAILED stays and alarm REFUND_STUCK + admin queue. Razorpay refund call carries receipt = refund_id; before any (re)try the worker looks up existing refunds on the payment and adopts one whose receipt matches, so a crash after the API call never creates a second refund."
 states:
   - {name: REFUND_REQUESTED, terminal: false, description: "Refund recorded with reason code; worker not yet called Razorpay"}
   - {name: REFUND_INITIATED, terminal: false, description: "Razorpay refund created (refund_id stored); waiting for refund.processed"}
@@ -14,9 +14,9 @@ transitions:
   - id: REF-T01
     from: "(none)"
     to: REFUND_REQUESTED
-    trigger: {kind: event, by: system, via: "inside PAY-T07 / PAY-T10"}
+    trigger: {kind: event, by: system, via: "inside PAY-T07 / PAY-T09 / PAY-T10"}
     guard: "UNIQUE (payment_id)"
-    effects: ["INSERT payment.refunds(state='REFUND_REQUESTED', reason_code, amount_paise=payment.amount_paise)"]
+    effects: ["INSERT payment.refunds(state='REFUND_REQUESTED', kind, reason_code, amount_paise=payment.amount_paise)"]
     emits: [RefundRequested]
     idempotent_repeat: "Unique key"
     late_arrival: "Not applicable."
@@ -40,7 +40,7 @@ transitions:
     to: REFUNDED
     trigger: {kind: event, by: system, via: "webhook refund.processed"}
     guard: "signature valid AND event id new AND refund id matches"
-    effects: ["INSERT payment.webhook_inbox(event_id)", "UPDATE payment.refunds SET state='REFUNDED', processed_at", "PAY-T08 in the same transaction", "INSERT ledger journal J-REFUND", "INSERT payment.outbox(RefundCompleted)"]
+    effects: ["INSERT payment.webhook_inbox(event_id)", "UPDATE payment.refunds SET state='REFUNDED', processed_at", "PAY-T08 (kind REFUND) or PAY-T11 (kind RELEASE) in the same transaction", "INSERT ledger journal J-REFUND or J-RELEASE", "INSERT payment.outbox(RefundCompleted)"]
     emits: [RefundCompleted]
     idempotent_repeat: "Duplicate webhook -> no effect"
     late_arrival: "refund.processed arriving while REFUND_FAILED (out-of-order webhooks): accepted - processed is authoritative; REFUND_FAILED -> REFUNDED via REF-T05."
@@ -74,9 +74,9 @@ transitions:
   - id: REF-T06
     from: REFUND_FAILED
     to: REFUNDED
-    trigger: {kind: actor, by: platform_admin, via: "POST /admin/refunds/{id}/resolve-manually {evidence_ref, note} (Idempotency-Key)"}
-    guard: "attempts >= 5 AND caller platform_admin AND (amount_paise < second_approval_threshold OR approved by a second admin)"
-    effects: ["UPDATE payment.refunds SET state='REFUNDED', manual=true, resolved_by", "PAY-T08", "INSERT ledger journal J-REFUND-MANUAL", "INSERT payment.outbox(RefundCompleted{manual: true})", "audit sensitive action"]
+    trigger: {kind: actor, by: platform_admin, via: "POST /admin/refunds/{id}/resolve-manually {evidence_ref, note} (Idempotency-Key) creates an approval request; a second, different admin approves with POST /admin/refunds/{id}/approve"}
+    guard: "attempts >= 5 AND requester and approver both platform_admin AND approver <> requester (AMENDMENT-001: every manual refund, ledger adjustment or override needs a second admin, whatever the amount)"
+    effects: ["on approval: UPDATE payment.refunds SET state='REFUNDED', manual=true, requested_by, approved_by", "PAY-T08 or PAY-T11 by kind", "INSERT ledger journal J-REFUND-MANUAL", "INSERT payment.outbox(RefundCompleted{manual: true})", "audit sensitive action"]
     emits: [RefundCompleted]
     idempotent_repeat: IDEMPOTENCY_KEY
     late_arrival: "If refund.processed arrives afterwards it is stale (already REFUNDED) and reconciliation flags a possible double refund for review."
@@ -85,7 +85,7 @@ transitions:
     detected_by: "admin API"
 invalid_transitions:
   - {from: [REFUND_REQUESTED, REFUND_INITIATED], attempt: "admin manual resolve", error: invalid-transition}
-  - {from: [REFUND_FAILED], attempt: "manual resolve above threshold without second admin", error: second-approval-required}
+  - {from: [REFUND_FAILED], attempt: "manual resolve without approval by a second, different admin", error: second-approval-required}
   - {from: [REFUNDED], attempt: "any command", error: invalid-transition}
   - {from: ["*"], attempt: "webhook with bad signature", error: webhook-signature-invalid}
   - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

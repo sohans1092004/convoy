@@ -126,14 +126,14 @@ transitions:
     to: FORMING
     trigger: {kind: event, by: system, via: "BookingsIssued(bookings_count = 0, void_quote_count >= 1)"}
     guard: "state = 'CONFIRMATION' AND pools.round_set = 1 AND now_db() + forming_days + sealed + final + decision + confirmation durations <= purchase_window_end"
-    effects: ["UPDATE pool.pools SET state='FORMING', round_set=2, forming_deadline=now_db()+forming_duration, committed_count=0, version=version+1", "UPDATE pool.memberships SET state='INTERESTED' WHERE pool_id=:id AND state IN ('COMMITTED','RELEASED')", "INSERT pool.outbox(PoolReopened)"]
+    effects: ["UPDATE pool.pools SET state='FORMING', round_set=2, forming_deadline=now_db()+forming_duration, committed_count=0, version=version+1", "members in event.void_buyer_ids -> REROUND_CHOICE (MEM-T12); other HANDED_TO_ORDER / RELEASED members -> INTERESTED (MEM-T16)", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(PoolReopened{choice_buyer_ids, choice_deadline})"]
     emits: [PoolReopened]
     idempotent_repeat: INBOX_DEDUPE
     late_arrival: "Not applicable."
     crash_points: INBOX_CONSUMER
     timeout: "As POOL-T08."
     detected_by: "pool inbox consumer"
-    notes: "Single re-round rule (PLAN §2.2.6). Deposits were already refunded on VOID, so members must commit again (new deposit). See Q-007."
+    notes: "Single re-round rule (PLAN §2.2.6). AMENDMENT-002 (replaces Q-007): VOID deposits are not refunded when the pool re-rounds; each affected buyer has 48 h to keep the commitment (MEM-T13, no new payment) or take a refund (MEM-T14); no response means refund (MEM-T15). Other members commit again with a new deposit."
   - id: POOL-T10
     from: CONFIRMATION
     to: EXPIRED
@@ -146,6 +146,7 @@ transitions:
     crash_points: INBOX_CONSUMER
     timeout: "As POOL-T08."
     detected_by: "pool inbox consumer"
+    notes: "Not eligible for a re-round: payment refunds every still-held deposit of the pool on PoolClosed (reason QUOTE_VOID when end_reason = ALL_QUOTES_VOID), as PLAN §2.2 requires."
   - id: POOL-T11
     from: FORMING
     to: EXPIRED

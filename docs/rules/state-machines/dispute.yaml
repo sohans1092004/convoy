@@ -65,7 +65,7 @@ transitions:
     from: UNDER_REVIEW
     to: RESOLVED
     trigger: {kind: actor, by: platform_admin, via: "POST /admin/disputes/{id}/resolve {outcome, note} (Idempotency-Key)"}
-    guard: "caller is the owner AND outcome IN (REFUND_BUYER, CANCEL_BOOKING, DEALER_WARNING, PRICE_ADJUSTMENT_RECORDED, NO_ACTION) AND (outcome involves money above threshold => second admin approval)"
+    guard: "caller is the owner AND outcome IN (REFUND_BUYER, CANCEL_BOOKING, DEALER_WARNING, PRICE_ADJUSTMENT_RECORDED, NO_ACTION) AND (outcome IN (REFUND_BUYER, CANCEL_BOOKING) => approved by a second, different platform_admin, AMENDMENT-001)"
     effects: ["UPDATE state='RESOLVED', outcome, appeal_until=now_db()+7d", "CANCEL_BOOKING -> BKG-T06 actor admin", "history", "outbox DisputeResolved"]
     emits: [DisputeResolved]
     idempotent_repeat: IDEMPOTENCY_KEY
@@ -114,5 +114,5 @@ invalid_transitions:
   - {from: [OPEN, AWAITING_PARTY], attempt: resolve, error: invalid-transition}
   - {from: ["*"], attempt: "dealer reads dispute of another dealership", error: not-found}
   - {from: [CLOSED, WITHDRAWN], attempt: "any command", error: invalid-transition}
-  - {from: ["*"], attempt: "money outcome above threshold without second admin", error: second-approval-required}
+  - {from: ["*"], attempt: "money outcome (REFUND_BUYER, CANCEL_BOOKING) without approval by a second admin", error: second-approval-required}
   - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

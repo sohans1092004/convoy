@@ -62,7 +62,9 @@ zero_dep = {'code': 'ZERO_DEP', 'label': 'Zero depreciation', 'amount_paise': 40
 fastag = {'code': 'FASTAG', 'label': 'FASTag', 'amount_paise': 500 * R, 'basis': 'Issuer fee + security deposit as charged by dealer', 'evidence': DC}
 handling = {'code': 'HANDLING', 'label': 'Handling charges', 'amount_paise': 5000 * R, 'evidence': DC}
 
+BASELINE_COVER = {'idv_bp': 9500, 'addons': []}
 ranking_cfg = dealer_ins(dealer_reg(base('MH', 'PETROL', 8 * L, 1197, 20000 * R), 95000 * R), 15000 * R, 10640 * R, 4615 * R)
+ranking_cfg['insurance'].update(declared_cover=BASELINE_COVER, binding=True)
 ranking_cfg.update(accessories=[acc_req, acc_opt], extended_warranty=warranty, insurance_addons=[zero_dep], fees=[fastag])
 
 PRICING = [
@@ -117,6 +119,9 @@ PRICING = [
     ('P049', 'KA cess rounding on an odd tax amount', dealer_ins(base('KA', ex=777777 * R), 1 * R, 1 * R, 0)),
     ('P050', 'Full configuration: discount, estimates, required+optional accessories, warranty, add-on, fees, questionable charge, TCS', with_(base('KA', ex=1449700 * R, cc=1497, disc=40000 * R), accessories=[acc_req, acc_opt, acc_opt_unsel], extended_warranty=warranty, insurance_addons=[zero_dep], fees=[fastag], other_charges=[handling])),
     ('P051', 'Zero discount stated explicitly with dealer figures (Creta E MT price)', full_dealer(1090700 * R, 0)),
+    ('P052', 'RANKING mode, dealer insurance not marked binding -> baseline estimate used (AMENDMENT-004)', with_(ranking_cfg, mode='RANKING', insurance=dict(ranking_cfg['insurance'], binding=False))),
+    ('P053', 'RANKING mode, binding dealer insurance with a different cover (IDV 100 %, zero-dep) -> baseline estimate used (AMENDMENT-004)', with_(ranking_cfg, mode='RANKING', insurance=dict(ranking_cfg['insurance'], declared_cover={'idv_bp': 10000, 'addons': ['ZERO_DEP']}))),
+    ('P054', 'BUYER_CONFIG mode, non-binding dealer insurance is still shown to the buyer as the dealer figure', with_(ranking_cfg, insurance=dict(ranking_cfg['insurance'], binding=False))),
 ]
 
 # Hand-verified in docs/rules/pricing-model.md §Hand-verified vectors (cash payable, TCS) in paise.
@@ -212,10 +217,10 @@ def gen_tiers():
 
 AMT = 99900
 CAP = {'entry': 'J-CAPTURE', 'lines': [{'account': '1100', 'dr': AMT, 'cr': 0}, {'account': '2100', 'dr': 0, 'cr': AMT}]}
-APPLY = {'entry': 'J-APPLY', 'lines': [{'account': '2100', 'dr': AMT, 'cr': 0}, {'account': '2200', 'dr': 0, 'cr': AMT}]}
-SETTLE = {'entry': 'J-SETTLE', 'lines': [{'account': '2200', 'dr': AMT, 'cr': 0}, {'account': '2300', 'dr': 0, 'cr': AMT}]}
+HOLD = {'entry': 'J-HOLD', 'lines': [{'account': '2100', 'dr': AMT, 'cr': 0}, {'account': '2200', 'dr': 0, 'cr': AMT}]}
+RELEASE = {'entry': 'J-RELEASE', 'lines': [{'account': '2200', 'dr': AMT, 'cr': 0}, {'account': '1100', 'dr': 0, 'cr': AMT}]}
 REF_HELD = {'entry': 'J-REFUND', 'lines': [{'account': '2100', 'dr': AMT, 'cr': 0}, {'account': '1100', 'dr': 0, 'cr': AMT}]}
-REF_APPLIED = {'entry': 'J-REFUND', 'lines': [{'account': '2200', 'dr': AMT, 'cr': 0}, {'account': '1100', 'dr': 0, 'cr': AMT}]}
+REF_BOOKING = {'entry': 'J-REFUND', 'lines': [{'account': '2200', 'dr': AMT, 'cr': 0}, {'account': '1100', 'dr': 0, 'cr': AMT}]}
 REF_MANUAL = {'entry': 'J-REFUND-MANUAL', 'lines': [{'account': '2100', 'dr': AMT, 'cr': 0}, {'account': '1200', 'dr': 0, 'cr': AMT}]}
 
 
@@ -224,35 +229,40 @@ def dep(cid, plan_row, situation, events, payment, refund, ledger, side=None):
             'expected': {'payment_state': payment, 'refund': refund, 'ledger': ledger, 'side_effects': side or []}}
 
 
-def refunded(reason):
-    return {'state': 'REFUNDED', 'reason_code': reason}
+def refunded(reason, kind='REFUND'):
+    return {'state': 'REFUNDED', 'kind': kind, 'reason_code': reason}
 
 
 CAPTURED = ['commit', 'webhook payment.captured']
+VOID_ALL = CAPTURED + ['accept', 'confirm', 'TierResolved(VOID)', 'BookingsIssued(bookings_count = 0)']
 DEPOSITS = [
     dep('D01', 'Buyer leaves before CONFIRMATION', 'Committed buyer leaves during QUOTE_OPEN', CAPTURED + ['MemberLeft', 'webhook refund.processed'], 'REFUNDED', refunded('BUYER_LEFT'), [CAP, REF_HELD]),
     dep('D02', 'Buyer leaves before CONFIRMATION', 'Committed buyer accepts nothing by decision deadline', CAPTURED + ['AcceptancesFrozen(released)', 'webhook refund.processed'], 'REFUNDED', refunded('NO_ACCEPTANCE'), [CAP, REF_HELD]),
     dep('D03', 'Pool EXPIRED', 'Minimum not reached by forming deadline', CAPTURED + ['PoolClosed(EXPIRED)', 'webhook refund.processed'], 'REFUNDED', refunded('POOL_EXPIRED'), [CAP, REF_HELD]),
     dep('D04', 'Pool NO_QUOTES', 'No valid quote at sealed deadline', CAPTURED + ['PoolClosed(NO_QUOTES)', 'webhook refund.processed'], 'REFUNDED', refunded('POOL_NO_QUOTES'), [CAP, REF_HELD]),
     dep('D05', 'Pool CANCELLED', 'Admin cancels pool with reason', CAPTURED + ['PoolClosed(CANCELLED)', 'webhook refund.processed'], 'REFUNDED', refunded('POOL_CANCELLED'), [CAP, REF_HELD]),
-    dep('D06', 'Quote VOID', 'Confirmed count below minimum fulfilment', CAPTURED + ['accept', 'confirm', 'TierResolved(VOID)', 'webhook refund.processed'], 'REFUNDED', refunded('QUOTE_VOID'), [CAP, REF_HELD], ['buyer notified with reason', 'pool may re-round once']),
+    dep('D06', 'Quote VOID', 'Quote VOID while another quote in the pool resolves (bookings_count >= 1): no re-round, refunded now', CAPTURED + ['accept', 'confirm', 'TierResolved(VOID)', 'BookingsIssued(bookings_count >= 1)', 'webhook refund.processed'], 'REFUNDED', refunded('QUOTE_VOID'), [CAP, REF_HELD], ['buyer notified with reason', 'offered similar pools']),
     dep('D07', 'Quote WITHDRAWN', 'Dealer cancels FINAL quote during CONFIRMATION', CAPTURED + ['accept', 'QuoteWithdrawn(after_final)', 'webhook refund.processed'], 'REFUNDED', refunded('DEALER_CANCELLED'), [CAP, REF_HELD], ['dispute auto-opened', 'dealer reliability decremented']),
-    dep('D08', 'Stock unavailable', 'Stock reservation fails after booking issued', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositApplyRequested', 'StockUnavailable', 'webhook refund.processed'], 'REFUNDED', refunded('STOCK_UNAVAILABLE'), [CAP, APPLY, REF_APPLIED], ['booking CANCELLED', 'dispute auto-opened', 'dealer reliability decremented']),
-    dep('D09', 'Dealer cancels', 'Dealer cancels a confirmed booking', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositApplyRequested', 'BookingCancelled(DEALER_CANCELLED)', 'webhook refund.processed'], 'REFUNDED', refunded('DEALER_CANCELLED'), [CAP, APPLY, REF_APPLIED], ['dispute auto-opened', 'dealer reliability decremented']),
-    dep('D10', "Dealer doesn't honour the price", 'Dealer does not confirm the booking within 48 h', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositApplyRequested', 'dealer_confirm_deadline passes', 'webhook refund.processed'], 'REFUNDED', refunded('DEALER_NOT_HONOURED'), [CAP, APPLY, REF_APPLIED], ['booking CANCELLED', 'dispute auto-opened', 'admin review']),
+    dep('D08', 'Stock unavailable', 'Stock reservation fails after booking issued', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositHoldRequested', 'StockUnavailable', 'webhook refund.processed'], 'REFUNDED', refunded('STOCK_UNAVAILABLE'), [CAP, HOLD, REF_BOOKING], ['booking CANCELLED', 'dispute auto-opened', 'dealer reliability decremented']),
+    dep('D09', 'Dealer cancels', 'Dealer cancels a confirmed booking', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositHoldRequested', 'BookingCancelled(DEALER_CANCELLED)', 'webhook refund.processed'], 'REFUNDED', refunded('DEALER_CANCELLED'), [CAP, HOLD, REF_BOOKING], ['dispute auto-opened', 'dealer reliability decremented']),
+    dep('D10', "Dealer doesn't honour the price", 'Dealer does not confirm the booking within 48 h', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositHoldRequested', 'dealer_confirm_deadline passes', 'webhook refund.processed'], 'REFUNDED', refunded('DEALER_NOT_HONOURED'), [CAP, HOLD, REF_BOOKING], ['booking CANCELLED', 'dispute auto-opened', 'admin review']),
     dep('D11', 'Buyer misses the confirmation deadline', 'No confirmation before deadline', CAPTURED + ['accept', 'confirmation_deadline passes', 'webhook refund.processed'], 'REFUNDED', refunded('MISSED_CONFIRMATION_DEADLINE'), [CAP, REF_HELD]),
     dep('D12', 'Buyer misses the confirmation deadline', 'Buyer explicitly declines', CAPTURED + ['accept', 'decline', 'webhook refund.processed'], 'REFUNDED', refunded('BUYER_DECLINED'), [CAP, REF_HELD]),
     dep('D13', 'Buyer cancels after confirming', 'Cancel before tier resolution', CAPTURED + ['accept', 'confirm', 'cancel', 'webhook refund.processed'], 'REFUNDED', refunded('BUYER_CANCELLED'), [CAP, REF_HELD], ['recorded as buyer cancellation; tier unaffected if after deadline']),
-    dep('D14', 'Buyer cancels after confirming', 'Cancel after booking issued', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositApplyRequested', 'BookingCancelled(BUYER_CANCELLED)', 'webhook refund.processed'], 'REFUNDED', refunded('BUYER_CANCELLED'), [CAP, APPLY, REF_APPLIED], ['other buyers price unchanged']),
+    dep('D14', 'Buyer cancels after confirming', 'Cancel after booking issued', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositHoldRequested', 'BookingCancelled(BUYER_CANCELLED)', 'webhook refund.processed'], 'REFUNDED', refunded('BUYER_CANCELLED'), [CAP, HOLD, REF_BOOKING], ['other buyers price unchanged']),
     dep('D15', 'payment.captured after buyer left', 'Buyer leaves while COMMIT_PENDING; capture arrives later', ['commit', 'MemberLeft', 'webhook payment.captured', 'webhook refund.processed'], 'REFUNDED', refunded('LATE_CAPTURE'), [CAP, REF_HELD]),
     dep('D16', 'payment.captured after pool closed', 'Pool EXPIRED while COMMIT_PENDING; capture arrives later', ['commit', 'PoolClosed(EXPIRED)', 'webhook payment.captured', 'webhook refund.processed'], 'REFUNDED', refunded('LATE_CAPTURE'), [CAP, REF_HELD]),
     dep('D17', 'Duplicate request', 'Double-click commit with the same Idempotency-Key', ['commit', 'commit (same key)', 'webhook payment.captured'], 'CAPTURED', None, [CAP], ['one Razorpay order', 'one membership', 'committed_count +1']),
     dep('D18', 'Duplicate webhook', 'payment.captured delivered twice (same event id)', ['commit', 'webhook payment.captured', 'webhook payment.captured (same event id)'], 'CAPTURED', None, [CAP], ['second webhook 200, no effect, duplicate counter +1']),
     dep('D19', 'Duplicate webhook', 'refund.processed delivered twice', CAPTURED + ['MemberLeft', 'webhook refund.processed', 'webhook refund.processed (same event id)'], 'REFUNDED', refunded('BUYER_LEFT'), [CAP, REF_HELD]),
-    dep('D20', '(happy path)', 'Booking delivered: deposit settled', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositApplyRequested', 'BookingDelivered'], 'SETTLED', None, [CAP, APPLY, SETTLE]),
-    dep('D21', '(refund failure)', 'Refund fails 5 times, admin resolves manually', CAPTURED + ['MemberLeft', 'webhook refund.failed x5', 'admin resolve-manually'], 'REFUNDED', {'state': 'REFUNDED', 'reason_code': 'BUYER_LEFT', 'manual': True}, [CAP, REF_MANUAL], ['alarm REFUND_STUCK', 'admin queue entry']),
+    dep('D20', '(happy path)', 'Booking delivered: deposit released', CAPTURED + ['accept', 'confirm', 'TierResolved(RESOLVED)', 'DepositHoldRequested', 'BookingDelivered', 'webhook refund.processed'], 'RELEASED', refunded('DELIVERY_RELEASE', 'RELEASE'), [CAP, HOLD, RELEASE], ['deposit returned in full after delivery (AMENDMENT-003)', 'success fee is a separate dealer receivable (J-FEE 1300/4100, only if success_fee_paise is configured, Q-041)']),
+    dep('D21', '(refund failure)', 'Refund fails 5 times, admin resolves manually', CAPTURED + ['MemberLeft', 'webhook refund.failed x5', 'admin resolve-manually'], 'REFUNDED', {'state': 'REFUNDED', 'reason_code': 'BUYER_LEFT', 'manual': True}, [CAP, REF_MANUAL], ['alarm REFUND_STUCK', 'admin queue entry', 'resolution needs approval by a second, different admin (AMENDMENT-001)']),
     dep('D22', '(failed then retried)', 'First attempt fails, retry in checkout succeeds', ['commit', 'webhook payment.failed', 'webhook payment.captured'], 'CAPTURED', None, [CAP], ['membership COMMITTED (MEM-T03 from INTERESTED)']),
     dep('D23', '(abandoned)', 'Checkout never completed within 24 h', ['commit', '24 h pass'], 'VOIDED_UNPAID', None, [], ['membership back to INTERESTED']),
+    dep('D24', 'Quote VOID, re-round (AMENDMENT-002)', 'Every quote VOID, pool eligible for re-round; buyer keeps the commitment', VOID_ALL + ['PoolReopened', 'reround-choice KEEP'], 'CAPTURED', None, [CAP], ['membership COMMITTED for round_set 2', 'no new payment', 'committed_count +1']),
+    dep('D25', 'Quote VOID, re-round (AMENDMENT-002)', 'Every quote VOID, pool eligible for re-round; buyer asks for a refund', VOID_ALL + ['PoolReopened', 'reround-choice REFUND', 'MemberReleased(REROUND_REFUND_REQUESTED)', 'webhook refund.processed'], 'REFUNDED', refunded('REROUND_REFUND_REQUESTED'), [CAP, REF_HELD]),
+    dep('D26', 'Quote VOID, re-round (AMENDMENT-002)', 'Every quote VOID, pool eligible for re-round; buyer does not respond within 48 h', VOID_ALL + ['PoolReopened', 'choice_deadline passes', 'MemberReleased(REROUND_NO_RESPONSE)', 'webhook refund.processed'], 'REFUNDED', refunded('REROUND_NO_RESPONSE'), [CAP, REF_HELD], ['no response means refund']),
+    dep('D27', 'Quote VOID, no re-round', 'Every quote VOID, pool not eligible (re-round used or purchase window too short)', VOID_ALL + ['PoolClosed(EXPIRED, ALL_QUOTES_VOID)', 'webhook refund.processed'], 'REFUNDED', refunded('QUOTE_VOID'), [CAP, REF_HELD], ['automatic refund per PLAN §2.2']),
 ]
 
 
@@ -261,8 +271,8 @@ def gen_deposits():
         for e in d['expected']['ledger']:
             assert sum(l['dr'] for l in e['lines']) == sum(l['cr'] for l in e['lines']), d['id']
     return {'deposit_amount_paise': AMT, 'accounts': {'1100': 'Razorpay clearing (asset)', '1200': 'Platform bank (asset)',
-            '2100': 'Customer deposits held (liability)', '2200': 'Deposits applied to bookings (liability)',
-            '2300': 'Dealer settlement payable (liability)'}, 'cases': DEPOSITS}
+            '1300': 'Success fees receivable from dealers (asset)', '2100': 'Customer deposits held (liability)',
+            '2200': 'Deposits held for bookings (liability)', '4100': 'Success fee revenue (income)'}, 'cases': DEPOSITS}
 
 
 def gen_transitions():

@@ -1,6 +1,6 @@
 # Canonical price model (PLAN §2.4)
 
-One pure, versioned function `compute(input) -> output` used by the catalogue, the quote builder, comparison, acceptance, confirmation and tier resolution. Reference implementation: [`spec-tools/price_ref.py`](../../spec-tools/price_ref.py). Contract: [`spec-tools/vectors/pricing.json`](../../spec-tools/vectors/pricing.json) (51 cases). The Java (`catalog`/`quote`/`order` services) and TypeScript (web) engines must reproduce every vector's `expected` object and `snapshot_sha256` exactly (ADR-011).
+One pure, versioned function `compute(input) -> output` used by the catalogue, the quote builder, comparison, acceptance, confirmation and tier resolution. Reference implementation: [`spec-tools/price_ref.py`](../../spec-tools/price_ref.py). Contract: [`spec-tools/vectors/pricing.json`](../../spec-tools/vectors/pricing.json) (54 cases). The Java (`catalog`/`quote`/`order` services) and TypeScript (web) engines must reproduce every vector's `expected` object and `snapshot_sha256` exactly (ADR-011).
 
 Ruleset version in force: **`2026.10.24-p0`** (all files in [`docs/data/rules/`](../data/rules/) carry it; the engine refuses a mismatched input with `RULESET_VERSION_MISMATCH`).
 
@@ -21,7 +21,7 @@ Ruleset version in force: **`2026.10.24-p0`** (all files in [`docs/data/rules/`]
               "ex_showroom_paise": 58390000, "ex_showroom_evidence": "DEALER_CONFIRMED|CATALOGUE_ESTIMATE|UNVERIFIED"},
   "discount": {"amount_paise": 0, "base": "EX_SHOWROOM", "evidence": "DEALER_CONFIRMED"},
   "registration": null | {"amount_paise": 0, "evidence": "..."},
-  "insurance": null | {"od_paise": 0, "tp_paise": 0, "gst_paise": 0, "evidence": "..."},
+  "insurance": null | {"od_paise": 0, "tp_paise": 0, "gst_paise": 0, "evidence": "...", "declared_cover": {"idv_bp": 9500, "addons": []}, "binding": true},
   "insurance_addons": [{"code": "ZERO_DEP", "label": "...", "amount_paise": 0, "selected": true, "evidence": "..."}],
   "fees": [{"code": "FASTAG", "label": "...", "amount_paise": 0, "basis": "...", "evidence": "..."}],
   "accessories": [{"code": "...", "label": "...", "amount_paise": 0, "required": true, "selected": true, "evidence": "..."}],
@@ -30,6 +30,8 @@ Ruleset version in force: **`2026.10.24-p0`** (all files in [`docs/data/rules/`]
 }
 ```
 `null` for `registration` / `insurance` means "not supplied by the dealer": the engine fills a **catalogue estimate** from the state rules.
+
+`declared_cover` and `binding` on `insurance` only matter in `RANKING` mode: the dealer figure is used for ranking only if `binding` is true and `declared_cover` is exactly the baseline (`idv_bp` = 10000 − `idv_depreciation_bp`, `addons` empty). Otherwise the engine uses the baseline estimate and warns `DEALER_INSURANCE_NOT_RANKABLE` (AMENDMENT-004). In `BUYER_CONFIG` mode the dealer figure is always shown.
 
 ## 3. Components
 

@@ -22,6 +22,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "choice_buyer_ids",
+        "choice_deadline",
         "forming_deadline",
         "pool_id",
         "round_set"
@@ -38,6 +40,25 @@
           "type": "string",
           "format": "date-time",
           "description": "UTC, RFC 3339"
+        },
+        "choice_buyer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "choice_deadline": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "description": "UTC, RFC 3339"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }

@@ -29,4 +29,5 @@ Services publish domain events from transactional outboxes. Consumers need:
 ## Consequences
 - FIFO throughput limits per topic and queue are adequate for pool events at our scale. High-throughput FIFO mode can be enabled if W2/W3 show otherwise.
 - There is no log-based replay, so test 6 relies on SQS retention plus outbox re-publish. This is documented.
+- **AMENDMENT-006 (P1):** SNS FIFO topics can deliver to SQS standard queues ([AWS, Sep 2023](https://aws.amazon.com/about-aws/whats-new/2023/09/amazon-sns-fifo-topics-message-delivery-sqs-standard-queues/), accessed 2026-10-24). Consumers that need pool order (quote, order, realtime, and payment for membership events) use FIFO queues; notification and audit use standard queues, accepting best-effort order and at-least-once delivery (inbox dedupe covers both). Whether LocalStack reproduces this is recorded in the P1 report, with the local workaround if it does not.
 - Messages are limited to 256 KB, so events carry ids and small payloads; larger data is fetched through owner APIs.

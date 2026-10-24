@@ -14,7 +14,7 @@
 | **Confirmed count** | The number of confirmations (with captured deposit) committed before the confirmation deadline and not cancelled before it. It decides the tier. |
 | **Resolution** | The order service's single transaction per pool at the confirmation deadline. It picks the tier, voids quotes below their minimum, and issues bookings. |
 | **Booking / voucher** | The dealer-facing record of a resolved purchase. The voucher is a signed QR token scanned at delivery. |
-| **Deposit** | The ₹999 Razorpay test-mode payment that makes a buyer committed. It ends either SETTLED (applied and delivered) or REFUNDED. |
+| **Deposit** | The ₹999 Razorpay test-mode payment that makes a buyer committed. It is a refundable commitment token, never paid to the dealer, and ends either REFUNDED (purchase did not go ahead) or RELEASED (returned after delivery); both return the full amount (AMENDMENT-003). |
 | **Cash payable** | The sum of all line items the buyer pays at purchase, including TCS. |
 | **Estimated net cost** | Cash payable minus creditable TCS, with an explanation. |
 | **TCS** | Tax collected at source: 1 % of the vehicle consideration when it exceeds ₹10 lakh (Income-tax Act 2025 s.394(1) Sl. 6; formerly s.206C(1F)). |

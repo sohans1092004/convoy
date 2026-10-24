@@ -113,13 +113,18 @@ stateDiagram-v2
     ACCEPTED --> ACCEPTED : MEM-T08 actor
     ACCEPTED --> COMMITTED : MEM-T09 actor
     COMMITTED --> RELEASED : MEM-T10 deadline
+    REROUND_CHOICE --> RELEASED : MEM-T10 deadline
     ACCEPTED --> HANDED_TO_ORDER : MEM-T11 deadline
-    HANDED_TO_ORDER --> [*]
+    HANDED_TO_ORDER --> REROUND_CHOICE : MEM-T12 event
+    REROUND_CHOICE --> COMMITTED : MEM-T13 actor
+    REROUND_CHOICE --> RELEASED : MEM-T14 actor
+    REROUND_CHOICE --> RELEASED : MEM-T15 deadline
+    HANDED_TO_ORDER --> INTERESTED : MEM-T16 event
+    RELEASED --> INTERESTED : MEM-T16 event
     LEFT --> [*]
-    RELEASED --> [*]
 ```
 
-Terminal states: `HANDED_TO_ORDER`, `LEFT`, `RELEASED`
+Terminal states: `LEFT`
 
 | ID | From | To | Trigger | Guard | Emits |
 |---|---|---|---|---|---|
@@ -132,29 +137,38 @@ Terminal states: `HANDED_TO_ORDER`, `LEFT`, `RELEASED`
 | MEM-T07 | COMMITTED | ACCEPTED | actor: buyer | pool.state = 'DECISION_OPEN' AND now_db() < decision_deadline AND quote is FINAL in this pool (replicated from QuoteFinalised) AND variant is covered by the quote | AcceptanceChanged |
 | MEM-T08 | ACCEPTED | ACCEPTED | actor: buyer | as MEM-T07 | AcceptanceChanged |
 | MEM-T09 | ACCEPTED | COMMITTED | actor: buyer | pool.state = 'DECISION_OPEN' AND now_db() < decision_deadline | AcceptanceChanged |
-| MEM-T10 | COMMITTED | RELEASED | deadline: system | pool transition commits in the same transaction | - |
+| MEM-T10 | COMMITTED, REROUND_CHOICE | RELEASED | deadline: system | pool transition commits in the same transaction | - |
 | MEM-T11 | ACCEPTED | HANDED_TO_ORDER | deadline: system | pool transition commits in the same transaction | - |
+| MEM-T12 | HANDED_TO_ORDER | REROUND_CHOICE | event: system | pool transition commits in the same transaction | - |
+| MEM-T13 | REROUND_CHOICE | COMMITTED | actor: buyer | now_db() < choice_deadline AND pool.state IN (FORMING, READY_FOR_QUOTES) AND pool.round_set = 2 | MemberCommitted |
+| MEM-T14 | REROUND_CHOICE | RELEASED | actor: buyer | now_db() < choice_deadline | MemberReleased |
+| MEM-T15 | REROUND_CHOICE | RELEASED | deadline: system | now_db() >= choice_deadline | MemberReleased |
+| MEM-T16 | HANDED_TO_ORDER, RELEASED | INTERESTED | event: system | pool transition commits in the same transaction | - |
 
 **Invalid commands**
 
 | From | Attempt | Problem type |
 |---|---|---|
 | HANDED_TO_ORDER, LEFT, RELEASED | any buyer command | `invalid-transition` |
+| REROUND_CHOICE | reround_choice committing at/after choice_deadline | `deadline-passed` |
+| INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED | reround_choice | `invalid-transition` |
+| REROUND_CHOICE | leave or accept_quote (use reround_choice) | `invalid-transition` |
 | INTERESTED, COMMIT_PENDING | accept_quote | `not-a-member` |
 | (none) | join when a row exists | `already-member` |
 | (none), INTERESTED | commit while another active commitment exists for the model | `active-commitment-exists` |
 | * | stale If-Match | `version-conflict` |
 | * | any (from, to) pair not listed in transitions | `invalid-transition` |
 
-<details><summary>All 34 invalid (from → to) state pairs → 409 invalid-transition</summary>
+<details><summary>All 44 invalid (from → to) state pairs → 409 invalid-transition</summary>
 
-- `INTERESTED` ↛ INTERESTED, ACCEPTED, HANDED_TO_ORDER
-- `COMMIT_PENDING` ↛ COMMIT_PENDING, ACCEPTED, HANDED_TO_ORDER
-- `COMMITTED` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, HANDED_TO_ORDER
-- `ACCEPTED` ↛ INTERESTED, COMMIT_PENDING, RELEASED
-- `HANDED_TO_ORDER` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
-- `LEFT` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
-- `RELEASED` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
+- `INTERESTED` ↛ INTERESTED, ACCEPTED, HANDED_TO_ORDER, REROUND_CHOICE
+- `COMMIT_PENDING` ↛ COMMIT_PENDING, ACCEPTED, HANDED_TO_ORDER, REROUND_CHOICE
+- `COMMITTED` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, HANDED_TO_ORDER, REROUND_CHOICE
+- `ACCEPTED` ↛ INTERESTED, COMMIT_PENDING, REROUND_CHOICE, RELEASED
+- `HANDED_TO_ORDER` ↛ COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
+- `REROUND_CHOICE` ↛ INTERESTED, COMMIT_PENDING, ACCEPTED, HANDED_TO_ORDER, REROUND_CHOICE, LEFT
+- `LEFT` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, REROUND_CHOICE, LEFT, RELEASED
+- `RELEASED` ↛ COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, REROUND_CHOICE, LEFT, RELEASED
 
 </details>
 
@@ -275,7 +289,7 @@ Terminal states: `EXPIRED`, `WITHDRAWN`, `VOID`
 
 Owner service: **order** · aggregate `order.orders` · source [`order.yaml`](order.yaml) · PLAN.md §2.2, §2.3, §2.6, §3.1(7-8); ADR-004 (order saga is orchestrated)
 
-One order per accepting buyer per pool, created from AcceptancesFrozen. order is the saga orchestrator: it owns confirmation, tier resolution (one transaction per pool, order.pool_resolutions), booking issue, and asks payment to apply or refund the deposit. Saga state is persisted in order.saga_steps (step, status, attempts, next_attempt_at).
+One order per accepting buyer per pool, created from AcceptancesFrozen. order is the saga orchestrator: it owns confirmation, tier resolution (one transaction per pool, order.pool_resolutions), booking issue, and asks payment to hold or refund the deposit. Saga state is persisted in order.saga_steps (step, status, attempts, next_attempt_at).
 
 ```mermaid
 stateDiagram-v2
@@ -306,7 +320,7 @@ Terminal states: `DECLINED`, `VOIDED`, `COMPLETED`, `CANCELLED`
 | ORD-T04 | CONFIRMATION_PENDING | DECLINED | actor: buyer | buyer owns order AND now_db() < confirmation_deadline | ConfirmationDeclined, DepositRefundRequested |
 | ORD-T05 | CONFIRMATION_PENDING | DECLINED | deadline: system | now_db() >= confirmation_deadline | ConfirmationDeclined, DepositRefundRequested |
 | ORD-T06 | CONFIRMED | VOIDED | deadline: system | now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) < quote.min_fulfilment | TierResolved, DepositRefundRequested, BookingsIssued |
-| ORD-T07 | CONFIRMED | BOOKED | deadline: system | now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) >= quote.min_fulfilment | TierResolved, BookingIssued, DepositApplyRequested, StockReservationRequested, BookingsIssued |
+| ORD-T07 | CONFIRMED | BOOKED | deadline: system | now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) >= quote.min_fulfilment | TierResolved, BookingIssued, DepositHoldRequested, StockReservationRequested, BookingsIssued |
 | ORD-T08 | BOOKED | COMPLETED | event: system | booking.state='DELIVERED' | AllBookingsClosed |
 | ORD-T09 | BOOKED | CANCELLED | event: system | booking.state='CANCELLED' | OrderCancelled, DepositRefundRequested, AllBookingsClosed |
 | ORD-T10 | CONFIRMATION_PENDING, CONFIRMED | CANCELLED | event: system | order.quote_id = event.quote_id | OrderCancelled, DepositRefundRequested, DisputeOpened |
@@ -398,9 +412,9 @@ Terminal states: `DELIVERED`, `CANCELLED`
 
 ## payment
 
-Owner service: **payment** · aggregate `payment.payments` · source [`payment.yaml`](payment.yaml) · PLAN.md §2.3 (INITIATED -> PENDING -> CAPTURED | FAILED; CAPTURED -> APPLIED_TO_BOOKING); deposit-contract.md
+Owner service: **payment** · aggregate `payment.payments` · source [`payment.yaml`](payment.yaml) · PLAN.md §2.3 (INITIATED -> PENDING -> CAPTURED | FAILED; CAPTURED -> APPLIED_TO_BOOKING, renamed HELD_FOR_BOOKING by AMENDMENT-003); deposit-contract.md
 
-One row per deposit attempt = one Razorpay order (test mode). Idempotency key deposit:{buyer_id}:{pool_id}:{round_set} is UNIQUE. Terminal outcomes are SETTLED (applied and delivered) or REFUNDED; SETTLED, REFUND_PENDING and VOIDED_UNPAID are P0 additions (Q-010). Every state change that moves money posts a balanced journal entry in the same transaction (deposit-contract.md §Ledger).
+One row per deposit attempt = one Razorpay order (test mode). Idempotency key deposit:{buyer_id}:{pool_id}:{round_set} is UNIQUE. The deposit is a refundable commitment token and is never paid to the dealer (AMENDMENT-003). Terminal outcomes are REFUNDED (returned because the purchase did not go ahead) or RELEASED (returned after delivery); both return the full amount through a refund aggregate. REFUND_PENDING and VOIDED_UNPAID are P0 additions (Q-010); RELEASED replaces P0's SETTLED. Every state change that moves money posts a balanced journal entry in the same transaction (deposit-contract.md §Ledger).
 
 ```mermaid
 stateDiagram-v2
@@ -414,17 +428,18 @@ stateDiagram-v2
     INITIATED --> VOIDED_UNPAID : PAY-T05 deadline
     PENDING --> VOIDED_UNPAID : PAY-T05 deadline
     FAILED --> VOIDED_UNPAID : PAY-T05 deadline
-    CAPTURED --> APPLIED_TO_BOOKING : PAY-T06 event
+    CAPTURED --> HELD_FOR_BOOKING : PAY-T06 event
     CAPTURED --> REFUND_PENDING : PAY-T07 event
-    APPLIED_TO_BOOKING --> REFUND_PENDING : PAY-T07 event
+    HELD_FOR_BOOKING --> REFUND_PENDING : PAY-T07 event
     REFUND_PENDING --> REFUNDED : PAY-T08 event
-    APPLIED_TO_BOOKING --> SETTLED : PAY-T09 event
+    HELD_FOR_BOOKING --> REFUND_PENDING : PAY-T09 event
     VOIDED_UNPAID --> REFUND_PENDING : PAY-T10 event
-    SETTLED --> [*]
+    REFUND_PENDING --> RELEASED : PAY-T11 event
     REFUNDED --> [*]
+    RELEASED --> [*]
 ```
 
-Terminal states: `SETTLED`, `REFUNDED`
+Terminal states: `REFUNDED`, `RELEASED`
 
 | ID | From | To | Trigger | Guard | Emits |
 |---|---|---|---|---|---|
@@ -433,11 +448,12 @@ Terminal states: `SETTLED`, `REFUNDED`
 | PAY-T03 | INITIATED, PENDING, FAILED | CAPTURED | event: system | X-Razorpay-Signature valid over raw body AND x-razorpay-event-id not in payment.webhook_inbox AND entity.order_id = razorpay_order_id AND amount = amount_paise AND currency = INR | PaymentCaptured |
 | PAY-T04 | INITIATED, PENDING | FAILED | event: system | signature valid AND event id new AND order_id matches | PaymentFailed |
 | PAY-T05 | INITIATED, PENDING, FAILED | VOIDED_UNPAID | deadline: system | state IN listed | PaymentVoided |
-| PAY-T06 | CAPTURED | APPLIED_TO_BOOKING | event: system | state='CAPTURED' AND event.payment matches buyer+pool | DepositApplied |
-| PAY-T07 | CAPTURED, APPLIED_TO_BOOKING | REFUND_PENDING | event: system | state IN listed AND no refund exists for payment_id (UNIQUE refunds.payment_id) | RefundRequested |
-| PAY-T08 | REFUND_PENDING | REFUNDED | event: system | refund.state='REFUNDED' | - |
-| PAY-T09 | APPLIED_TO_BOOKING | SETTLED | event: system | booking_id matches | DepositSettled |
+| PAY-T06 | CAPTURED | HELD_FOR_BOOKING | event: system | state='CAPTURED' AND event.payment matches buyer+pool | DepositHeld |
+| PAY-T07 | CAPTURED, HELD_FOR_BOOKING | REFUND_PENDING | event: system | state IN listed AND no refund exists for payment_id (UNIQUE refunds.payment_id) | RefundRequested |
+| PAY-T08 | REFUND_PENDING | REFUNDED | event: system | refund.state='REFUNDED' AND refund.kind='REFUND' | - |
+| PAY-T09 | HELD_FOR_BOOKING | REFUND_PENDING | event: system | booking_id matches AND no refund exists for payment_id | RefundRequested |
 | PAY-T10 | VOIDED_UNPAID | REFUND_PENDING | event: system | signature valid AND event id new AND refund_on_capture=true | PaymentCaptured, RefundRequested |
+| PAY-T11 | REFUND_PENDING | RELEASED | event: system | refund.state='REFUNDED' AND refund.kind='RELEASE' | DepositReleased |
 
 **Invalid commands**
 
@@ -445,22 +461,22 @@ Terminal states: `SETTLED`, `REFUNDED`
 |---|---|---|
 | INITIATED, PENDING | set CAPTURED from browser callback or API poll | `invalid-transition` |
 | * | webhook with bad signature | `webhook-signature-invalid` |
-| INITIATED, PENDING, FAILED, VOIDED_UNPAID | apply to booking | `deposit-not-captured` |
-| SETTLED, REFUNDED | any command | `invalid-transition` |
-| REFUND_PENDING | apply to booking | `invalid-transition` |
+| INITIATED, PENDING, FAILED, VOIDED_UNPAID | hold for booking | `deposit-not-captured` |
+| REFUNDED, RELEASED | any command | `invalid-transition` |
+| REFUND_PENDING | hold for booking | `invalid-transition` |
 | * | any (from, to) pair not listed in transitions | `invalid-transition` |
 
 <details><summary>All 66 invalid (from → to) state pairs → 409 invalid-transition</summary>
 
-- `INITIATED` ↛ INITIATED, APPLIED_TO_BOOKING, REFUND_PENDING, SETTLED, REFUNDED
-- `PENDING` ↛ INITIATED, PENDING, APPLIED_TO_BOOKING, REFUND_PENDING, SETTLED, REFUNDED
-- `CAPTURED` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, SETTLED, REFUNDED
-- `FAILED` ↛ INITIATED, PENDING, FAILED, APPLIED_TO_BOOKING, REFUND_PENDING, SETTLED, REFUNDED
-- `VOIDED_UNPAID` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, APPLIED_TO_BOOKING, SETTLED, REFUNDED
-- `APPLIED_TO_BOOKING` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, APPLIED_TO_BOOKING, REFUNDED
-- `REFUND_PENDING` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, APPLIED_TO_BOOKING, REFUND_PENDING, SETTLED
-- `SETTLED` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, APPLIED_TO_BOOKING, REFUND_PENDING, SETTLED, REFUNDED
-- `REFUNDED` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, APPLIED_TO_BOOKING, REFUND_PENDING, SETTLED, REFUNDED
+- `INITIATED` ↛ INITIATED, HELD_FOR_BOOKING, REFUND_PENDING, REFUNDED, RELEASED
+- `PENDING` ↛ INITIATED, PENDING, HELD_FOR_BOOKING, REFUND_PENDING, REFUNDED, RELEASED
+- `CAPTURED` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, REFUNDED, RELEASED
+- `FAILED` ↛ INITIATED, PENDING, FAILED, HELD_FOR_BOOKING, REFUND_PENDING, REFUNDED, RELEASED
+- `VOIDED_UNPAID` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, HELD_FOR_BOOKING, REFUNDED, RELEASED
+- `HELD_FOR_BOOKING` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, HELD_FOR_BOOKING, REFUNDED, RELEASED
+- `REFUND_PENDING` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, HELD_FOR_BOOKING, REFUND_PENDING
+- `REFUNDED` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, HELD_FOR_BOOKING, REFUND_PENDING, REFUNDED, RELEASED
+- `RELEASED` ↛ INITIATED, PENDING, CAPTURED, FAILED, VOIDED_UNPAID, HELD_FOR_BOOKING, REFUND_PENDING, REFUNDED, RELEASED
 
 </details>
 
@@ -468,7 +484,7 @@ Terminal states: `SETTLED`, `REFUNDED`
 
 Owner service: **payment** · aggregate `payment.refunds` · source [`refund.yaml`](refund.yaml) · PLAN.md §2.3 (REFUND_REQUESTED -> REFUND_INITIATED -> REFUNDED | REFUND_FAILED; retry with backoff, then alert + admin queue)
 
-Full refunds only (deposit amount). UNIQUE (payment_id). Retry schedule: 1 min, 5 min, 30 min, 2 h, 12 h (5 attempts) then REFUND_FAILED stays and alarm REFUND_STUCK + admin queue. Razorpay refund call carries receipt = refund_id; before any (re)try the worker looks up existing refunds on the payment and adopts one whose receipt matches, so a crash after the API call never creates a second refund.
+Full refunds only (deposit amount). UNIQUE (payment_id). kind = REFUND (purchase did not go ahead -> payment REFUNDED) or RELEASE (booking delivered -> payment RELEASED, AMENDMENT-003); the Razorpay call and webhooks are identical for both. Retry schedule: 1 min, 5 min, 30 min, 2 h, 12 h (5 attempts) then REFUND_FAILED stays and alarm REFUND_STUCK + admin queue. Razorpay refund call carries receipt = refund_id; before any (re)try the worker looks up existing refunds on the payment and adopts one whose receipt matches, so a crash after the API call never creates a second refund.
 
 ```mermaid
 stateDiagram-v2
@@ -491,14 +507,14 @@ Terminal states: `REFUNDED`
 | REF-T03 | REFUND_INITIATED | REFUNDED | event: system | signature valid AND event id new AND refund id matches | RefundCompleted |
 | REF-T04 | REFUND_INITIATED | REFUND_FAILED | event: system | signature valid AND event id new | RefundFailed |
 | REF-T05 | REFUND_FAILED | REFUNDED | event: system | signature valid AND event id new | RefundCompleted |
-| REF-T06 | REFUND_FAILED | REFUNDED | actor: platform_admin | attempts >= 5 AND caller platform_admin AND (amount_paise < second_approval_threshold OR approved by a second admin) | RefundCompleted |
+| REF-T06 | REFUND_FAILED | REFUNDED | actor: platform_admin | attempts >= 5 AND requester and approver both platform_admin AND approver <> requester (AMENDMENT-001: every manual refund, ledger adjustment or override needs a second admin, whatever the amount) | RefundCompleted |
 
 **Invalid commands**
 
 | From | Attempt | Problem type |
 |---|---|---|
 | REFUND_REQUESTED, REFUND_INITIATED | admin manual resolve | `invalid-transition` |
-| REFUND_FAILED | manual resolve above threshold without second admin | `second-approval-required` |
+| REFUND_FAILED | manual resolve without approval by a second, different admin | `second-approval-required` |
 | REFUNDED | any command | `invalid-transition` |
 | * | webhook with bad signature | `webhook-signature-invalid` |
 | * | any (from, to) pair not listed in transitions | `invalid-transition` |
@@ -542,7 +558,7 @@ Terminal states: `CLOSED`, `WITHDRAWN`
 | DSP-T02 | OPEN | UNDER_REVIEW | actor: platform_admin | caller platform_admin | DisputeStatusChanged |
 | DSP-T03 | UNDER_REVIEW | AWAITING_PARTY | actor: platform_admin | caller is the owner | DisputeStatusChanged |
 | DSP-T04 | AWAITING_PARTY | UNDER_REVIEW | actor: buyer | dealer_staff | system | caller is the awaited party, or now_db() >= respond_by (system, records NO_RESPONSE) | DisputeStatusChanged |
-| DSP-T05 | UNDER_REVIEW | RESOLVED | actor: platform_admin | caller is the owner AND outcome IN (REFUND_BUYER, CANCEL_BOOKING, DEALER_WARNING, PRICE_ADJUSTMENT_RECORDED, NO_ACTION) AND (outcome involves money above threshold => second admin approval) | DisputeResolved |
+| DSP-T05 | UNDER_REVIEW | RESOLVED | actor: platform_admin | caller is the owner AND outcome IN (REFUND_BUYER, CANCEL_BOOKING, DEALER_WARNING, PRICE_ADJUSTMENT_RECORDED, NO_ACTION) AND (outcome IN (REFUND_BUYER, CANCEL_BOOKING) => approved by a second, different platform_admin, AMENDMENT-001) | DisputeResolved |
 | DSP-T06 | RESOLVED | CLOSED | deadline: system | now_db() >= appeal_until OR appeal_decided | DisputeStatusChanged |
 | DSP-T07 | RESOLVED | UNDER_REVIEW | actor: buyer | buyer owns AND now_db() < appeal_until AND appeal_count = 0 | DisputeStatusChanged |
 | DSP-T08 | OPEN, UNDER_REVIEW, AWAITING_PARTY | WITHDRAWN | actor: buyer | buyer owns AND opened_by = buyer (system-opened disputes cannot be withdrawn by the buyer) | DisputeStatusChanged |
@@ -555,7 +571,7 @@ Terminal states: `CLOSED`, `WITHDRAWN`
 | OPEN, AWAITING_PARTY | resolve | `invalid-transition` |
 | * | dealer reads dispute of another dealership | `not-found` |
 | CLOSED, WITHDRAWN | any command | `invalid-transition` |
-| * | money outcome above threshold without second admin | `second-approval-required` |
+| * | money outcome (REFUND_BUYER, CANCEL_BOOKING) without approval by a second admin | `second-approval-required` |
 | * | any (from, to) pair not listed in transitions | `invalid-transition` |
 
 <details><summary>All 27 invalid (from → to) state pairs → 409 invalid-transition</summary>
