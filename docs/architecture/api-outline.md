@@ -33,6 +33,7 @@ Conventions (apply to every row, not repeated):
 | E021 | catalog | GET | /catalog/models/{slug} | anonymous | no | no | not-found | P1 | AZ-E021-A |
 | E022 | catalog | GET | /catalog/variants/compare | anonymous | no | no | validation-failed | P1 | AZ-E022-A |
 | E023 | catalog | GET | /catalog/variants/{id}/price-estimate | anonymous | no | no | not-found, quote-invalid | P1 | AZ-E023-A |
+| E029 | catalog | GET | /internal/models/{slug} | service:pool | no | no | not-found | P1 | AZ-E029-A, AZ-E029-D |
 | E024 | catalog | GET | /me/saved-cars | buyer | no | no | - | P2 | AZ-E024-A, AZ-E024-D |
 | E025 | catalog | PUT | /me/saved-cars/{modelId} | buyer | no | no | not-found | P2 | AZ-E025-A, AZ-E025-D |
 | E026 | catalog | DELETE | /me/saved-cars/{modelId} | buyer | no | no | - | P2 | AZ-E026-A, AZ-E026-D |

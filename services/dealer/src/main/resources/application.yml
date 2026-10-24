@@ -1,0 +1,30 @@
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application.name: dealer
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/convoy}
+    username: dealer
+    password: ${DB_PASSWORD}
+    hikari.maximum-pool-size: ${DB_POOL_SIZE:8}
+  flyway:
+    schemas: dealer
+    default-schema: dealer
+    locations: classpath:db/platform,classpath:db/migration
+  threads.virtual.enabled: true
+logging.structured.format.console: ecs
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+  endpoint.health.probes.enabled: true
+convoy:
+  service-name: dealer
+  identity-url: ${IDENTITY_URL:http://identity:8080}
+  client-id: dealer
+  client-secret: ${CLIENT_SECRET_DEALER:}
+  issuers:
+    convoy-gateway: ${GATEWAY_JWKS:http://gateway:8080/.well-known/jwks.json}
+    convoy-identity: ${IDENTITY_JWKS:http://identity:8080/.well-known/jwks.json}
+  aws:
+    endpoint: ${AWS_ENDPOINT:}
+    region: ${AWS_REGION:ap-south-1}
