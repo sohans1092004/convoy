@@ -50,17 +50,18 @@ public class OrderApplication {
 
     @Bean
     @SuppressWarnings("unchecked")
-    Rules rules() throws Exception {
+    static Rules rules() throws Exception {
         try (InputStream in = OrderApplication.class.getResourceAsStream("/convoy/rules.json")) {
             return new Rules(new ObjectMapper().enable(DeserializationFeature.USE_LONG_FOR_INTS).readValue(in, Map.class));
         }
     }
 
     @Bean
-    Subscriptions subscriptions(Orders o) {
+    static Subscriptions subscriptions(Orders o) {
         return new Subscriptions()
                 .on(QuoteFinalised.class, Subscriptions.Ordering.NONE, (e, p) -> o.quoteFinalised(p))
                 .on(PaymentCaptured.class, Subscriptions.Ordering.NONE, (e, p) -> o.paymentCaptured(p))
+                .on(convoy.contracts.events.AcceptanceChanged.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> o.acceptanceChanged(p))
                 .on(AcceptancesFrozen.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> o.acceptancesFrozen(p))
                 .on(DepositHeld.class, Subscriptions.Ordering.NONE, (e, p) -> o.stepDone(UUID.fromString(p.bookingId()), "HOLD_DEPOSIT"))
                 .on(StockReserved.class, Subscriptions.Ordering.NONE, (e, p) -> o.stepDone(UUID.fromString(p.bookingId()), "RESERVE_STOCK"));

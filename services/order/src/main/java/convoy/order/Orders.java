@@ -80,6 +80,14 @@ public class Orders {
         jdbc.update("insert into quote_capacity(quote_id, max_units) values (?, ?) on conflict do nothing", UUID.fromString(e.quoteId()), e.maxUnits());
     }
 
+    /** Acceptance read model: the latest acceptance per membership (cleared on withdrawal). */
+    public void acceptanceChanged(convoy.contracts.events.AcceptanceChanged e) {
+        jdbc.update("insert into acceptance_replica(pool_id, membership_id, quote_id, variant_id) values (?, ?, ?, ?) "
+                        + "on conflict (pool_id, membership_id) do update set quote_id = excluded.quote_id, variant_id = excluded.variant_id",
+                UUID.fromString(e.poolId()), UUID.fromString(e.membershipId()), e.quoteId() == null ? null : UUID.fromString(e.quoteId()),
+                e.variantId() == null ? null : UUID.fromString(e.variantId()));
+    }
+
     public void paymentCaptured(PaymentCaptured e) {
         jdbc.update("insert into payment_replica(buyer_id, pool_id, payment_id, captured_at) values (?, ?, ?, clock_timestamp()) on conflict do nothing",
                 UUID.fromString(e.buyerId()), UUID.fromString(e.poolId()), UUID.fromString(e.paymentId()));
@@ -191,7 +199,7 @@ public class Orders {
         int bookings = 0, voidQuotes = 0;
         List<String> voidBuyers = new ArrayList<>();
         List<Map<String, Object>> voided = new ArrayList<>();
-        long resolutionVersion = ((Number) rs.get(0).get("version")).longValue() + 1;
+        long rv = ((Number) rs.get(0).get("version")).longValue() * 1000; // one version per resolution event (aggregate = pool resolution)
         for (UUID quote : jdbc.queryForList("select distinct quote_id from orders where pool_id = ? and round_set = ? and state = 'CONFIRMED'", UUID.class, pool, roundSet)) {
             Map<String, Object> q = quote(quote);
             List<Map<String, Object>> confirmed = jdbc.queryForList("""
@@ -208,7 +216,7 @@ public class Orders {
             Map<String, Object> res = Tiers.resolve(ladder, minF, n, q.get("max_units") == null ? null : ((Number) q.get("max_units")).longValue());
             if ("VOID".equals(res.get("outcome"))) {
                 voidQuotes++;
-                outbox.append(pool, resolutionVersion, new TierResolved(pool.toString(), quote.toString(), n, minF, "VOID", null, null));
+                outbox.append(pool, ++rv, new TierResolved(pool.toString(), quote.toString(), n, minF, "VOID", null, null));
                 for (Map<String, Object> c : confirmed) {
                     ORDER.check("CONFIRMED", "VOIDED");
                     jdbc.update("update orders set state = 'VOIDED', version = version + 1 where id = ?", c.get("id"));
@@ -218,7 +226,7 @@ public class Orders {
                 continue;
             }
             int tier = ((Number) res.get("resolved_tier")).intValue();
-            outbox.append(pool, resolutionVersion, new TierResolved(pool.toString(), quote.toString(), n, minF, "RESOLVED", (long) tier, ladder.get(tier).pricePaise()));
+            outbox.append(pool, ++rv, new TierResolved(pool.toString(), quote.toString(), n, minF, "RESOLVED", (long) tier, ladder.get(tier).pricePaise()));
             for (Map<String, Object> c : confirmed) {
                 ORDER.check("CONFIRMED", "BOOKED");
                 BOOKING.check("(none)", "ISSUED");
@@ -257,7 +265,7 @@ public class Orders {
         }
         jdbc.update("update pool_resolutions set state = 'DONE', resolved_at = clock_timestamp(), bookings_count = ?, void_quote_count = ?, version = version + 1 "
                 + "where pool_id = ? and round_set = ?", bookings, voidQuotes, pool, roundSet);
-        outbox.append(pool, resolutionVersion, new BookingsIssued(pool.toString(), (long) roundSet, (long) bookings, (long) voidQuotes, voidBuyers));
+        outbox.append(pool, ++rv, new BookingsIssued(pool.toString(), (long) roundSet, (long) bookings, (long) voidQuotes, voidBuyers));
         log.info("pool {} resolved at {}: {} bookings, {} void quotes", pool, dl, bookings, voidQuotes);
     }
 

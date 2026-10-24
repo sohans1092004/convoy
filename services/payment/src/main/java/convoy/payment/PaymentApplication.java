@@ -42,13 +42,13 @@ public class PaymentApplication {
     public record PaymentSettings(String razorpayBaseUrl, String razorpayKeyId, String razorpayKeySecret, String razorpayWebhookSecret, long depositAmountPaise) {}
 
     @Bean
-    RazorpayClient razorpayClient(PaymentSettings s) {
+    static RazorpayClient razorpayClient(PaymentSettings s) {
         return new HttpRazorpayClient(s.razorpayBaseUrl(), s.razorpayKeyId(), s.razorpayKeySecret(), s.razorpayWebhookSecret());
     }
 
     /** What payment consumes in P1 (pool events through a FIFO queue: membership order matters). */
     @Bean
-    Subscriptions subscriptions(Payments payments) {
+    static Subscriptions subscriptions(Payments payments) {
         return new Subscriptions()
                 .on(DepositHoldRequested.class, Subscriptions.Ordering.NONE, (e, p) ->
                         payments.hold(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), UUID.fromString(p.bookingId())))

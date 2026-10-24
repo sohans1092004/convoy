@@ -1,0 +1,206 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "paths": {
+    "/webhooks/razorpay": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "webhook",
+        "parameters": [
+          {
+            "name": "X-Razorpay-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-razorpay-event-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/{id}/checkout-callback": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "callback",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallbackBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/deposits": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "deposit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/payments/{id}": {
+      "get": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "mine",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CallbackBody": {
+        "type": "object",
+        "properties": {
+          "razorpayPaymentId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "razorpayOrderId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "razorpaySignature": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "razorpayOrderId",
+          "razorpayPaymentId",
+          "razorpaySignature"
+        ]
+      },
+      "DepositBody": {
+        "type": "object",
+        "properties": {
+          "buyerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "poolId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roundSet": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amountPaise": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "amountPaise",
+          "buyerId",
+          "poolId",
+          "roundSet"
+        ]
+      }
+    }
+  }
+}

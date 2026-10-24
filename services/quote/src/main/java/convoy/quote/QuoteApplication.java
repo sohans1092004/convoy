@@ -44,14 +44,14 @@ public class QuoteApplication {
 
     @Bean
     @SuppressWarnings("unchecked")
-    Rules rules() throws Exception {
+    static Rules rules() throws Exception {
         try (InputStream in = QuoteApplication.class.getResourceAsStream("/convoy/rules.json")) {
             return new Rules(new ObjectMapper().enable(DeserializationFeature.USE_LONG_FOR_INTS).readValue(in, Map.class));
         }
     }
 
     @Bean
-    Subscriptions subscriptions(Quotes q) {
+    static Subscriptions subscriptions(Quotes q) {
         return new Subscriptions()
                 .on(QuoteRoundOpened.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundOpened(p))
                 .on(FinalRoundOpened.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundOpened(new QuoteRoundOpened(p.poolId(), p.roundId(), p.roundSet(),

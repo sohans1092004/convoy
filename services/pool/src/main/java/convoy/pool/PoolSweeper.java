@@ -123,7 +123,8 @@ public class PoolSweeper {
             for (String d : invited) jdbc.update("insert into round_invitations(round_id, dealership_id) values (?, ?)", r2, UUID.fromString(d));
             long v = jdbc.queryForObject("update pools set state = 'FINAL_ROUND', version = version + 1 where id = ? returning version", Long.class, poolId);
             outbox.append(poolId, v, new RoundClosed(poolId.toString(), r1.get("id").toString(), "SEALED", ((Timestamp) r1.get("deadline")).toInstant(), closedAt.toInstant(), valid));
-            outbox.append(poolId, v, new FinalRoundOpened(poolId.toString(), r2.toString(), ((Number) pool.get("round_set")).longValue(), 2L, "FINAL", deadline2.toInstant(),
+            long v2 = nextVersion(poolId); // one aggregate version per event, so version-ordered consumers never see a tie
+            outbox.append(poolId, v2, new FinalRoundOpened(poolId.toString(), r2.toString(), ((Number) pool.get("round_set")).longValue(), 2L, "FINAL", deadline2.toInstant(),
                     invited, variants(pool), ((Number) pool.get("committed_count")).longValue(), (String) pool.get("state_code"), Pools.variantFacts(pool)));
         });
     }
@@ -161,7 +162,7 @@ public class PoolSweeper {
                     + "where id = ? returning decision_deadline", Timestamp.class, Pools.interval(settings.durations().decision()), poolId);
             long v = jdbc.queryForObject("select version from pools where id = ?", Long.class, poolId);
             outbox.append(poolId, v, new RoundClosed(poolId.toString(), r2.get("id").toString(), "FINAL", ((Timestamp) r2.get("deadline")).toInstant(), closedAt.toInstant(), finals));
-            outbox.append(poolId, v, new DecisionOpened(poolId.toString(), decision.toInstant(), finalIds));
+            outbox.append(poolId, nextVersion(poolId), new DecisionOpened(poolId.toString(), decision.toInstant(), finalIds));
         });
     }
 
@@ -196,6 +197,10 @@ public class PoolSweeper {
             outbox.append(poolId, v, new AcceptancesFrozen(poolId.toString(), ((Number) pool.get("round_set")).longValue(), conf.toInstant(),
                     acceptances, pools.acceptanceCounts(poolId), released));
         });
+    }
+
+    private long nextVersion(UUID poolId) {
+        return jdbc.queryForObject("update pools set version = version + 1 where id = ? returning version", Long.class, poolId);
     }
 
     @SuppressWarnings("unchecked")

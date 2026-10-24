@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* Design tokens (light + dark). Components use only these semantic names. Contrast targets: text >= 4.5:1. */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #efeee9;
+  --fg: #1b1d1f;
+  --muted: #55595e;
+  --border: #d4d2cb;
+  --primary: #0f5c4d;
+  --primary-fg: #ffffff;
+  --accent: #b4520c;
+  --danger: #a3261d;
+  --danger-bg: #fbeceb;
+  --warning-bg: #fdf3dd;
+  --warning-fg: #6b4a00;
+  --success-bg: #e6f3ee;
+  --success-fg: #0b4d3f;
+  --info-bg: #e9eef6;
+  --info-fg: #23406b;
+  --focus: #1a56db;
+  --radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121416;
+    --surface: #1a1d20;
+    --surface-2: #23272b;
+    --fg: #ecedee;
+    --muted: #a7acb1;
+    --border: #353a3f;
+    --primary: #4fbfa5;
+    --primary-fg: #08201b;
+    --accent: #f0a05a;
+    --danger: #f28b82;
+    --danger-bg: #3a1d1b;
+    --warning-bg: #3a2f14;
+    --warning-fg: #f3d58a;
+    --success-bg: #12302a;
+    --success-fg: #9be0cd;
+    --info-bg: #1c2738;
+    --info-fg: #a9c3ea;
+    --focus: #8ab4f8;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #121416;
+  --surface: #1a1d20;
+  --surface-2: #23272b;
+  --fg: #ecedee;
+  --muted: #a7acb1;
+  --border: #353a3f;
+  --primary: #4fbfa5;
+  --primary-fg: #08201b;
+  --accent: #f0a05a;
+  --danger: #f28b82;
+  --danger-bg: #3a1d1b;
+  --warning-bg: #3a2f14;
+  --warning-fg: #f3d58a;
+  --success-bg: #12302a;
+  --success-fg: #9be0cd;
+  --info-bg: #1c2738;
+  --info-fg: #a9c3ea;
+  --focus: #8ab4f8;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+  --color-focus: var(--focus);
+  --radius-lg: var(--radius);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+}
+
+html { color-scheme: light dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.tabular { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

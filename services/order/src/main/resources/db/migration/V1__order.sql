@@ -93,6 +93,15 @@ create table saga_steps (
     primary key (order_id, step)
 );
 
+-- Acceptance read model from AcceptanceChanged (P1 scope: order builds it from events before the freeze).
+create table acceptance_replica (
+    pool_id       uuid not null,
+    membership_id uuid not null,
+    quote_id      uuid,
+    variant_id    uuid,
+    primary key (pool_id, membership_id)
+);
+
 create table voucher_keys (
     kid         text primary key,
     private_jwk text not null,   -- lite limitation: local key in the service schema (KMS in full)
