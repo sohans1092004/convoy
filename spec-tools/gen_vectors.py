@@ -288,7 +288,8 @@ def gen_transitions():
 
 
 def files():
-    return {'pricing.json': gen_pricing(), 'tiers.json': gen_tiers(), 'deposit-outcomes.json': gen_deposits(), 'transitions.json': gen_transitions()}
+    # rules.json: the ruleset as plain JSON, so the Java and TypeScript engines load exactly what price_ref uses.
+    return {'pricing.json': gen_pricing(), 'tiers.json': gen_tiers(), 'deposit-outcomes.json': gen_deposits(), 'transitions.json': gen_transitions(), 'rules.json': RULES}
 
 
 def dump(obj):
@@ -306,7 +307,7 @@ if __name__ == '__main__':
                 stale.append(name)
         else:
             p.write_text(text, encoding='utf-8', newline='\n')
-            n = len(obj['cases']) if 'cases' in obj else sum(len(v['valid']) for v in obj.values())
+            n = len(obj['cases']) if 'cases' in obj else sum(len(v.get('valid', ())) for v in obj.values())
             print(f'wrote vectors/{name} ({n} cases/transitions)')
     if stale:
         sys.exit('stale vectors: ' + ', '.join(stale))
