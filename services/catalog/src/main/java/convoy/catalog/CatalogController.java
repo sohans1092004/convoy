@@ -72,12 +72,17 @@ public class CatalogController {
      * check dealer eligibility and the accepted variants of a new pool without trusting the client.
      */
     @GetMapping("/internal/models/{slug}")
-    public Map<String, Object> internalModel(@PathVariable String slug) {
+    public Map<String, Object> internalModel(@PathVariable String slug, @RequestParam(required = false) String city) {
         convoy.platform.security.Caller.current().requireScope("models:read");
+        String c = city(city);
         List<Map<String, Object>> m = jdbc.queryForList("select m.id, m.slug, m.name, b.name as brand from models m join brands b on b.id = m.brand_id where m.slug = ?", slug);
         if (m.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such model.");
         Map<String, Object> out = new LinkedHashMap<>(m.get(0));
         out.put("variant_ids", jdbc.queryForList("select id from variants where model_id = ? order by name", UUID.class, out.get("id")));
+        out.put("variants", jdbc.queryForList("""
+                select v.id::text as id, v.code, v.name, v.fuel, v.transmission, v.engine_cc, p.ex_showroom_paise as catalogue_ex_showroom_paise,
+                       p.evidence as catalogue_evidence, p.city_confirmed from variants v
+                left join variant_prices p on p.variant_id = v.id and p.city = ? where v.model_id = ? order by v.name""", c, out.get("id")));
         return out;
     }
 

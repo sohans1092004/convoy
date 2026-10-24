@@ -3,6 +3,7 @@ package convoy.contracts.events;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 /** Owner: quote. Consumers: pool, order, realtime, notification, audit. FIFO: False. */
 public record QuoteFinalised(
@@ -13,7 +14,10 @@ public record QuoteFinalised(
         @JsonProperty("variant_ids") List<String> variantIds,
         @JsonProperty("min_fulfilment") Long minFulfilment,
         @JsonProperty("max_units") Long maxUnits,
-        @JsonProperty("snapshot_sha256") String snapshotSha256) implements EventPayload {
+        @JsonProperty("snapshot_sha256") String snapshotSha256,
+        @JsonProperty("ruleset_version") String rulesetVersion,
+        @JsonProperty("tiers") List<Map<String, Object>> tiers,
+        @JsonProperty("variant_inputs") List<Map<String, Object>> variantInputs) implements EventPayload {
     public static final String TYPE = "QuoteFinalised";
     public static final String PRODUCER = "quote";
     public static final boolean FIFO = false;

@@ -30,7 +30,9 @@
         "pool_id",
         "round_id",
         "round_no",
-        "round_set"
+        "round_set",
+        "state_code",
+        "variants"
       ],
       "properties": {
         "pool_id": {
@@ -75,6 +77,16 @@
         },
         "committed_count": {
           "type": "integer"
+        },
+        "state_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       }
     }

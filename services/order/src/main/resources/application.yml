@@ -28,3 +28,7 @@ convoy:
   aws:
     endpoint: ${AWS_ENDPOINT:}
     region: ${AWS_REGION:ap-south-1}
+order:
+  sweeper-interval: ${ORDER_SWEEPER_INTERVAL:5s}
+  dealer-confirm-window: P2D
+  saga-step-timeout: PT10M

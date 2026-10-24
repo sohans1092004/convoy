@@ -4,6 +4,7 @@ package convoy.contracts.events;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /** Owner: pool. Consumers: quote, realtime, notification, audit. FIFO: True. */
 public record FinalRoundOpened(
@@ -15,7 +16,9 @@ public record FinalRoundOpened(
         @JsonProperty("deadline") Instant deadline,
         @JsonProperty("invited_dealership_ids") List<String> invitedDealershipIds,
         @JsonProperty("accepted_variant_ids") List<String> acceptedVariantIds,
-        @JsonProperty("committed_count") Long committedCount) implements EventPayload {
+        @JsonProperty("committed_count") Long committedCount,
+        @JsonProperty("state_code") String stateCode,
+        @JsonProperty("variants") List<Map<String, Object>> variants) implements EventPayload {
     public static final String TYPE = "FinalRoundOpened";
     public static final String PRODUCER = "pool";
     public static final boolean FIFO = true;

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://convoy.example/schemas/events/MemberCommitted.schema.json",
   "title": "MemberCommitted v1",
-  "description": "Owner: pool. Consumers: realtime, notification, audit. FIFO: True.",
+  "description": "Owner: pool. Consumers: quote, realtime, notification, audit. FIFO: True.",
   "allOf": [
     {
       "$ref": "envelope.schema.json"

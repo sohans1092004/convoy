@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://convoy.example/schemas/events/ConfirmationRecorded.schema.json",
   "title": "ConfirmationRecorded v1",
-  "description": "Owner: order. Consumers: realtime, notification, audit. FIFO: False.",
+  "description": "Owner: order. Consumers: quote, realtime, notification, audit. FIFO: False.",
   "allOf": [
     {
       "$ref": "envelope.schema.json"

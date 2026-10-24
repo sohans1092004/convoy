@@ -28,8 +28,11 @@
         "min_fulfilment",
         "pool_id",
         "quote_id",
+        "ruleset_version",
         "snapshot_sha256",
-        "variant_ids"
+        "tiers",
+        "variant_ids",
+        "variant_inputs"
       ],
       "properties": {
         "quote_id": {
@@ -70,6 +73,22 @@
         "snapshot_sha256": {
           "type": "string",
           "minLength": 1
+        },
+        "ruleset_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "variant_inputs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       }
     }

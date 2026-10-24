@@ -4,7 +4,7 @@ package convoy.contracts.events;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 
-/** Owner: order. Consumers: realtime, notification, audit. FIFO: False. */
+/** Owner: order. Consumers: quote, realtime, notification, audit. FIFO: False. */
 public record ConfirmationRecorded(
         @JsonProperty("order_id") String orderId,
         @JsonProperty("pool_id") String poolId,

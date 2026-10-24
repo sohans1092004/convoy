@@ -3,7 +3,7 @@ package convoy.contracts.events;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** Owner: pool. Consumers: payment, realtime, audit. FIFO: True. */
+/** Owner: pool. Consumers: quote, payment, realtime, audit. FIFO: True. */
 public record MemberLeft(
         @JsonProperty("pool_id") String poolId,
         @JsonProperty("membership_id") String membershipId,

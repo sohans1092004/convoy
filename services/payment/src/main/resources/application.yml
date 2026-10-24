@@ -28,3 +28,14 @@ convoy:
   aws:
     endpoint: ${AWS_ENDPOINT:}
     region: ${AWS_REGION:ap-south-1}
+  public-paths:
+    - /actuator/health
+    - /actuator/health/**
+    - /v3/api-docs/**
+    - /webhooks/razorpay
+payment:
+  razorpay-base-url: ${RAZORPAY_BASE_URL:http://razorpay-fake:9090}
+  razorpay-key-id: ${RAZORPAY_KEY_ID:rzp_test_fake}
+  razorpay-key-secret: ${RAZORPAY_KEY_SECRET}
+  razorpay-webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+  deposit-amount-paise: ${DEPOSIT_AMOUNT_PAISE:99900}
