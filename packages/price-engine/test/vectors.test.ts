@@ -13,7 +13,7 @@ const sha256 = (v: unknown) => createHash('sha256').update(canonical(v), 'utf8')
 const T23_EXTRAS = ['post_deadline_cancellations', 'price_after_cancellations_paise', 'per_booking_refund_reason'];
 
 describe('pricing.json', () => {
-  const cases = read('pricing.json').cases;
+  const cases: any[] = read('pricing.json').cases;
   it('has 54 cases', () => expect(cases).toHaveLength(54));
   it.each(cases.map((c: any) => [c.id, c] as [string, any]))('%s', (_id, c: any) => {
     const output = compute(c.input, rules);
@@ -23,7 +23,7 @@ describe('pricing.json', () => {
 });
 
 describe('tiers.json', () => {
-  const cases = read('tiers.json').cases;
+  const cases: any[] = read('tiers.json').cases;
   it('has 30 cases', () => expect(cases).toHaveLength(30));
   it.each(cases.map((c: any) => [c.id, c] as [string, any]))('%s', (id, c: any) => {
     const i = c.input;
