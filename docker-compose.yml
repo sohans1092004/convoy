@@ -1,0 +1,199 @@
+# Convoy local stack (P1 walking skeleton). Build the jars first: ./gradlew bootJar
+#   scripts/dev-env.sh && ./gradlew bootJar && docker compose up -d --build
+# Web http://localhost:3000 · Mailpit http://localhost:8025 · Jaeger http://localhost:16686
+name: convoy
+
+x-service: &service
+  build: { context: ., dockerfile: deploy/docker/service.Dockerfile }
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+    localstack: { condition: service_healthy }
+  mem_limit: 420m
+
+x-service-env: &service-env
+  DB_URL: jdbc:postgresql://postgres:5432/convoy
+  AWS_ENDPOINT: http://localstack:4566
+  AWS_REGION: ap-south-1
+  GATEWAY_JWKS: http://gateway:8080/.well-known/jwks.json
+  IDENTITY_JWKS: http://identity:8080/.well-known/jwks.json
+  IDENTITY_URL: http://identity:8080
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  SPRING_PROFILES_ACTIVE: local
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_DB: convoy
+      POSTGRES_USER: convoy_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_PASSWORD_IDENTITY: ${DB_PASSWORD_IDENTITY}
+      DB_PASSWORD_CATALOG: ${DB_PASSWORD_CATALOG}
+      DB_PASSWORD_POOL: ${DB_PASSWORD_POOL}
+      DB_PASSWORD_DEALER: ${DB_PASSWORD_DEALER}
+      DB_PASSWORD_QUOTE: ${DB_PASSWORD_QUOTE}
+      DB_PASSWORD_ORDER: ${DB_PASSWORD_ORDER}
+      DB_PASSWORD_PAYMENT: ${DB_PASSWORD_PAYMENT}
+      TZ: UTC
+    volumes:
+      - ./deploy/local/postgres:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U convoy_admin -d convoy"], interval: 3s, retries: 30 }
+    mem_limit: 512m
+
+  redis:
+    image: redis:8.8.3-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 3s, retries: 20 }
+    mem_limit: 96m
+
+  # Last LocalStack community release that runs without an account/auth token (Apache-2.0, Feb 2026).
+  localstack:
+    image: localstack/localstack:4.14.0
+    environment:
+      SERVICES: sns,sqs,s3
+      AWS_DEFAULT_REGION: ap-south-1
+    ports: ["127.0.0.1:4566:4566"]
+    healthcheck: { test: ["CMD-SHELL", "curl -sf localhost:4566/_localstack/health | grep -q '\"sqs\": \"\\(running\\|available\\)\"'"], interval: 3s, retries: 40 }
+    mem_limit: 768m
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports: ["127.0.0.1:8025:8025"]
+    mem_limit: 64m
+
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    ports: ["127.0.0.1:16686:16686"]
+    mem_limit: 256m
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.163.2
+    command: ["--config=/etc/otelcol/collector.yaml"]
+    volumes: ["./deploy/local/otel/collector.yaml:/etc/otelcol/collector.yaml:ro"]
+    depends_on: [jaeger]
+    mem_limit: 160m
+
+  razorpay-fake:
+    build: { context: ., dockerfile: tools/razorpay-fake/Dockerfile }
+    environment:
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      WEBHOOK_URL: http://gateway:8080/webhooks/razorpay
+    ports: ["127.0.0.1:9090:9090"]
+    mem_limit: 96m
+
+  identity:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: identity } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: identity
+      DB_PASSWORD: ${DB_PASSWORD_IDENTITY}
+      IDENTITY_DATA_KEY: ${IDENTITY_DATA_KEY}
+      CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
+      CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SEED_USERS_FILE: /seed/users.json
+    volumes: ["./deploy/local/seed:/seed:ro"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+      mailpit: { condition: service_started }
+
+  gateway:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: gateway } }
+    environment:
+      OTEL_SERVICE_NAME: gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      REDIS_HOST: redis
+      CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
+      GATEWAY_KEY_DIR: /keys
+    volumes: ["gateway-keys:/keys"]
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      redis: { condition: service_healthy }
+      identity: { condition: service_started }
+
+  catalog:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: catalog } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: catalog
+      DB_PASSWORD: ${DB_PASSWORD_CATALOG}
+
+  dealer:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: dealer } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: dealer
+      DB_PASSWORD: ${DB_PASSWORD_DEALER}
+
+  pool:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: pool } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: pool
+      DB_PASSWORD: ${DB_PASSWORD_POOL}
+      CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
+      DEMO_SEALED_ROUND_SECONDS: ${DEMO_SEALED_ROUND_SECONDS}
+      DEMO_FINAL_ROUND_SECONDS: ${DEMO_FINAL_ROUND_SECONDS}
+      DEMO_DECISION_SECONDS: ${DEMO_DECISION_SECONDS}
+      DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS}
+
+  quote:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: quote } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: quote
+      DB_PASSWORD: ${DB_PASSWORD_QUOTE}
+
+  order:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: order } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: order
+      DB_PASSWORD: ${DB_PASSWORD_ORDER}
+
+  payment:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: payment } }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: payment
+      DB_PASSWORD: ${DB_PASSWORD_PAYMENT}
+      RAZORPAY_BASE_URL: ${RAZORPAY_BASE_URL}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+
+  web:
+    build: { context: ., dockerfile: web/Dockerfile }
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_CHECKOUT_URL: ${RAZORPAY_CHECKOUT_URL:-http://localhost:9090/checkout.js}
+      COOKIE_SECURE: "false"
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [gateway]
+    mem_limit: 320m
+
+volumes:
+  pgdata: {}
+  gateway-keys: {}

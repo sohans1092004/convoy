@@ -1,0 +1,7 @@
+[
+  {"email": "buyer1@convoy.test", "roles": ["buyer"]},
+  {"email": "buyer2@convoy.test", "roles": ["buyer"]},
+  {"email": "buyer3@convoy.test", "roles": ["buyer"]},
+  {"email": "dealer1@convoy.test", "roles": ["dealer_staff"], "dealership_id": "0190f3a0-0000-7000-8000-00000000d001"},
+  {"email": "admin1@convoy.test", "roles": ["platform_admin"]}
+]

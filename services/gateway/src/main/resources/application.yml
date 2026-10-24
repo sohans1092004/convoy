@@ -1,0 +1,31 @@
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application.name: gateway
+  data.redis:
+    host: ${REDIS_HOST:localhost}
+    port: 6379
+    timeout: 500ms
+logging.structured.format.console: ecs
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+  endpoint.health.probes.enabled: true
+  health.redis.enabled: false
+gateway:
+  key-dir: ${GATEWAY_KEY_DIR:./build/gateway-keys}
+  client-id: gateway
+  client-secret: ${CLIENT_SECRET_GATEWAY}
+  token-ttl: 120s
+  session-cache-ttl: 30s
+  services:
+    identity: ${IDENTITY_URL:http://identity:8080}
+    catalog: ${CATALOG_URL:http://catalog:8080}
+    pool: ${POOL_URL:http://pool:8080}
+    dealer: ${DEALER_URL:http://dealer:8080}
+    quote: ${QUOTE_URL:http://quote:8080}
+    order: ${ORDER_URL:http://order:8080}
+    payment: ${PAYMENT_URL:http://payment:8080}
+  limits:
+    otp: { max: "${RATE_OTP_MAX:10}", window: 10m }
+    join: { max: "${RATE_JOIN_MAX:20}", window: 1m }

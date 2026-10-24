@@ -56,6 +56,13 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
         this.idempotencyStore = idempotencyStore;
     }
 
+    /** JSON bodies are snake_case on the wire (api-outline.md), whatever the Java field names. */
+    @Bean
+    org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer convoyJson() {
+        return b -> b.propertyNamingStrategy(com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
+                .featuresToDisable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+
     @Bean DbClock dbClock(JdbcTemplate jdbc) { return new DbClock(jdbc); }
 
     @Bean IdempotencyStore idempotencyStore(JdbcTemplate jdbc) { return new IdempotencyStore(jdbc); }
