@@ -32,6 +32,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["preferences"];
+        put: operations["savePreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pools": {
         parameters: {
             query?: never;
@@ -112,6 +128,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/pool-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -133,6 +165,14 @@ export interface components {
             release_reason: string | null;
             /** Format: int64 */
             version: number;
+        };
+        Preferences: {
+            city: string | null;
+            purchase_month: string | null;
+            variant_ids: string[];
+            colours: string[];
+            fuels: string[];
+            transmissions: string[];
         };
         CreateBody: {
             model_slug: string;
@@ -204,6 +244,32 @@ export interface components {
             razorpay_order_id: string | null;
             razorpay_key_id: string;
             test_mode: boolean;
+        };
+        Result: {
+            model_slug: string;
+            pools: components["schemas"]["Suggestion"][];
+            start: components["schemas"]["Start"] | null;
+            note: string | null;
+        };
+        Start: {
+            model_slug: string;
+            city: string;
+            purchase_month: string;
+        };
+        Suggestion: {
+            pool_id: string;
+            status: string;
+            matching_variant_ids: string[];
+            /** Format: int32 */
+            committed_count: number;
+            /** Format: int32 */
+            min_members: number;
+            /** Format: date-time */
+            join_deadline: string | null;
+        };
+        Suggestions: {
+            results: components["schemas"]["Result"][];
+            server_time: string;
         };
     };
     responses: never;
@@ -282,6 +348,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Preferences"];
+                };
+            };
+        };
+    };
+    savePreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Preferences"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Preferences"];
                 };
             };
         };
@@ -422,6 +532,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    suggestions: {
+        parameters: {
+            query?: {
+                model?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Suggestions"];
                 };
             };
         };

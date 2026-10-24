@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 // Route guards by role (UX only: every service still enforces authorisation itself) and the CSRF
 // double-submit cookie for the BFF.
-const BUYER_PATHS = [/^\/pools\//, /^\/orders\//];
+const BUYER_PATHS = [/^\/pools\//, /^\/orders\//, /^\/saved$/];
 const DEALER_PATHS = [/^\/dealer(\/|$)/];
 
 export function proxy(req: NextRequest) {

@@ -5,6 +5,7 @@ import convoy.contracts.events.BookingsIssued;
 import convoy.contracts.events.MemberCommitted;
 import convoy.contracts.events.MemberJoined;
 import convoy.contracts.events.MemberLeft;
+import convoy.contracts.events.MemberReleased;
 import convoy.contracts.events.PaymentCaptured;
 import convoy.contracts.events.PaymentFailed;
 import convoy.contracts.events.PoolBookingStarted;
@@ -23,6 +24,7 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,9 +48,9 @@ import org.springframework.web.client.RestClientException;
 public class Pools {
     private static final Logger log = LoggerFactory.getLogger(Pools.class);
     public static final ZoneId IST = ZoneId.of("Asia/Kolkata");
-    public static final TransitionTable POOL = TransitionTable.load("pool", Set.of("POOL-T01", "POOL-T02", "POOL-T03", "POOL-T05", "POOL-T07", "POOL-T08"));
+    public static final TransitionTable POOL = TransitionTable.load("pool", Set.of("POOL-T01", "POOL-T02", "POOL-T03", "POOL-T04", "POOL-T05", "POOL-T06", "POOL-T07", "POOL-T08", "POOL-T11", "POOL-T12"));
     public static final TransitionTable MEMBERSHIP = TransitionTable.load("membership",
-            Set.of("MEM-T01", "MEM-T02", "MEM-T03", "MEM-T04", "MEM-T05", "MEM-T07", "MEM-T08", "MEM-T09", "MEM-T10", "MEM-T11"));
+            Set.of("MEM-T01", "MEM-T02", "MEM-T03", "MEM-T04", "MEM-T05", "MEM-T06", "MEM-T07", "MEM-T08", "MEM-T09", "MEM-T10", "MEM-T11"));
     public static final TransitionTable ROUND = TransitionTable.load("round", Set.of("RND-T01", "RND-T02"));
     static final Map<String, String> CITY_STATE = Map.of("Mumbai", "MH", "Pune", "MH", "Delhi", "DL", "Bengaluru", "KA");
     static final Set<String> JOINABLE = Set.of("FORMING", "READY_FOR_QUOTES", "QUOTE_OPEN");
@@ -300,7 +302,12 @@ public class Pools {
         };
         boolean guard = JOINABLE.contains(state) && (limit == null || before(pool, limit));
         if (!guard) {
-            MEMBERSHIP.check(ms0, "RELEASED"); // MEM-T06 late capture: 501 in P1, so the event is retried and lands in the DLQ
+            // MEM-T06: the capture arrived after the pool closed or the commit deadline passed. Payment refunds it (LATE_CAPTURE).
+            MEMBERSHIP.check(ms0, "RELEASED");
+            jdbc.update("update memberships set state = 'RELEASED', release_reason = 'LATE_CAPTURE', version = version + 1 where id = ?", m.get("id"));
+            Map<String, Object> p = jdbc.queryForMap("update pools set version = version + 1 where id = ? returning interested_count, committed_count, version", poolId);
+            outbox.append(poolId, (long) p.get("version"), new MemberReleased(poolId.toString(), m.get("id").toString(), m.get("buyer_id").toString(),
+                    e.paymentId(), "LATE_CAPTURE", num(p, "interested_count"), num(p, "committed_count")));
             return;
         }
         MEMBERSHIP.check(ms0, "COMMITTED");
@@ -316,9 +323,10 @@ public class Pools {
         }
     }
 
-    public void paymentFailed(PaymentFailed e) {
+    /** MEM-T04: a failed or voided deposit returns the member to INTERESTED (they may try to commit again). */
+    public void paymentFailed(String paymentId) {
         int n = jdbc.update("update memberships set state = 'INTERESTED', version = version + 1 where current_payment_id = ? and state = 'COMMIT_PENDING'",
-                UUID.fromString(e.paymentId()));
+                UUID.fromString(paymentId));
         if (n == 1) MEMBERSHIP.check("COMMIT_PENDING", "INTERESTED");
     }
 
@@ -416,6 +424,89 @@ public class Pools {
         long v = jdbc.queryForObject("update pools set state = 'BOOKING', last_order_version_seen = ?, version = version + 1 where id = ? returning version",
                 Long.class, env.aggregateVersion(), poolId);
         outbox.append(poolId, v, new PoolBookingStarted(poolId.toString(), e.bookingsCount()));
+    }
+
+    // ------------------------------------------------------------------ preferences and matching (E030, E031)
+
+    private static final java.util.regex.Pattern CODE = java.util.regex.Pattern.compile("[A-Z][A-Z0-9_]{0,19}");
+
+    public Api.Preferences preferences(UUID buyer) {
+        return jdbc.query("select city, purchase_month, variant_ids::text[], colours, fuels, transmissions from preferences where buyer_id = ?", (rs, i) ->
+                new Api.Preferences(rs.getString(1), rs.getString(2), strings(rs.getArray(3)), strings(rs.getArray(4)), strings(rs.getArray(5)), strings(rs.getArray(6))),
+                buyer).stream().findFirst().orElse(new Api.Preferences(null, null, List.of(), List.of(), List.of(), List.of()));
+    }
+
+    public Api.Preferences savePreferences(UUID buyer, Api.Preferences b) {
+        if (b.city() != null && !CITY_STATE.containsKey(b.city())) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "City must be one of " + CITY_STATE.keySet() + ".");
+        if (b.purchaseMonth() != null) {
+            YearMonth m;
+            try {
+                m = YearMonth.parse(b.purchaseMonth());
+            } catch (RuntimeException e) {
+                throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "purchase_month must be YYYY-MM.");
+            }
+            YearMonth now = YearMonth.now(IST);
+            if (m.isBefore(now) || m.isAfter(now.plusMonths(6))) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Choose this month or one of the next six.");
+        }
+        for (String v : b.variantIds()) {
+            try {
+                UUID.fromString(v);
+            } catch (IllegalArgumentException e) {
+                throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "variant_ids must be variant ids.");
+            }
+        }
+        for (List<String> codes : List.of(b.fuels(), b.transmissions())) {
+            if (codes.stream().anyMatch(c -> !CODE.matcher(c).matches())) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Fuel and transmission are codes such as PETROL or AMT.");
+        }
+        if (b.colours().size() > 20 || b.colours().stream().anyMatch(c -> c.isBlank() || c.length() > 40)) {
+            throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Up to 20 colours, each at most 40 characters.");
+        }
+        jdbc.update("""
+                insert into preferences(buyer_id, city, purchase_month, variant_ids, colours, fuels, transmissions) values (?, ?, ?, ?::uuid[], ?::text[], ?::text[], ?::text[])
+                on conflict (buyer_id) do update set city = excluded.city, purchase_month = excluded.purchase_month, variant_ids = excluded.variant_ids,
+                    colours = excluded.colours, fuels = excluded.fuels, transmissions = excluded.transmissions, updated_at = clock_timestamp()""",
+                buyer, b.city(), b.purchaseMonth(), pgArray(b.variantIds()), pgArray(b.colours()), pgArray(b.fuels()), pgArray(b.transmissions()));
+        return preferences(buyer);
+    }
+
+    @SuppressWarnings("unchecked")
+    public Api.Suggestions suggestions(UUID buyer, List<String> models) {
+        Api.Preferences p = preferences(buyer);
+        Matching.Preferences prefs = new Matching.Preferences(p.city(), p.purchaseMonth(), Set.copyOf(p.variantIds()), Set.copyOf(p.fuels()), Set.copyOf(p.transmissions()));
+        List<String> wanted = models.stream().distinct().limit(20).toList();
+        java.time.Instant now = jdbc.queryForObject("select clock_timestamp()", Timestamp.class).toInstant();
+        List<Matching.Pool> candidates = wanted.isEmpty() || p.city() == null || p.purchaseMonth() == null ? List.of() : jdbc.query("""
+                select p.id::text as id, p.model_slug, p.city, p.purchase_month, p.state, p.variants::text as variants, p.accepted_variant_ids::text[] as accepted,
+                       p.min_members, p.committed_count, p.interested_count,
+                       case p.state when 'FORMING' then p.forming_deadline when 'QUOTE_OPEN' then r.deadline end as join_deadline
+                from pools p left join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 1
+                where p.model_slug = any(?::text[]) and p.city = ? and p.purchase_month = ? and p.state in ('FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN')""",
+                (rs, i) -> {
+                    Set<String> accepted = Set.of((String[]) rs.getArray("accepted").getArray());
+                    List<Matching.Variant> variants = new ArrayList<>();
+                    try {
+                        for (Map<String, Object> v : (List<Map<String, Object>>) JSON.readValue(rs.getString("variants"), List.class)) {
+                            if (accepted.contains(String.valueOf(v.get("id")))) {
+                                variants.add(new Matching.Variant(String.valueOf(v.get("id")), (String) v.get("fuel"), (String) v.get("transmission")));
+                            }
+                        }
+                    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                        throw new IllegalStateException(e);
+                    }
+                    Timestamp d = rs.getTimestamp("join_deadline");
+                    return new Matching.Pool(rs.getString("id"), rs.getString("model_slug"), rs.getString("city"), rs.getString("purchase_month"), rs.getString("state"),
+                            variants, rs.getInt("min_members"), rs.getInt("committed_count"), rs.getInt("interested_count"), d == null ? null : d.toInstant());
+                }, pgArray(wanted), p.city(), p.purchaseMonth());
+        return new Api.Suggestions(wanted.stream().map(m -> Matching.suggest(m, prefs, candidates, now)).toList(), now.toString());
+    }
+
+    private static List<String> strings(java.sql.Array a) throws java.sql.SQLException {
+        return a == null ? List.of() : List.of((String[]) a.getArray());
+    }
+
+    /** A Postgres array literal with every element quoted. */
+    private static String pgArray(List<String> xs) {
+        return "{" + String.join(",", xs.stream().map(x -> "\"" + x.replace("\\", "\\\\").replace("\"", "\\\"") + "\"").toList()) + "}";
     }
 
     // ------------------------------------------------------------------ views

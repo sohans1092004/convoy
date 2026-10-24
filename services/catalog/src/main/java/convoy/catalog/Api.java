@@ -9,8 +9,12 @@ import java.util.Map;
 public final class Api {
     private Api() {}
 
-    public record ModelSummary(String slug, String name, String brand, String bodyType, long variantCount, long fromExShowroomPaise,
+    public record ModelSummary(String id, String slug, String name, String brand, String bodyType, long variantCount, long fromExShowroomPaise,
                                boolean anyCityConfirmed, convoy.contracts.api.Evidence evidence) {}
+
+    public record SavedCar(String modelId, String slug, String name, String brand, String savedAt) {}
+
+    public record SavedCars(List<SavedCar> cars) {}
 
     public record ModelList(List<ModelSummary> models, List<String> cities, String rulesetVersion) {}
 

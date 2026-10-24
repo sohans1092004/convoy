@@ -55,7 +55,8 @@ class PoolIT extends ServiceTest {
                 return new StubServer.Reply(200, "{\"payment_id\":\"" + UUID.nameUUIDFromBytes(key.getBytes()) + "\",\"state\":\"INITIATED\",\"amount_paise\":99900,"
                         + "\"razorpay_order_id\":\"order_test\",\"razorpay_key_id\":\"rzp_test_fake\",\"test_mode\":true}", delay);
             })
-            .on("/internal/eligibility", r -> StubServer.Reply.json("{\"dealership_ids\":[\"" + DEALERSHIP + "\"],\"count\":1}"));
+            .on("/internal/eligibility", r -> StubServer.Reply.json("{\"dealership_ids\":[\"" + DEALERSHIP + "\"],\"count\":1}"))
+            .on("/internal/rounds/.*/summary", r -> StubServer.Reply.json("{\"round_id\":\"x\",\"kind\":\"SEALED\",\"valid_count\":0,\"final_count\":0,\"quotes\":[]}"));
 
     @TestConfiguration(proxyBeanMethods = false)
     static class Stubs {
@@ -101,6 +102,101 @@ class PoolIT extends ServiceTest {
             for (Future<T> f : fs) out.add(f.get());
             return out;
         }
+    }
+
+    /** Commits a buyer through the API and delivers the PaymentCaptured event as the inbox consumer would. */
+    UUID commitAndCapture(UUID pool, UUID buyer) throws Exception {
+        assertThat(send("POST", "/pools/" + pool + "/commitment", buyer(buyer), "{\"terms_version\":\"2026-10-24-p0\"}",
+                Map.of("Idempotency-Key", UUID.randomUUID().toString())).status()).isEqualTo(200);
+        UUID payment = jdbc.queryForObject("select current_payment_id from memberships where pool_id = ? and buyer_id = ?", UUID.class, pool, buyer);
+        capture(pool, buyer, payment, false);
+        return payment;
+    }
+
+    void capture(UUID pool, UUID buyer, UUID payment, boolean late) {
+        Envelope env = new Envelope(Uuid7.next(), "PaymentCaptured", 1, payment, 2, "2026-10-24T00:00:00Z", Uuid7.next(), null, "payment", null);
+        EventContext.set(env.correlationId(), env.eventId());
+        try {
+            tx.executeWithoutResult(s -> pools.paymentCaptured(env, new PaymentCaptured(payment.toString(), buyer.toString(), pool.toString(), 99900L, late, true)));
+        } finally {
+            EventContext.clear();
+        }
+    }
+
+    /** Every pool version bump carries exactly one event, so a FULL subscriber (realtime) never sees a false gap. */
+    void assertVersionsContiguous(UUID pool) {
+        long version = jdbc.queryForObject("select version from pools where id = ?", Long.class, pool);
+        assertThat(jdbc.queryForList("select aggregate_version from outbox where aggregate_id = ? order by aggregate_version", Long.class, pool))
+                .isEqualTo(java.util.stream.LongStream.rangeClosed(1, version).boxed().toList());
+    }
+
+    @Test
+    void formingDeadlineWithoutTheMinimumExpiresThePoolAndReleasesEveryCommittedMember() throws Exception {
+        UUID pool = freshPool();
+        jdbc.update("update pools set min_members = 5 where id = ?", pool);
+        commitAndCapture(pool, UUID.randomUUID());
+        commitAndCapture(pool, UUID.randomUUID());
+        sweeper.expireForming(pool);
+        assertThat(jdbc.queryForObject("select state from pools where id = ?", String.class, pool)).as("before the deadline nothing happens").isEqualTo("FORMING");
+        jdbc.update("update pools set forming_deadline = clock_timestamp() - interval '1 second' where id = ?", pool);
+        sweeper.expireForming(pool);
+        sweeper.expireForming(pool); // repeat: VERSION_NOOP
+        Map<String, Object> p = jdbc.queryForMap("select state, end_reason from pools where id = ?", pool);
+        assertThat(p).containsEntry("state", "EXPIRED").containsEntry("end_reason", "MINIMUM_NOT_REACHED");
+        assertThat(jdbc.queryForList("select distinct release_reason from memberships where pool_id = ?", String.class, pool)).containsExactly("POOL_MINIMUM_NOT_REACHED");
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ? and event_type = 'PoolClosed' and payload->>'end_state' = 'EXPIRED'",
+                Integer.class, pool)).isEqualTo(1);
+        // A commit after the pool closed is refused.
+        assertThat(send("POST", "/pools/" + pool + "/commitment", buyer(UUID.randomUUID()), "{\"terms_version\":\"2026-10-24-p0\"}",
+                Map.of("Idempotency-Key", UUID.randomUUID().toString())).status()).isEqualTo(409);
+        assertVersionsContiguous(pool);
+    }
+
+    @Test
+    void lateCaptureAfterThePoolClosedReleasesTheMemberForAnAutomaticRefund() throws Exception {
+        UUID pool = freshPool();
+        jdbc.update("update pools set min_members = 5 where id = ?", pool);
+        UUID slow = UUID.randomUUID();
+        assertThat(send("POST", "/pools/" + pool + "/commitment", buyer(slow), "{\"terms_version\":\"2026-10-24-p0\"}",
+                Map.of("Idempotency-Key", UUID.randomUUID().toString())).status()).isEqualTo(200);
+        UUID payment = jdbc.queryForObject("select current_payment_id from memberships where pool_id = ? and buyer_id = ?", UUID.class, pool, slow);
+        jdbc.update("update pools set forming_deadline = clock_timestamp() - interval '1 second' where id = ?", pool);
+        sweeper.expireForming(pool);
+        capture(pool, slow, payment, true); // the delayed webhook's PaymentCaptured arrives after EXPIRED
+        Map<String, Object> m = jdbc.queryForMap("select state, release_reason from memberships where pool_id = ? and buyer_id = ?", pool, slow);
+        assertThat(m).containsEntry("state", "RELEASED").containsEntry("release_reason", "LATE_CAPTURE");
+        String payload = jdbc.queryForObject("select payload::text from outbox where aggregate_id = ? and event_type = 'MemberReleased'", String.class, pool);
+        assertThat(JSON.readTree(payload).path("reason").asText()).isEqualTo("LATE_CAPTURE");
+        assertThat(JSON.readTree(payload).has("committed_count")).isTrue();
+        assertThat(jdbc.queryForObject("select committed_count from pools where id = ?", Integer.class, pool)).isZero();
+        assertVersionsContiguous(pool);
+    }
+
+    @Test
+    void noEligibleDealerByTheWaitDeadlineEndsThePoolWithNoQuotes() throws Exception {
+        UUID pool = freshPool();
+        commitAndCapture(pool, UUID.randomUUID()); // min 1 -> READY_FOR_QUOTES
+        assertThat(jdbc.queryForObject("select state from pools where id = ?", String.class, pool)).isEqualTo("READY_FOR_QUOTES");
+        jdbc.update("update pools set dealer_wait_deadline = clock_timestamp() - interval '1 second' where id = ?", pool);
+        sweeper.noEligibleDealer(pool);
+        assertThat(jdbc.queryForMap("select state, end_reason from pools where id = ?", pool)).containsEntry("state", "NO_QUOTES").containsEntry("end_reason", "NO_ELIGIBLE_DEALER");
+        assertThat(jdbc.queryForList("select release_reason from memberships where pool_id = ?", String.class, pool)).containsExactly("POOL_NO_ELIGIBLE_DEALER");
+        assertVersionsContiguous(pool);
+    }
+
+    @Test
+    void sealedRoundWithNoValidQuoteClosesTheRoundAndThePool() throws Exception {
+        UUID pool = freshPool();
+        commitAndCapture(pool, UUID.randomUUID());
+        sweeper.openSealedRound(pool);
+        assertThat(jdbc.queryForObject("select state from pools where id = ?", String.class, pool)).isEqualTo("QUOTE_OPEN");
+        jdbc.update("update rounds set deadline = clock_timestamp() - interval '1 second' where pool_id = ?", pool);
+        sweeper.closeSealedRound(pool); // quote summary stub: valid_count 0 -> POOL-T04
+        assertThat(jdbc.queryForMap("select state, end_reason from pools where id = ?", pool)).containsEntry("state", "NO_QUOTES").containsEntry("end_reason", "NO_VALID_QUOTES");
+        assertThat(jdbc.queryForObject("select state from rounds where pool_id = ?", String.class, pool)).isEqualTo("CLOSED");
+        assertThat(jdbc.queryForList("select event_type from outbox where aggregate_id = ? order by aggregate_version desc limit 2", String.class, pool))
+                .containsExactly("PoolClosed", "RoundClosed");
+        assertVersionsContiguous(pool);
     }
 
     @Test

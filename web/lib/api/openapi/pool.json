@@ -115,6 +115,54 @@
         }
       }
     },
+    "/me/preferences": {
+      "get": {
+        "tags": [
+          "pool-controller"
+        ],
+        "operationId": "preferences",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "pool-controller"
+        ],
+        "operationId": "savePreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pools": {
       "post": {
         "tags": [
@@ -315,6 +363,39 @@
           }
         }
       }
+    },
+    "/me/pool-suggestions": {
+      "get": {
+        "tags": [
+          "pool-controller"
+        ],
+        "operationId": "suggestions",
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Suggestions"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -391,6 +472,54 @@
           "state",
           "terms_version",
           "version"
+        ]
+      },
+      "Preferences": {
+        "properties": {
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_month": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "variant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "colours": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fuels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transmissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "city",
+          "colours",
+          "fuels",
+          "purchase_month",
+          "transmissions",
+          "variant_ids"
         ]
       },
       "CreateBody": {
@@ -659,6 +788,115 @@
           "razorpay_order_id",
           "state",
           "test_mode"
+        ]
+      },
+      "Result": {
+        "properties": {
+          "model_slug": {
+            "type": "string"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            }
+          },
+          "start": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Start"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "model_slug",
+          "note",
+          "pools",
+          "start"
+        ]
+      },
+      "Start": {
+        "properties": {
+          "model_slug": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "purchase_month": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "city",
+          "model_slug",
+          "purchase_month"
+        ]
+      },
+      "Suggestion": {
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "matching_variant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "committed_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "min_members": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "join_deadline": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "committed_count",
+          "join_deadline",
+          "matching_variant_ids",
+          "min_members",
+          "pool_id",
+          "status"
+        ]
+      },
+      "Suggestions": {
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            }
+          },
+          "server_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "results",
+          "server_time"
         ]
       }
     }

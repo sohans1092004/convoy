@@ -26,4 +26,11 @@ public final class Api {
     public record Deposit(String paymentId, String state, long amountPaise, String currency, @Nullable String razorpayOrderId, String razorpayKeyId, boolean testMode) {}
 
     public record Commitment(Membership membership, Deposit deposit) {}
+
+    /** E031 body and response. Empty lists mean "any"; colours are matched against dealer stock later, not pools. */
+    public record Preferences(@Nullable String city, @Nullable String purchaseMonth, List<String> variantIds, List<String> colours, List<String> fuels,
+                              List<String> transmissions) {}
+
+    /** E030: one result per requested saved model. */
+    public record Suggestions(List<Matching.Result> results, String serverTime) {}
 }

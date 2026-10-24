@@ -5,6 +5,86 @@
     "version": "v0"
   },
   "paths": {
+    "/me/saved-cars/{modelId}": {
+      "put": {
+        "tags": [
+          "catalog-controller"
+        ],
+        "operationId": "saveCar",
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedCars"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalog-controller"
+        ],
+        "operationId": "unsaveCar",
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedCars"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/saved-cars": {
+      "get": {
+        "tags": [
+          "catalog-controller"
+        ],
+        "operationId": "savedCars",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedCars"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/models/{slug}": {
       "get": {
         "tags": [
@@ -187,6 +267,45 @@
   },
   "components": {
     "schemas": {
+      "SavedCar": {
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "saved_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "brand",
+          "model_id",
+          "name",
+          "saved_at",
+          "slug"
+        ]
+      },
+      "SavedCars": {
+        "properties": {
+          "cars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SavedCar"
+            }
+          }
+        },
+        "required": [
+          "cars"
+        ]
+      },
       "InternalModel": {
         "properties": {
           "id": {
@@ -585,6 +704,9 @@
       },
       "ModelSummary": {
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "slug": {
             "type": "string"
           },
@@ -623,6 +745,7 @@
           "brand",
           "evidence",
           "from_ex_showroom_paise",
+          "id",
           "name",
           "slug",
           "variant_count"

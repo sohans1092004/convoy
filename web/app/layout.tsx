@@ -27,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <nav aria-label="Main" className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
                 <Link href="/" className="text-lg font-extrabold tracking-tight">{t('brand')}</Link>
                 <Link href="/" className="text-sm font-medium">{t('cars')}</Link>
+                {signedIn && !dealer ? <Link href="/saved" className="text-sm font-medium">{t('saved')}</Link> : null}
                 {signedIn && !dealer ? <Link href="/orders" className="text-sm font-medium">{t('orders')}</Link> : null}
                 {dealer ? <Link href="/dealer" className="text-sm font-medium">{t('dealer')}</Link> : null}
                 {dealer ? <Link href="/dealer/bookings" className="text-sm font-medium">{t('bookings')}</Link> : null}

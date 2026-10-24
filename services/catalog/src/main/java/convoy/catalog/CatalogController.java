@@ -40,13 +40,42 @@ public class CatalogController {
     public Api.ModelList models(@RequestParam(required = false) String city) {
         String c = city(city);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                select m.slug, m.name, b.name as brand, m.body_type, count(distinct v.id) as variant_count,
+                select m.id::text as id, m.slug, m.name, b.name as brand, m.body_type, count(distinct v.id) as variant_count,
                        min(p.ex_showroom_paise) as from_ex_showroom_paise, bool_or(p.city_confirmed) as any_city_confirmed
                 from models m join brands b on b.id = m.brand_id join variants v on v.model_id = m.id
                 join variant_prices p on p.variant_id = v.id and (cast(? as text) is null or p.city = ?)
-                group by m.slug, m.name, b.name, m.body_type order by b.name, m.name""", c, c);
+                group by m.id, m.slug, m.name, b.name, m.body_type order by b.name, m.name""", c, c);
         rows.forEach(r -> r.put("evidence", "CATALOGUE_ESTIMATE"));
         return convoy.platform.web.Dto.as(Map.of("models", rows, "cities", CITIES, "ruleset_version", ruleset.version()), Api.ModelList.class);
+    }
+
+    // ------------------------------------------------------------------ saved cars (E024-E026), buyers only
+
+    @GetMapping("/me/saved-cars")
+    public Api.SavedCars savedCars() {
+        UUID buyer = convoy.platform.security.Caller.current().require("buyer").userId();
+        return convoy.platform.web.Dto.as(Map.of("cars", jdbc.queryForList("""
+                select m.id::text as model_id, m.slug, m.name, b.name as brand, s.saved_at from saved_cars s join models m on m.id = s.model_id
+                join brands b on b.id = m.brand_id where s.buyer_id = ? order by s.saved_at""", buyer).stream().map(r -> {
+            Map<String, Object> x = new LinkedHashMap<>(r);
+            x.put("saved_at", ((Timestamp) r.get("saved_at")).toInstant().toString());
+            return x;
+        }).toList()), Api.SavedCars.class);
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/me/saved-cars/{modelId}")
+    public Api.SavedCars saveCar(@PathVariable UUID modelId) {
+        UUID buyer = convoy.platform.security.Caller.current().require("buyer").userId();
+        if (jdbc.queryForObject("select count(*) from models where id = ?", Integer.class, modelId) == 0) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such model.");
+        jdbc.update("insert into saved_cars(buyer_id, model_id) values (?, ?) on conflict do nothing", buyer, modelId);
+        return savedCars();
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/me/saved-cars/{modelId}")
+    public Api.SavedCars unsaveCar(@PathVariable UUID modelId) {
+        UUID buyer = convoy.platform.security.Caller.current().require("buyer").userId();
+        jdbc.update("delete from saved_cars where buyer_id = ? and model_id = ?", buyer, modelId);
+        return savedCars();
     }
 
     /** E021: one model with variants and per-city prices (each with source, access date and evidence). */

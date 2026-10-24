@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** E032-E039 (P1) and E042 (P2, not built). Aggregate reads carry ETag = version; If-Match is the membership version. */
@@ -82,6 +83,20 @@ public class PoolController {
         Map<String, Object> m = pools.membership(id, c.userId(), false).map(Pools::view)
                 .orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "You are not in this pool."));
         return ResponseEntity.ok().eTag("\"" + m.get("version") + "\"").body(convoy.platform.web.Dto.as(m, Api.Membership.class));
+    }
+
+    // ------------------------------------------------------------------ preferences and matching (E030, E031)
+
+    @GetMapping("/me/preferences")
+    public Api.Preferences preferences() { return pools.preferences(Pools.buyer().userId()); }
+
+    @PutMapping("/me/preferences")
+    public Api.Preferences savePreferences(@Valid @RequestBody Api.Preferences b) { return pools.savePreferences(Pools.buyer().userId(), b); }
+
+    /** Suggestions for the buyer's saved cars; the web passes the saved model slugs (catalog E024) as repeated ?model=. */
+    @GetMapping("/me/pool-suggestions")
+    public Api.Suggestions suggestions(@RequestParam(name = "model", required = false) java.util.List<String> models) {
+        return pools.suggestions(Pools.buyer().userId(), models == null ? java.util.List.of() : models);
     }
 
     @PutMapping("/pools/{id}/members/me/reround-choice")
