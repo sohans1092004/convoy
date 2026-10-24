@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/BookingsIssued.schema.json",
+  "title": "BookingsIssued v1",
+  "description": "Owner: order. Consumers: pool, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "BookingsIssued"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bookings_count",
+        "pool_id",
+        "round_set",
+        "void_quote_count"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "round_set": {
+          "type": "integer"
+        },
+        "bookings_count": {
+          "type": "integer"
+        },
+        "void_quote_count": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

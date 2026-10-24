@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/StockUnavailable.schema.json",
+  "title": "StockUnavailable v1",
+  "description": "Owner: quote. Consumers: order, dealer, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "StockUnavailable"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "quote"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "colour",
+        "quote_id",
+        "variant_id"
+      ],
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "variant_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "colour": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

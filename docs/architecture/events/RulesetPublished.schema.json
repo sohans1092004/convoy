@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/RulesetPublished.schema.json",
+  "title": "RulesetPublished v1",
+  "description": "Owner: catalog. Consumers: quote, order, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "RulesetPublished"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "catalog"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "published_at",
+        "ruleset_version",
+        "sha256"
+      ],
+      "properties": {
+        "ruleset_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

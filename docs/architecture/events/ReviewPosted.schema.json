@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/ReviewPosted.schema.json",
+  "title": "ReviewPosted v1",
+  "description": "Owner: dealer. Consumers: notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "ReviewPosted"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "dealer"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "dealership_id",
+        "rating",
+        "review_id"
+      ],
+      "properties": {
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "review_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rating": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

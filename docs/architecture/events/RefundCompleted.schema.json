@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/RefundCompleted.schema.json",
+  "title": "RefundCompleted v1",
+  "description": "Owner: payment. Consumers: realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "RefundCompleted"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "payment"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buyer_id",
+        "manual",
+        "payment_id",
+        "refund_id"
+      ],
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "payment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "manual": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

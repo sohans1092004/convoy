@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/QuoteVoided.schema.json",
+  "title": "QuoteVoided v1",
+  "description": "Owner: quote. Consumers: dealer, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "QuoteVoided"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "quote"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmed_count",
+        "min_fulfilment",
+        "pool_id",
+        "quote_id"
+      ],
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "confirmed_count": {
+          "type": "integer"
+        },
+        "min_fulfilment": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

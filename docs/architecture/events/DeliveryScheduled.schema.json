@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DeliveryScheduled.schema.json",
+  "title": "DeliveryScheduled v1",
+  "description": "Owner: order. Consumers: realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DeliveryScheduled"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "later_than_promised",
+        "scheduled_date"
+      ],
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "scheduled_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Calendar date in IST"
+        },
+        "later_than_promised": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

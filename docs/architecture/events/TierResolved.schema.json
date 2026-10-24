@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/TierResolved.schema.json",
+  "title": "TierResolved v1",
+  "description": "Owner: order. Consumers: quote, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "TierResolved"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmed_count",
+        "min_fulfilment",
+        "outcome",
+        "pool_id",
+        "quote_id",
+        "resolved_cash_payable_paise",
+        "resolved_tier"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "confirmed_count": {
+          "type": "integer"
+        },
+        "min_fulfilment": {
+          "type": "integer"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "RESOLVED",
+            "VOID"
+          ]
+        },
+        "resolved_tier": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_cash_payable_paise": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Money in integer paise (ADR-012)"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

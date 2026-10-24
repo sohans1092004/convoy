@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/RoundClosed.schema.json",
+  "title": "RoundClosed v1",
+  "description": "Owner: pool. Consumers: quote, realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "RoundClosed"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "closed_at",
+        "deadline",
+        "kind",
+        "pool_id",
+        "round_id",
+        "valid_quote_count"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "round_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "SEALED",
+            "FINAL"
+          ]
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        },
+        "closed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        },
+        "valid_quote_count": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

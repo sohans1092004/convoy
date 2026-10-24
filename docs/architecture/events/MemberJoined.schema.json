@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/MemberJoined.schema.json",
+  "title": "MemberJoined v1",
+  "description": "Owner: pool. Consumers: realtime, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "MemberJoined"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "committed_count",
+        "interested_count",
+        "membership_id",
+        "pool_id"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "membership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "interested_count": {
+          "type": "integer"
+        },
+        "committed_count": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

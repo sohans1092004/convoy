@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/PaymentCaptured.schema.json",
+  "title": "PaymentCaptured v1",
+  "description": "Owner: payment. Consumers: pool, order, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "PaymentCaptured"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "payment"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount_paise",
+        "buyer_id",
+        "late",
+        "payment_id",
+        "pool_id",
+        "test_mode"
+      ],
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "amount_paise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Money in integer paise (ADR-012)"
+        },
+        "late": {
+          "type": "boolean"
+        },
+        "test_mode": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

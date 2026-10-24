@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/QuoteRoundOpened.schema.json",
+  "title": "QuoteRoundOpened v1",
+  "description": "Owner: pool. Consumers: quote, realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "QuoteRoundOpened"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_variant_ids",
+        "committed_count",
+        "deadline",
+        "invited_dealership_ids",
+        "kind",
+        "pool_id",
+        "round_id",
+        "round_no",
+        "round_set"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "round_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "round_set": {
+          "type": "integer"
+        },
+        "round_no": {
+          "type": "integer"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "SEALED",
+            "FINAL"
+          ]
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        },
+        "invited_dealership_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "accepted_variant_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "committed_count": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

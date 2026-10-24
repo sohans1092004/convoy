@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DepositRefundRequested.schema.json",
+  "title": "DepositRefundRequested v1",
+  "description": "Owner: order. Consumers: payment, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DepositRefundRequested"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buyer_id",
+        "order_id",
+        "pool_id",
+        "reason"
+      ],
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "QUOTE_VOID",
+            "DEALER_CANCELLED",
+            "STOCK_UNAVAILABLE",
+            "DEALER_NOT_HONOURED",
+            "BUYER_DECLINED",
+            "MISSED_CONFIRMATION_DEADLINE",
+            "BUYER_CANCELLED",
+            "ADMIN_DISPUTE_RESOLUTION",
+            "DEPOSIT_UNAVAILABLE"
+          ]
+        }
+      }
+    }
+  }
+}

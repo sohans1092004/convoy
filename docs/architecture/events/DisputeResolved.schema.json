@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DisputeResolved.schema.json",
+  "title": "DisputeResolved v1",
+  "description": "Owner: order. Consumers: dealer, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DisputeResolved"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dispute_id",
+        "outcome",
+        "resolved_by"
+      ],
+      "properties": {
+        "dispute_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolved_by": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

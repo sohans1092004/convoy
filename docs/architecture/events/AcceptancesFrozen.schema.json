@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/AcceptancesFrozen.schema.json",
+  "title": "AcceptancesFrozen v1",
+  "description": "Owner: pool. Consumers: order, payment, quote, realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "AcceptancesFrozen"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acceptance_counts",
+        "acceptances",
+        "confirmation_deadline",
+        "pool_id",
+        "released_buyers",
+        "round_set"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "round_set": {
+          "type": "integer"
+        },
+        "confirmation_deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        },
+        "acceptances": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "acceptance_counts": {
+          "type": "object"
+        },
+        "released_buyers": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}
