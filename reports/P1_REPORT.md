@@ -7,7 +7,7 @@ The first complete buyer journey runs end to end through real service boundaries
 
 > sign in (email OTP, Mailpit) → browse a model → on-road estimate (engine snapshot) → join a pool → commit with a ₹999 test deposit (Razorpay test-mode fake, signed webhook) → one dealer submits a sealed quote → buyer compares (ceiling + labelled projection) → accepts → confirms at the ceiling → tier resolves in one transaction per pool → booking voucher with an ES256-signed QR.
 
-- **Browser journey (Playwright):** **passes at 360 px and 1280 px** (2/2, 4.3 min wall clock, both journeys in parallel on separate pools), with axe finding **no serious or critical violations on any of the 11 pages visited** (sign-in, catalogue, model + estimate, pool, dealer inbox, dealer quote form, compare, orders, order confirm, order voucher). The ledger check after the run: every entry balanced, no deposit in an invalid state.
+- **Browser journey (Playwright):** **passes at 360 px and 1280 px** (2/2, 4.3 min wall clock, both journeys in parallel on separate pools), with axe finding **no serious or critical violations on any of the 11 page checks** (10 distinct pages; sign-in is checked for buyer and dealer: sign-in, catalogue, model + estimate, pool, dealer inbox, dealer quote form, compare, orders, order confirm, order voucher). The ledger check after the run: every entry balanced, no deposit in an invalid state.
 - **API journey** (`tools/journey/api-journey.mjs`): passed twice, 230–234 s in demo mode; final price ₹6,63,475 ≤ ceiling ₹6,63,475 (one buyer stays in the 1–4 tier).
 - **Screen recording:** `reports/p1-media/journey-buyer-360px.webm` and `reports/p1-media/journey-buyer-desktop.webm` (git-ignored, ~10 MB each) (Playwright video of the journey, local file).
 - **Trace:** Jaeger holds traces spanning web → gateway → pool → SNS/SQS → order for the accept call (order builds its acceptance read model from `AcceptanceChanged`). Both Playwright projects assert that a trace containing **web, gateway, pool and order** exists for their run, and it does.
@@ -67,7 +67,7 @@ Also: pre-commit copy in cancellation-rules.md aligned with AMENDMENT-002 (misse
 | Platform messaging (Postgres + LocalStack) | 3 (happy path FIFO + standard, duplicate delivery, stale version) | pass |
 | Service integration (Testcontainers Postgres, one class per service) | 39 — pool 8, payment 8, order 5, quote 5, identity 5, gateway 5, catalog 2, dealer 1 | pass |
 | Razorpay fake contract | 3 | pass |
-| Browser E2E (Playwright, 360 px + 1280 px, axe on every visited page) | 2 | 2 pass (axe: 0 serious/critical on 11 pages × 2 widths) |
+| Browser E2E (Playwright, 360 px + 1280 px, axe on every visited page) | 2 | 2 pass (axe: 0 serious/critical on 11 page checks × 2 widths) |
 | Spec validator | 13 checks | pass |
 | Schema isolation (`deploy/local/checks/schema-isolation.sql`) | 7 roles × all schemas/tables | 0 cross-schema privileges |
 
@@ -163,4 +163,4 @@ The 100-parallel-join test passed first time; the counts were never wrong.
 ## 8. Your actions needed
 1. **Razorpay test mode**: create test keys and a webhook secret; put them in `.env` (`RAZORPAY_BASE_URL=https://api.razorpay.com`, `RAZORPAY_KEY_ID=rzp_test_…`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_CHECKOUT_URL=https://checkout.razorpay.com/v1/checkout.js`). Then start a free tunnel (`cloudflared tunnel --url http://localhost:8080`) and register `<tunnel>/webhooks/razorpay` for `payment.authorized`, `payment.captured`, `payment.failed`, `refund.processed`, `refund.failed`. I'll run the journey once and record it.
 2. **Review**: Q-042 (pool minimum), Q-041 (success fee), and the SPEC.md §6 contract additions.
-3. **Merge PR** once CI is green.
+3. **Merge PR #2**: CI is green.
