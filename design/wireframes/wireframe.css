@@ -98,7 +98,7 @@ p { margin: 0 0 var(--s2); }
 .alert > strong:first-child { display: block; }
 
 table { width: 100%; border-collapse: collapse; font-size: var(--fs-s); }
-caption { text-align: left; font-weight: 600; padding-bottom: var(--s2); }
+caption { text-align: left; font-weight: 600; padding: var(--s3) var(--s3) var(--s2); }
 th, td { border-bottom: 1px solid var(--line); padding: var(--s2); text-align: left; vertical-align: top; }
 thead th { background: var(--fill); }
 .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
