@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://convoy.example/schemas/events/MemberLeft.schema.json",
   "title": "MemberLeft v1",
-  "description": "Owner: pool. Consumers: payment, realtime, audit. FIFO: True.",
+  "description": "Owner: pool. Consumers: quote, payment, realtime, audit. FIFO: True.",
   "allOf": [
     {
       "$ref": "envelope.schema.json"

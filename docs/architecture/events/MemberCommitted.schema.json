@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://convoy.example/schemas/events/MemberCommitted.schema.json",
   "title": "MemberCommitted v1",
-  "description": "Owner: pool. Consumers: realtime, notification, audit. FIFO: True.",
+  "description": "Owner: pool. Consumers: quote, realtime, notification, audit. FIFO: True.",
   "allOf": [
     {
       "$ref": "envelope.schema.json"
@@ -25,6 +25,7 @@
         "buyer_id",
         "committed_count",
         "interested_count",
+        "kept_from_previous_round",
         "membership_id",
         "payment_id",
         "pool_id"
@@ -51,6 +52,9 @@
         },
         "committed_count": {
           "type": "integer"
+        },
+        "kept_from_previous_round": {
+          "type": "boolean"
         }
       }
     }

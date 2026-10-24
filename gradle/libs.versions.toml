@@ -1,0 +1,26 @@
+# Pinned versions for every JVM module (P1). Spring Boot manages most transitive versions.
+[versions]
+java = "21"
+spring-boot = "3.5.16"
+spring-dependency-management = "1.1.7"
+spring-cloud = "2025.0.3"
+springdoc = "2.9.1"
+awssdk = "2.57.3"
+nimbus-jose-jwt = "10.10"
+json-schema-validator = "1.5.9"
+opentelemetry-api = "1.67.0"
+otel-agent = "2.33.0"
+testcontainers = "1.21.4"
+
+[libraries]
+spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "awssdk" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
+springdoc-webmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+otel-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry-api" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }

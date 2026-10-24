@@ -33,6 +33,7 @@ Conventions (apply to every row, not repeated):
 | E021 | catalog | GET | /catalog/models/{slug} | anonymous | no | no | not-found | P1 | AZ-E021-A |
 | E022 | catalog | GET | /catalog/variants/compare | anonymous | no | no | validation-failed | P1 | AZ-E022-A |
 | E023 | catalog | GET | /catalog/variants/{id}/price-estimate | anonymous | no | no | not-found, quote-invalid | P1 | AZ-E023-A |
+| E029 | catalog | GET | /internal/models/{slug} | service:pool | no | no | not-found | P1 | AZ-E029-A, AZ-E029-D |
 | E024 | catalog | GET | /me/saved-cars | buyer | no | no | - | P2 | AZ-E024-A, AZ-E024-D |
 | E025 | catalog | PUT | /me/saved-cars/{modelId} | buyer | no | no | not-found | P2 | AZ-E025-A, AZ-E025-D |
 | E026 | catalog | DELETE | /me/saved-cars/{modelId} | buyer | no | no | - | P2 | AZ-E026-A, AZ-E026-D |
@@ -50,6 +51,7 @@ Conventions (apply to every row, not repeated):
 | E039 | pool | GET | /pools/{id}/members/me | buyer | no | no | not-found | P1 | AZ-E039-A, AZ-E039-D, AZ-T4 |
 | E040 | pool | POST | /admin/pools/{id}/cancel | platform_admin | yes | yes | invalid-transition, version-conflict | P4 | AZ-E040-A, AZ-E040-D |
 | E041 | pool | GET | /admin/pools | platform_admin | no | no | - | P5 | AZ-E041-A, AZ-E041-D, AZ-T7 |
+| E042 | pool | PUT | /pools/{id}/members/me/reround-choice | buyer | yes | yes | invalid-transition, deadline-passed, version-conflict | P2 | AZ-E042-A, AZ-E042-D, AZ-E042-X |
 | E050 | dealer | POST | /dealerships | authenticated | yes | no | validation-failed | P3 | AZ-E050-A, AZ-E050-D, AZ-INT-02 |
 | E051 | dealer | POST | /dealerships/{id}/documents | dealer_admin | yes | no | - | P3 | AZ-E051-A, AZ-E051-D, AZ-E051-X |
 | E052 | dealer | GET | /dealerships/{id} | anonymous | no | no | not-found | P3 | AZ-E052-A |
@@ -104,7 +106,7 @@ Conventions (apply to every row, not repeated):
 | E114 | payment | GET | /admin/refunds | platform_admin | no | no | - | P4 | AZ-E114-A, AZ-E114-D, AZ-T7 |
 | E115 | payment | POST | /admin/refunds/{id}/retry | platform_admin | yes | no | invalid-transition | P4 | AZ-E115-A, AZ-E115-D |
 | E116 | payment | POST | /admin/refunds/{id}/resolve-manually | platform_admin | yes | no | invalid-transition, second-approval-required | P4 | AZ-E116-A, AZ-E116-D, AZ-INT-08 |
-| E117 | payment | POST | /admin/refunds/{id}/approve | platform_admin | yes | no | forbidden | P4 | AZ-E117-A, AZ-E117-D, AZ-INT-08 |
+| E117 | payment | POST | /admin/refunds/{id}/approve | platform_admin | yes | no | forbidden, second-approval-required | P4 | AZ-E117-A, AZ-E117-D, AZ-INT-08 |
 | E118 | payment | GET | /admin/reconciliation/runs | platform_admin | no | no | - | P4 | AZ-E118-A, AZ-E118-D |
 | E120 | realtime | GET | /realtime/pools/{id}/stream | buyer, dealer_staff, dealer_admin | no | no | not-found | P2 | AZ-E120-A, AZ-E120-D, AZ-E120-X, AZ-T1 |
 | E121 | realtime | GET | /realtime/dealer/stream | dealer_staff, dealer_admin | no | no | - | P2 | AZ-E121-A, AZ-E121-D, AZ-T6 |

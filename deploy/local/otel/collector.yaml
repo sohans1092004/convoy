@@ -1,0 +1,19 @@
+# OpenTelemetry Collector (local): services export OTLP here; traces go to Jaeger. AWS X-Ray comes in P6.
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+processors:
+  batch: {}
+  memory_limiter: { check_interval: 1s, limit_mib: 100 }
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls: { insecure: true }
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/jaeger]

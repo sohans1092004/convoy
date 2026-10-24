@@ -294,7 +294,7 @@
     ]
    },
    {
-    "attempt": "money outcome above threshold without second admin",
+    "attempt": "money outcome (REFUND_BUYER, CANCEL_BOOKING) without approval by a second admin",
     "error": "second-approval-required",
     "from": [
      "*"
@@ -556,6 +556,33 @@
     ]
    },
    {
+    "attempt": "reround_choice committing at/after choice_deadline",
+    "error": "deadline-passed",
+    "from": [
+     "REROUND_CHOICE"
+    ]
+   },
+   {
+    "attempt": "reround_choice",
+    "error": "invalid-transition",
+    "from": [
+     "INTERESTED",
+     "COMMIT_PENDING",
+     "COMMITTED",
+     "ACCEPTED",
+     "HANDED_TO_ORDER",
+     "LEFT",
+     "RELEASED"
+    ]
+   },
+   {
+    "attempt": "leave or accept_quote (use reround_choice)",
+    "error": "invalid-transition",
+    "from": [
+     "REROUND_CHOICE"
+    ]
+   },
+   {
     "attempt": "accept_quote",
     "error": "not-a-member",
     "from": [
@@ -612,6 +639,11 @@
    },
    {
     "error": "invalid-transition",
+    "from": "INTERESTED",
+    "to": "REROUND_CHOICE"
+   },
+   {
+    "error": "invalid-transition",
     "from": "COMMIT_PENDING",
     "to": "COMMIT_PENDING"
    },
@@ -624,6 +656,11 @@
     "error": "invalid-transition",
     "from": "COMMIT_PENDING",
     "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMIT_PENDING",
+    "to": "REROUND_CHOICE"
    },
    {
     "error": "invalid-transition",
@@ -647,6 +684,11 @@
    },
    {
     "error": "invalid-transition",
+    "from": "COMMITTED",
+    "to": "REROUND_CHOICE"
+   },
+   {
+    "error": "invalid-transition",
     "from": "ACCEPTED",
     "to": "INTERESTED"
    },
@@ -658,12 +700,12 @@
    {
     "error": "invalid-transition",
     "from": "ACCEPTED",
-    "to": "RELEASED"
+    "to": "REROUND_CHOICE"
    },
    {
     "error": "invalid-transition",
-    "from": "HANDED_TO_ORDER",
-    "to": "INTERESTED"
+    "from": "ACCEPTED",
+    "to": "RELEASED"
    },
    {
     "error": "invalid-transition",
@@ -697,6 +739,36 @@
    },
    {
     "error": "invalid-transition",
+    "from": "REROUND_CHOICE",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REROUND_CHOICE",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REROUND_CHOICE",
+    "to": "ACCEPTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REROUND_CHOICE",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REROUND_CHOICE",
+    "to": "REROUND_CHOICE"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REROUND_CHOICE",
+    "to": "LEFT"
+   },
+   {
+    "error": "invalid-transition",
     "from": "LEFT",
     "to": "INTERESTED"
    },
@@ -719,6 +791,11 @@
     "error": "invalid-transition",
     "from": "LEFT",
     "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "REROUND_CHOICE"
    },
    {
     "error": "invalid-transition",
@@ -733,11 +810,6 @@
    {
     "error": "invalid-transition",
     "from": "RELEASED",
-    "to": "INTERESTED"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "RELEASED",
     "to": "COMMIT_PENDING"
    },
    {
@@ -754,6 +826,11 @@
     "error": "invalid-transition",
     "from": "RELEASED",
     "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "REROUND_CHOICE"
    },
    {
     "error": "invalid-transition",
@@ -768,9 +845,7 @@
   ],
   "owner": "pool",
   "terminal": [
-   "HANDED_TO_ORDER",
-   "LEFT",
-   "RELEASED"
+   "LEFT"
   ],
   "valid": [
    {
@@ -911,10 +986,65 @@
    },
    {
     "emits": [],
+    "from": "REROUND_CHOICE",
+    "id": "MEM-T10",
+    "to": "RELEASED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [],
     "from": "ACCEPTED",
     "id": "MEM-T11",
     "to": "HANDED_TO_ORDER",
     "trigger": "deadline"
+   },
+   {
+    "emits": [],
+    "from": "HANDED_TO_ORDER",
+    "id": "MEM-T12",
+    "to": "REROUND_CHOICE",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "MemberCommitted"
+    ],
+    "from": "REROUND_CHOICE",
+    "id": "MEM-T13",
+    "to": "COMMITTED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberReleased"
+    ],
+    "from": "REROUND_CHOICE",
+    "id": "MEM-T14",
+    "to": "RELEASED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberReleased"
+    ],
+    "from": "REROUND_CHOICE",
+    "id": "MEM-T15",
+    "to": "RELEASED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [],
+    "from": "HANDED_TO_ORDER",
+    "id": "MEM-T16",
+    "to": "INTERESTED",
+    "trigger": "event"
+   },
+   {
+    "emits": [],
+    "from": "RELEASED",
+    "id": "MEM-T16",
+    "to": "INTERESTED",
+    "trigger": "event"
    }
   ]
  },
@@ -1268,7 +1398,7 @@
     "emits": [
      "TierResolved",
      "BookingIssued",
-     "DepositApplyRequested",
+     "DepositHoldRequested",
      "StockReservationRequested",
      "BookingsIssued"
     ],
@@ -1341,7 +1471,7 @@
     ]
    },
    {
-    "attempt": "apply to booking",
+    "attempt": "hold for booking",
     "error": "deposit-not-captured",
     "from": [
      "INITIATED",
@@ -1354,12 +1484,12 @@
     "attempt": "any command",
     "error": "invalid-transition",
     "from": [
-     "SETTLED",
-     "REFUNDED"
+     "REFUNDED",
+     "RELEASED"
     ]
    },
    {
-    "attempt": "apply to booking",
+    "attempt": "hold for booking",
     "error": "invalid-transition",
     "from": [
      "REFUND_PENDING"
@@ -1382,7 +1512,7 @@
    {
     "error": "invalid-transition",
     "from": "INITIATED",
-    "to": "APPLIED_TO_BOOKING"
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
@@ -1392,12 +1522,12 @@
    {
     "error": "invalid-transition",
     "from": "INITIATED",
-    "to": "SETTLED"
+    "to": "REFUNDED"
    },
    {
     "error": "invalid-transition",
     "from": "INITIATED",
-    "to": "REFUNDED"
+    "to": "RELEASED"
    },
    {
     "error": "invalid-transition",
@@ -1412,7 +1542,7 @@
    {
     "error": "invalid-transition",
     "from": "PENDING",
-    "to": "APPLIED_TO_BOOKING"
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
@@ -1422,12 +1552,12 @@
    {
     "error": "invalid-transition",
     "from": "PENDING",
-    "to": "SETTLED"
+    "to": "REFUNDED"
    },
    {
     "error": "invalid-transition",
     "from": "PENDING",
-    "to": "REFUNDED"
+    "to": "RELEASED"
    },
    {
     "error": "invalid-transition",
@@ -1457,12 +1587,12 @@
    {
     "error": "invalid-transition",
     "from": "CAPTURED",
-    "to": "SETTLED"
+    "to": "REFUNDED"
    },
    {
     "error": "invalid-transition",
     "from": "CAPTURED",
-    "to": "REFUNDED"
+    "to": "RELEASED"
    },
    {
     "error": "invalid-transition",
@@ -1482,7 +1612,7 @@
    {
     "error": "invalid-transition",
     "from": "FAILED",
-    "to": "APPLIED_TO_BOOKING"
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
@@ -1492,12 +1622,12 @@
    {
     "error": "invalid-transition",
     "from": "FAILED",
-    "to": "SETTLED"
+    "to": "REFUNDED"
    },
    {
     "error": "invalid-transition",
     "from": "FAILED",
-    "to": "REFUNDED"
+    "to": "RELEASED"
    },
    {
     "error": "invalid-transition",
@@ -1527,12 +1657,7 @@
    {
     "error": "invalid-transition",
     "from": "VOIDED_UNPAID",
-    "to": "APPLIED_TO_BOOKING"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "VOIDED_UNPAID",
-    "to": "SETTLED"
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
@@ -1541,41 +1666,51 @@
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
+    "from": "VOIDED_UNPAID",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HELD_FOR_BOOKING",
     "to": "INITIATED"
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "to": "PENDING"
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "to": "CAPTURED"
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "to": "FAILED"
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "to": "VOIDED_UNPAID"
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
-    "to": "APPLIED_TO_BOOKING"
+    "from": "HELD_FOR_BOOKING",
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "to": "REFUNDED"
    },
    {
     "error": "invalid-transition",
+    "from": "HELD_FOR_BOOKING",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
     "from": "REFUND_PENDING",
     "to": "INITIATED"
    },
@@ -1602,7 +1737,7 @@
    {
     "error": "invalid-transition",
     "from": "REFUND_PENDING",
-    "to": "APPLIED_TO_BOOKING"
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
@@ -1611,56 +1746,6 @@
    },
    {
     "error": "invalid-transition",
-    "from": "REFUND_PENDING",
-    "to": "SETTLED"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "INITIATED"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "PENDING"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "CAPTURED"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "FAILED"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "VOIDED_UNPAID"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "APPLIED_TO_BOOKING"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "REFUND_PENDING"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "SETTLED"
-   },
-   {
-    "error": "invalid-transition",
-    "from": "SETTLED",
-    "to": "REFUNDED"
-   },
-   {
-    "error": "invalid-transition",
     "from": "REFUNDED",
     "to": "INITIATED"
    },
@@ -1687,7 +1772,7 @@
    {
     "error": "invalid-transition",
     "from": "REFUNDED",
-    "to": "APPLIED_TO_BOOKING"
+    "to": "HELD_FOR_BOOKING"
    },
    {
     "error": "invalid-transition",
@@ -1697,18 +1782,63 @@
    {
     "error": "invalid-transition",
     "from": "REFUNDED",
-    "to": "SETTLED"
+    "to": "REFUNDED"
    },
    {
     "error": "invalid-transition",
     "from": "REFUNDED",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "HELD_FOR_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
     "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "RELEASED"
    }
   ],
   "owner": "payment",
   "terminal": [
-   "SETTLED",
-   "REFUNDED"
+   "REFUNDED",
+   "RELEASED"
   ],
   "valid": [
    {
@@ -1799,11 +1929,11 @@
    },
    {
     "emits": [
-     "DepositApplied"
+     "DepositHeld"
     ],
     "from": "CAPTURED",
     "id": "PAY-T06",
-    "to": "APPLIED_TO_BOOKING",
+    "to": "HELD_FOR_BOOKING",
     "trigger": "event"
    },
    {
@@ -1819,7 +1949,7 @@
     "emits": [
      "RefundRequested"
     ],
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "id": "PAY-T07",
     "to": "REFUND_PENDING",
     "trigger": "event"
@@ -1833,11 +1963,11 @@
    },
    {
     "emits": [
-     "DepositSettled"
+     "RefundRequested"
     ],
-    "from": "APPLIED_TO_BOOKING",
+    "from": "HELD_FOR_BOOKING",
     "id": "PAY-T09",
-    "to": "SETTLED",
+    "to": "REFUND_PENDING",
     "trigger": "event"
    },
    {
@@ -1848,6 +1978,15 @@
     "from": "VOIDED_UNPAID",
     "id": "PAY-T10",
     "to": "REFUND_PENDING",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "DepositReleased"
+    ],
+    "from": "REFUND_PENDING",
+    "id": "PAY-T11",
+    "to": "RELEASED",
     "trigger": "event"
    }
   ]
@@ -3088,7 +3227,7 @@
     ]
    },
    {
-    "attempt": "manual resolve above threshold without second admin",
+    "attempt": "manual resolve without approval by a second, different admin",
     "error": "second-approval-required",
     "from": [
      "REFUND_FAILED"

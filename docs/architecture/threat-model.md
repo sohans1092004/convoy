@@ -29,7 +29,7 @@ Legend: **S**poofing, **T**ampering, **R**epudiation, **I**nformation disclosure
 | order | S: voucher forgery | signed QR token (ES256, kid), single-use on delivery | AZ-E090-X |
 | payment | S/T: forged webhook, replay | HMAC on raw body, event-id dedupe, amount/order match | AZ-INT-06, W6 |
 | payment | T: double refund | unique refund per payment, lookup-before-create with receipt | D19, D21 vectors |
-| payment | E: admin refund abuse | second admin above threshold, audit | AZ-INT-08 |
+| payment | E: admin refund abuse | second admin for every manual refund/adjustment/override (AMENDMENT-001), audit | AZ-INT-08 |
 | payment | D: Razorpay outage | 503 on commit (no partial state), refund backoff | W7 |
 | realtime | I: cross-pool stream subscription | connect-time authz + periodic re-validation | AZ-E120-X |
 | realtime | D: slow consumers / reconnect storm | bounded queues, jittered retry hints | W5 |
@@ -50,6 +50,6 @@ Legend: **S**poofing, **T**ampering, **R**epudiation, **I**nformation disclosure
 | Collusion / misleading quotes | anomaly flags (identical line items across dealers, identical scores, same submission second) for admin review; **a flag is never proof** | flag queue | quote, audit | P5 admin queue |
 | Payment replay | HMAC, idempotency, event dedupe | duplicate counters | payment | W6, D18 |
 | Fake reviews | only verified-delivery buyers; one review per booking | — | dealer | AZ-INT-07 |
-| Admin abuse | least privilege; sensitive-action audit; second admin for refunds above threshold and money dispute outcomes | sensitive-access log | all | AZ-T7, AZ-INT-08 |
+| Admin abuse | least privilege; sensitive-action audit; second admin for every manual refund, ledger adjustment, override and money dispute outcome (AMENDMENT-001) | sensitive-access log | all | AZ-T7, AZ-INT-08 |
 
 Legal/regulatory items (consumer protection, competition law, dealer contracts, payments, DPDP) are flagged, not resolved (PLAN §1).

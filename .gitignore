@@ -1,2 +1,14 @@
 __pycache__/
 *.pyc
+node_modules/
+.gradle/
+build/
+.next/
+out/
+storybook-static/
+playwright-report/
+test-results/
+.env
+*.log
+.impeccable/
+reports/p1-media/

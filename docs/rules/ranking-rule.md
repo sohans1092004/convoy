@@ -6,11 +6,11 @@ Published identically to all dealers in the quote builder, beside the rank.
 For each pool and each variant the pool accepts:
 - the exact variant (fuel, transmission, trim) and the pool's city/state;
 - **mandatory items only**: ex-showroom, discount, registration (dealer figure or estimate), dealer-required accessories, fees, other charges (questionable ones included);
-- **baseline insurance**: comprehensive year-1 OD + 3-year TP — the dealer's own figure for that cover if supplied, else the catalogue estimate (Q-031);
+- **baseline insurance**: comprehensive year-1 OD + 3-year TP. The dealer's own figure is used **only if** it declares exactly the baseline cover (IDV 95 %, no add-ons) **and** is marked binding on the quote; otherwise the catalogue estimate is used (AMENDMENT-004, tightens Q-031; engine warning `DEALER_INSURANCE_NOT_RANKABLE`; vectors P052–P054). The quote builder shows the dealer, beside the insurance fields, whether their figure will be used for ranking and why;
 - excluded: optional accessories, insurance add-ons, extended warranty;
 - tier: the dealer's **ceiling tier** (tier containing `min_fulfilment`) — the price every confirming buyer is guaranteed not to exceed (Q-034).
 
-Score = engine `cash_payable_paise` with `mode = RANKING` for that configuration (vector P029 shows the mode).
+Score = engine `cash_payable_paise` with `mode = RANKING` for that configuration (vector P029 shows the mode; P052–P054 the insurance rule).
 
 ## 2. Rank per variant
 - Quotes covering the variant and in state SUBMITTED/REVISED (during the final round) or FINAL are ranked ascending by score.
@@ -26,3 +26,9 @@ Score = engine `cash_payable_paise` with `mode = RANKING` for that configuration
 
 ## 4. What buyers see
 Buyers compare full offers (not ranks) on the Compare screen, sortable by cash payable, net cost, delivery date and evidence strength.
+
+**Ceiling and projection (AMENDMENT-005, extends Q-034).** Ranking stays at the ceiling price. For each offer the Compare screen shows:
+- the **ceiling price**: the most the buyer can pay if they confirm;
+- a clearly labelled projection, **"If the confirmed count stays at N: ₹X"**, where N is the current count (buyers accepting this offer during DECISION_OPEN; confirmed buyers during CONFIRMATION) and X is the engine price at the tier containing N (shown only when N ≥ `min_fulfilment`).
+
+The projection is never presented as a guarantee. Its label always carries the words "not guaranteed", and it is never larger or more prominent than the ceiling.

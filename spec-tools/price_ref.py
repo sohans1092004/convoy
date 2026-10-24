@@ -61,6 +61,13 @@ def _line(code, amount, evidence, in_cash=True, flags=()):
     return {'code': code, 'amount_paise': amount, 'evidence': evidence, 'in_cash_payable': in_cash, 'flags': sorted(flags)}
 
 
+def rankable_insurance(pol, ins):
+    """Dealer insurance counts for ranking only if it declares exactly the baseline cover and is binding."""
+    cover = pol.get('declared_cover') or {}
+    return (pol.get('binding') is True and cover.get('addons') == []
+            and cover.get('idv_bp') == 10000 - ins['idv_depreciation_bp'])
+
+
 def compute(inp, rules=None):
     """Return the engine output for one calculation input (see pricing-model.md §Inputs)."""
     rules = rules or load_rules()
@@ -139,6 +146,10 @@ def compute(inp, rules=None):
 
     # Insurance baseline (comprehensive yr-1 OD + 3-yr TP)
     pol = inp.get('insurance')
+    if pol is not None and ranking and not rankable_insurance(pol, ins):
+        # AMENDMENT-004: ranking uses the dealer's figure only for binding, exactly-baseline cover.
+        warnings.append('DEALER_INSURANCE_NOT_RANKABLE')
+        pol = None
     if pol is not None:
         for k, code in (('od_paise', 'INSURANCE_OD'), ('tp_paise', 'INSURANCE_TP'), ('gst_paise', 'INSURANCE_GST')):
             if amount_ok(pol.get(k), code) and evidence_ok(pol.get('evidence'), code):
@@ -278,4 +289,7 @@ if __name__ == '__main__':
     t = [{'min': 1, 'max': 4, 'price_paise': 300}, {'min': 5, 'max': None, 'price_paise': 200}]
     assert resolve_tiers(t, 5, 7)['resolved_price_paise'] == 200
     assert resolve_tiers(t, 5, 4)['outcome'] == 'VOID'
+    ins = {'idv_depreciation_bp': 500}
+    assert rankable_insurance({'binding': True, 'declared_cover': {'idv_bp': 9500, 'addons': []}}, ins)
+    assert not rankable_insurance({'binding': False, 'declared_cover': {'idv_bp': 9500, 'addons': []}}, ins)
     print('price_ref self-check ok, ruleset', load_rules()['ruleset']['ruleset_version'])

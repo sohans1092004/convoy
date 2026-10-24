@@ -1,0 +1,441 @@
+{
+ "insurance-baseline": {
+  "addons_policy": "Zero-depreciation, engine protect, RSA, return-to-invoice etc. are listed separately as optional add-ons and never part of the baseline.",
+  "ev_tp": "UNVERIFIED",
+  "ev_tp_note": "Separate kW-based TP slabs exist for EVs but were not verified in P0; the engine refuses to estimate EV insurance (dealer must enter it) - error INSURANCE_ESTIMATE_UNAVAILABLE.",
+  "formula": "premium = OD_1yr + TP_3yr + GST; OD_1yr = IDV x od_rate_bp; IDV = ex_showroom x (10000 - depreciation_bp) / 10000; GST = (OD + TP) x gst_bp. Each step rounded half up to the whole rupee.",
+  "gst_bp": 1800,
+  "gst_evidence": "ASSUMPTION",
+  "gst_note": "18 % GST on motor insurance premium; not re-verified after the 2025 GST rate changes (which exempted individual life/health policies, not motor).",
+  "idv_depreciation_bp": 500,
+  "idv_depreciation_evidence": "ASSUMPTION",
+  "idv_depreciation_note": "5 % for vehicles not older than 6 months per the India Motor Tariff depreciation schedule as commonly applied by insurers; schedule not re-read from a primary source in P0.",
+  "label": "ESTIMATE",
+  "od_rate_bp": 200,
+  "od_rate_evidence": "ASSUMPTION",
+  "od_rate_note": "Own-damage premium is priced by each insurer (no single published tariff); 2.00 % of IDV is a placeholder chosen for comparability, not a market rate. It only matters when a dealer gives no insurance figure; ranking uses the dealer's own figure only when it declares exactly this baseline cover and is binding (AMENDMENT-004).",
+  "ruleset_version": "2026.10.24-p0",
+  "tp_3yr_by_engine_cc": [
+   {
+    "max_cc": 1000,
+    "premium_paise": 652100
+   },
+   {
+    "max_cc": 1500,
+    "premium_paise": 1064000
+   },
+   {
+    "max_cc": null,
+    "premium_paise": 2459600
+   }
+  ],
+  "tp_evidence": "SECONDARY",
+  "tp_note": "Two 2026 insurer-aggregator pages agree on these 3-year figures; the IRDAI notification itself was not read. A different figure (Rs 9,435) for 1000-1500 cc circulates but no source was found for it.",
+  "tp_sources": [
+   {
+    "accessed": "2026-10-24",
+    "title": "Paybima - How to buy new car insurance in 2026 (TP rate table)",
+    "url": "https://www.paybima.com/blog/car-insurance/how-to-buy-a-new-car-insurance-policy-in-india"
+   },
+   {
+    "accessed": "2026-10-24",
+    "title": "Paybima - Cheapest car insurance plans 2026 (TP rate table)",
+    "url": "https://www.paybima.com/blog/motor-insurance/cheapest-car-insurance-plans-in-india-from-popular-car-insurers"
+   }
+  ]
+ },
+ "rto": {
+  "common": {
+   "excluded": "Number-plate (HSRP) charges, hypothecation endorsement, fancy numbers, Delhi MCD parking charge (amount UNVERIFIED), green cess: not estimated; dealer must itemise them as fees.",
+   "registration_fee_evidence": "SECONDARY",
+   "registration_fee_paise": 60000,
+   "registration_fee_source": {
+    "accessed": "2026-10-24",
+    "title": "AP Transport fee table (mirrors CMVR rule 81 schedule) - LMV non-transport Rs 600",
+    "url": "https://aptransport.org/html/fees-registration.html"
+   },
+   "smart_card_fee_evidence": "CONFLICTING",
+   "smart_card_fee_note": "CMVR rule 81 note: Rs 200 extra for smart-card RC (Himachal copy) vs laminated-card reading (MoRTH 2023 circular). Amount agrees (Rs 200); applicability wording conflicts.",
+   "smart_card_fee_paise": 20000,
+   "smart_card_fee_sources": [
+    {
+     "accessed": "2026-10-24",
+     "title": "HP copy of CMVR rule 81",
+     "url": "https://himachal.gov.in/WriteReadData/l892s/3_l892s/rule81_cmvr-74305708.pdf"
+    },
+    {
+     "accessed": "2026-10-24",
+     "title": "MoRTH circular 18-07-2023 quoting rule 81 note 2",
+     "url": "https://morth.nic.in/sites/default/files/circulars_document/2-RT-11036-219-2021-MVL dated 18-07-2023001.pdf"
+    }
+   ]
+  },
+  "label": "ESTIMATE",
+  "rounding": "Each computed amount rounded half up to the whole rupee (Q-018).",
+  "ruleset_version": "2026.10.24-p0",
+  "slab_semantics": "A slab applies when base <= upto_paise (inclusive upper bound); upto_paise null = no upper bound. Base = vehicle price (ex-showroom minus discount) (ASSUMPTION Q-015).",
+  "states": {
+   "DL": {
+    "cities": [
+     "Delhi"
+    ],
+    "effective_from": "UNVERIFIED",
+    "evidence": "SECONDARY",
+    "fuel_evidence": {
+     "CNG": "UNVERIFIED",
+     "DIESEL": "SECONDARY",
+     "EV": "UNVERIFIED",
+     "HYBRID": "UNVERIFIED",
+     "PETROL": "SECONDARY"
+    },
+    "max_tax_paise": null,
+    "name": "Delhi",
+    "notes": "Diesel = petrol x 1.25 (matches a source describing a 25 % diesel surcharge). One 2026 calculator splits the lowest band at Rs 4/6 lakh instead - minority view, recorded not used. EV exemption scope disputed across sources -> UNVERIFIED. MCD parking charge not estimated.",
+    "slabs": {
+     "DIESEL": [
+      {
+       "rate_bp": 500,
+       "upto_paise": 60000000
+      },
+      {
+       "rate_bp": 875,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1250,
+       "upto_paise": null
+      }
+     ],
+     "PETROL": [
+      {
+       "rate_bp": 400,
+       "upto_paise": 60000000
+      },
+      {
+       "rate_bp": 700,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1000,
+       "upto_paise": null
+      }
+     ]
+    },
+    "sources": [
+     {
+      "accessed": "2026-10-24",
+      "title": "ICICI Lombard - Road tax in Delhi for new cars",
+      "url": "https://www.icicilombard.com/blogs/car-insurance/mb/road-tax-in-delhi-for-new-cars"
+     },
+     {
+      "accessed": "2026-10-24",
+      "title": "SBI General - Delhi road tax",
+      "url": "https://www.sbigeneral.in/blog/motor-insurance/rto/delhi-road-tax"
+     },
+     {
+      "accessed": "2026-10-24",
+      "title": "Paisabazaar - Road tax Delhi (25 % diesel surcharge)",
+      "url": "https://www.paisabazaar.com/tax/road-tax-delhi/"
+     }
+    ]
+   },
+   "KA": {
+    "cess_on_tax_bp": 1100,
+    "cities": [
+     "Bengaluru"
+    ],
+    "effective_from": "2026-04-01",
+    "evidence": "SECONDARY",
+    "fixed_cess_paise": 100000,
+    "fuel_evidence": {
+     "CNG": "SECONDARY",
+     "DIESEL": "SECONDARY",
+     "EV": "SECONDARY",
+     "HYBRID": "SECONDARY",
+     "PETROL": "SECONDARY"
+    },
+    "max_tax_paise": null,
+    "name": "Karnataka",
+    "notes": "Source table is fuel-agnostic for ICE cars (cost-based, floor area <= 5 sq m). The source's own text puts exactly Rs 10 lakh in the 14 % slab while its table puts it at 17 % - Convoy uses inclusive upper bounds (Rs 10 lakh -> 14 %), consistent with 'above Rs 10 lakh up to Rs 20 lakh' wording. EV slabs effective 2026-04-01 per the same source. Rs 1,000 cess corroborated by Karnataka Bill 50 of 2024 summary.",
+    "slabs": {
+     "CNG": [
+      {
+       "rate_bp": 1300,
+       "upto_paise": 50000000
+      },
+      {
+       "rate_bp": 1400,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1700,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1800,
+       "upto_paise": null
+      }
+     ],
+     "DIESEL": [
+      {
+       "rate_bp": 1300,
+       "upto_paise": 50000000
+      },
+      {
+       "rate_bp": 1400,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1700,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1800,
+       "upto_paise": null
+      }
+     ],
+     "EV": [
+      {
+       "rate_bp": 500,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 800,
+       "upto_paise": 250000000
+      },
+      {
+       "rate_bp": 1000,
+       "upto_paise": null
+      }
+     ],
+     "HYBRID": [
+      {
+       "rate_bp": 1300,
+       "upto_paise": 50000000
+      },
+      {
+       "rate_bp": 1400,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1700,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1800,
+       "upto_paise": null
+      }
+     ],
+     "PETROL": [
+      {
+       "rate_bp": 1300,
+       "upto_paise": 50000000
+      },
+      {
+       "rate_bp": 1400,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1700,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1800,
+       "upto_paise": null
+      }
+     ]
+    },
+    "sources": [
+     {
+      "accessed": "2026-10-24",
+      "title": "Spinny - Road tax in Karnataka (updated 2026)",
+      "url": "https://www.spinny.com/blog/road-tax-in-karnataka-applicability-calculation-payment-more/"
+     },
+     {
+      "accessed": "2026-10-24",
+      "title": "Karnataka Motor Vehicles Taxation (Amendment) Bill 50 of 2024 (PRS) - Rs 1,000 cess",
+      "url": "https://prsindia.org/files/bills_acts/bills_states/karnataka/2024/Bill50of2024KA.pdf"
+     }
+    ]
+   },
+   "MH": {
+    "cities": [
+     "Mumbai",
+     "Pune"
+    ],
+    "effective_from": "2025-07-01",
+    "evidence": "SECONDARY",
+    "fuel_evidence": {
+     "CNG": "CONFLICTING",
+     "DIESEL": "SECONDARY",
+     "EV": "SECONDARY",
+     "HYBRID": "UNVERIFIED",
+     "PETROL": "SECONDARY"
+    },
+    "max_tax_paise": 300000000,
+    "name": "Maharashtra",
+    "notes": "CNG: one source gives 8/9/10 %, another only says '+1 percentage point'; the earlier 7/8/9 % base is itself unverified, so CNG is CONFLICTING (engine estimates but labels UNVERIFIED). HYBRID (strong/mild petrol hybrids such as Smart Hybrid) not found -> engine refuses to estimate. Company-owned vehicles pay a flat 20 % (out of scope: individuals only). Slab boundary at exactly Rs 10/20 lakh is not stated by sources (ASSUMPTION inclusive upper).",
+    "slabs": {
+     "CNG": [
+      {
+       "rate_bp": 800,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 900,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1000,
+       "upto_paise": null
+      }
+     ],
+     "DIESEL": [
+      {
+       "rate_bp": 1300,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1400,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1500,
+       "upto_paise": null
+      }
+     ],
+     "EV": [
+      {
+       "rate_bp": 0,
+       "upto_paise": null
+      }
+     ],
+     "PETROL": [
+      {
+       "rate_bp": 1100,
+       "upto_paise": 100000000
+      },
+      {
+       "rate_bp": 1200,
+       "upto_paise": 200000000
+      },
+      {
+       "rate_bp": 1300,
+       "upto_paise": null
+      }
+     ]
+    },
+    "sources": [
+     {
+      "accessed": "2026-10-24",
+      "title": "The Week (PTI) - Revised one-time tax slabs, Maharashtra, from 1 July 2025",
+      "url": "https://www.theweek.in/wire-updates/business/2025/07/01/bom2-mh-vehicles-revised-tax.html"
+     },
+     {
+      "accessed": "2026-10-24",
+      "title": "Angel One - Maharashtra Budget: CNG, LPG cars costlier",
+      "url": "https://www.angelone.in/news/market-updates/maharashtra-budget-cng-lpg-cars-costlier-high-end-evs-6-percent-tax-april-1"
+     },
+     {
+      "accessed": "2026-10-24",
+      "title": "Maharashtra Motor Vehicles Tax (Amendment) Bill 24 of 2025 (PRS)",
+      "url": "https://prsindia.org/files/bills_acts/bills_states/maharashtra/2025/Bill24of2025MH.pdf"
+     }
+    ]
+   }
+  }
+ },
+ "ruleset": {
+  "currency": "INR",
+  "deposit_amount_paise": 99900,
+  "deposit_evidence": "PLAN.md §2.3 / §10.4",
+  "discount_bases": [
+   "EX_SHOWROOM"
+  ],
+  "evidence_levels": [
+   "DEALER_CONFIRMED",
+   "CATALOGUE_ESTIMATE",
+   "UNVERIFIED"
+  ],
+  "fuels": [
+   "PETROL",
+   "DIESEL",
+   "CNG",
+   "HYBRID",
+   "EV"
+  ],
+  "max_discount_bp": 2500,
+  "money_unit": "paise",
+  "questionable_charge_codes": [
+   "HANDLING"
+  ],
+  "ruleset_version": "2026.10.24-p0"
+ },
+ "tcs": {
+  "act": "Income-tax Act, 2025 (Act No. 30 of 2025)",
+  "applies_to": "FULL_CONSIDERATION",
+  "compared_amount": "Sale consideration of the vehicle = ex-showroom price (GST-inclusive invoice value of the vehicle) minus the dealer discount on the vehicle. Excludes registration/RTO, insurance, accessories, warranty, fees (ASSUMPTION Q-001).",
+  "comparison": "STRICTLY_GREATER",
+  "creditable": "Generally creditable against the buyer's income-tax liability (PLAN §2.4 framing). Shown as 'estimated net cost' only, with an explanation; not tax advice.",
+  "effective_from": "2026-04-01",
+  "evidence_note": "Statutory text read from a third-party copy of the Act (eztax.in); the official incometaxindia.gov.in page returned HTTP 403 to automated fetch, so the official page is listed but its text was not read directly. Commencement date confirmed from the CBDT press release title and multiple reports.",
+  "open_points": [
+   "Whether GST is included in 'sale consideration' for the threshold has no post-GST CBDT clarification found (EY alert, Apr 2025). Pre-GST CBDT FAQ treated the limit as inclusive of VAT. Convoy uses the GST-inclusive vehicle price (Q-001)."
+  ],
+  "pan_not_furnished": "UNVERIFIED: a higher rate applies when the buyer's PAN is not furnished; rate not verified in P0. The engine assumes PAN furnished and the UI says so.",
+  "per": "Per vehicle sale (one buyer, one vehicle per booking in Convoy)",
+  "prior_law": "Sales before 2026-04-01: section 206C(1F) of the 1961 Act, same 1% and 'exceeding ten lakh rupees' wording (CBDT Circular 22/2016 Q&A).",
+  "provision": "Section 394(1), Table, Sl. No. 6 (formerly section 206C(1F) of the Income-tax Act, 1961)",
+  "rate_bp": 100,
+  "rounding": "Round half up to the nearest whole rupee (ASSUMPTION Q-002; the Act does not fix TCS rounding at collection).",
+  "rule": "TCS_MOTOR_VEHICLE",
+  "ruleset_version": "2026.10.24-p0",
+  "sources": [
+   {
+    "accessed": "2026-10-24",
+    "title": "Income-tax Act, 2025 - Section 394 (official, HTTP 403 to fetch)",
+    "url": "https://www.incometaxindia.gov.in/w/section-394-6",
+    "used_for": "provision reference"
+   },
+   {
+    "accessed": "2026-10-24",
+    "title": "eztax.in - Income-tax Act 2025 Section 394 table Sl. No. 6",
+    "url": "https://eztax.in/income-tax-act-2025/section-394",
+    "used_for": "statutory text: 'Sale consideration exceeding ten lakh rupees', Seller, 1%"
+   },
+   {
+    "accessed": "2026-10-24",
+    "title": "CBDT - Income-tax Act, 2025 comes into force from 1st April 2026",
+    "url": "https://www.incometaxindia.gov.in/w/income-tax-act-2025-comes-into-force-from-1st-april-2026",
+    "used_for": "effective date"
+   },
+   {
+    "accessed": "2026-10-24",
+    "title": "TDSMAN - TCS on sale of motor vehicles, Section 394(1) (206C(1F))",
+    "url": "https://blog.tdsman.com/2026/10/tcs-on-sale-of-motor-vehicles-and-luxury-goods-section-3941-206c1f/",
+    "used_for": "secondary confirmation: 1%, per-transaction threshold, effective 2026-04-01"
+   },
+   {
+    "accessed": "2026-10-24",
+    "title": "taxguru - CBDT Q&A on TCS on sale of motor vehicle (Circular 22/2016)",
+    "url": "https://taxguru.in/income-tax/7-tcs-sale-motor-vehicle.html",
+    "used_for": "retail-sale scope; 1% on full consideration under the old Act"
+   },
+   {
+    "accessed": "2026-10-24",
+    "title": "EY alert - CBDT notifies ten luxury goods for TCS at 1%",
+    "url": "https://www.ey.com/content/dam/ey-unified-site/ey-com/en-in/alerts-hub/2025/04/cbdt-notifies-ten-luxury-goods-for-income-tax-collection-at-source-at-the-rate-of-1pc.pdf",
+    "used_for": "GST-inclusion question unresolved"
+   },
+   {
+    "accessed": "not re-read in P0",
+    "title": "PLAN.md rate chart reference (studycafe)",
+    "url": "https://studycafe.in/tcs-rate-chart-as-per-income-tax-act-2025-for-tax-year-2026-27-419612.html",
+    "used_for": "original PLAN citation"
+   }
+  ],
+  "status": "VERIFIED",
+  "statutory_text": "Sale consideration exceeding ten lakh rupees in case of - (a) motor vehicle; or (b) any other goods, as may be notified by the Central Government. Person responsible: Seller. Rate: 1%.",
+  "threshold_paise": 100000000
+ }
+}

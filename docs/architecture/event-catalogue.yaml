@@ -8,6 +8,11 @@
 # Transport: one SNS topic per owner. Owners with FIFO events also have one SNS FIFO topic
 # (<owner>-events.fifo, MessageGroupId = aggregate_id, content-based dedup OFF, MessageDeduplicationId = event_id).
 # Each consumer has one SQS queue per topic (+ DLQ, maxReceiveCount 5) with an SNS filter policy on event_type.
+# AMENDMENT-006: an SNS FIFO topic can deliver to SQS standard queues (AWS What's New, 2023-09-14,
+# https://aws.amazon.com/about-aws/whats-new/2023/09/amazon-sns-fifo-topics-message-delivery-sqs-standard-queues/ , accessed 2026-10-24;
+# standard subscribers get best-effort ordering and at-least-once delivery). Consumers that need pool order
+# (quote, order, realtime, and payment for membership events) subscribe to pool-events.fifo with FIFO queues;
+# notification and audit subscribe with standard queues and rely on inbox dedupe + aggregate_version.
 envelope: events/envelope.schema.json
 fifo_policy: "FIFO only where consumers must apply events in order per aggregate and cannot cheaply recompute: pool membership counts and pool/round lifecycle (MessageGroupId = pool_id). All consumers additionally check aggregate_version: gap -> park and retry, stale -> ignore and count, gap older than 5 min -> fetch owner snapshot (PLAN §4.3.3)."
 events:
@@ -23,18 +28,18 @@ events:
   # ---------------- pool (FIFO: MessageGroupId = pool_id)
   - {name: PoolCreated, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, model_id: uuid, city: string, state: string, min_members: int, forming_deadline: timestamp, purchase_window_end: timestamp, accepted_variant_ids: "uuid[]"}}
   - {name: MemberJoined, owner: pool, consumers: [realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, interested_count: int, committed_count: int}}
-  - {name: MemberCommitted, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, buyer_id: uuid, payment_id: uuid, interested_count: int, committed_count: int}}
-  - {name: MemberLeft, owner: pool, consumers: [payment, realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, buyer_id: uuid, payment_id: "uuid?", reason: "enum(BUYER_LEFT)", interested_count: int, committed_count: int}}
-  - {name: MemberReleased, owner: pool, consumers: [payment, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, buyer_id: uuid, payment_id: uuid, reason: "enum(LATE_CAPTURE)"}}
-  - {name: AcceptanceChanged, owner: pool, consumers: [realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, quote_id: "uuid?", variant_id: "uuid?", acceptance_counts: object}}
+  - {name: MemberCommitted, owner: pool, consumers: [quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, buyer_id: uuid, payment_id: uuid, interested_count: int, committed_count: int, kept_from_previous_round: bool}}
+  - {name: MemberLeft, owner: pool, consumers: [quote, payment, realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, buyer_id: uuid, payment_id: "uuid?", reason: "enum(BUYER_LEFT)", interested_count: int, committed_count: int}}
+  - {name: MemberReleased, owner: pool, consumers: [payment, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, buyer_id: uuid, payment_id: uuid, reason: "enum(LATE_CAPTURE|REROUND_REFUND_REQUESTED|REROUND_NO_RESPONSE)"}}
+  - {name: AcceptanceChanged, owner: pool, consumers: [quote, order, realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, membership_id: uuid, quote_id: "uuid?", variant_id: "uuid?", acceptance_counts: object}}
   - {name: PoolReady, owner: pool, consumers: [pool, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, committed_count: int}}
-  - {name: QuoteRoundOpened, owner: pool, consumers: [quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_id: uuid, round_set: int, round_no: int, kind: "enum(SEALED|FINAL)", deadline: timestamp, invited_dealership_ids: "uuid[]", accepted_variant_ids: "uuid[]", committed_count: int}}
-  - {name: FinalRoundOpened, owner: pool, consumers: [quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_id: uuid, round_set: int, round_no: int, kind: "enum(SEALED|FINAL)", deadline: timestamp, invited_dealership_ids: "uuid[]", accepted_variant_ids: "uuid[]", committed_count: int}}
+  - {name: QuoteRoundOpened, owner: pool, consumers: [quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_id: uuid, round_set: int, round_no: int, kind: "enum(SEALED|FINAL)", deadline: timestamp, invited_dealership_ids: "uuid[]", accepted_variant_ids: "uuid[]", committed_count: int, state_code: string, variants: "object[]"}}
+  - {name: FinalRoundOpened, owner: pool, consumers: [quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_id: uuid, round_set: int, round_no: int, kind: "enum(SEALED|FINAL)", deadline: timestamp, invited_dealership_ids: "uuid[]", accepted_variant_ids: "uuid[]", committed_count: int, state_code: string, variants: "object[]"}}
   - {name: RoundClosed, owner: pool, consumers: [quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_id: uuid, kind: "enum(SEALED|FINAL)", deadline: timestamp, closed_at: timestamp, valid_quote_count: int}}
   - {name: DecisionOpened, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, decision_deadline: timestamp, final_quote_ids: "uuid[]"}}
   - {name: AcceptancesFrozen, owner: pool, consumers: [order, payment, quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_set: int, confirmation_deadline: timestamp, acceptances: "object[]", acceptance_counts: object, released_buyers: "object[]"}}
   - {name: PoolClosed, owner: pool, consumers: [payment, quote, realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, end_state: "enum(EXPIRED|NO_QUOTES|CANCELLED)", end_reason: string}}
-  - {name: PoolReopened, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_set: int, forming_deadline: timestamp}}
+  - {name: PoolReopened, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, round_set: int, forming_deadline: timestamp, choice_buyer_ids: "uuid[]", choice_deadline: "timestamp?"}}
   - {name: PoolBookingStarted, owner: pool, consumers: [realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, bookings_count: int}}
   - {name: PoolCompleted, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid}}
   # ---------------- dealer
@@ -46,7 +51,7 @@ events:
   - {name: QuoteSubmitted, owner: quote, consumers: [realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, version_no: int, snapshot_sha256: string, committed_at: timestamp}}
   - {name: QuoteRevised, owner: quote, consumers: [realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, version_no: int, snapshot_sha256: string, committed_at: timestamp}}
   - {name: QuoteWithdrawn, owner: quote, consumers: [order, pool, dealer, realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, after_final: bool, reason: string}}
-  - {name: QuoteFinalised, owner: quote, consumers: [pool, order, realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, final_version_no: int, variant_ids: "uuid[]", min_fulfilment: int, max_units: "int?", snapshot_sha256: string}}
+  - {name: QuoteFinalised, owner: quote, consumers: [pool, order, realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, final_version_no: int, variant_ids: "uuid[]", min_fulfilment: int, max_units: "int?", snapshot_sha256: string, ruleset_version: string, tiers: "object[]", variant_inputs: "object[]"}}
   - {name: QuoteExpired, owner: quote, consumers: [pool, realtime, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, reason: "enum(NOT_SUBMITTED|NO_ACCEPTANCES|POOL_CLOSED)"}}
   - {name: QuoteVoided, owner: quote, consumers: [dealer, realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, confirmed_count: int, min_fulfilment: int}}
   - {name: StockReserved, owner: quote, consumers: [order, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, booking_id: uuid, variant_id: uuid, colour: string}}
@@ -55,14 +60,14 @@ events:
   - {name: RankChanged, owner: quote, consumers: [realtime, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, variant_id: uuid, rank: int, of_n: int, rule_version: string}}
   # ---------------- order (saga orchestrator)
   - {name: OrderCreated, owner: order, consumers: [realtime, notification, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, buyer_id: uuid, quote_id: uuid, variant_id: uuid, ceiling_cash_payable_paise: paise, ceiling_snapshot_sha256: string, confirmation_deadline: timestamp}}
-  - {name: ConfirmationRecorded, owner: order, consumers: [realtime, notification, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, quote_id: uuid, confirmed_at: timestamp, quote_confirmed_count: int}}
+  - {name: ConfirmationRecorded, owner: order, consumers: [quote, realtime, notification, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, quote_id: uuid, confirmed_at: timestamp, quote_confirmed_count: int}}
   - {name: ConfirmationDeclined, owner: order, consumers: [realtime, notification, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, reason: "enum(BUYER_DECLINED|MISSED_CONFIRMATION_DEADLINE)"}}
   - {name: OrderCancelled, owner: order, consumers: [realtime, notification, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, reason: string}}
   - {name: DepositRefundRequested, owner: order, consumers: [payment, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, buyer_id: uuid, reason: "enum(QUOTE_VOID|DEALER_CANCELLED|STOCK_UNAVAILABLE|DEALER_NOT_HONOURED|BUYER_DECLINED|MISSED_CONFIRMATION_DEADLINE|BUYER_CANCELLED|ADMIN_DISPUTE_RESOLUTION|DEPOSIT_UNAVAILABLE)"}}
-  - {name: DepositApplyRequested, owner: order, consumers: [payment, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, buyer_id: uuid, booking_id: uuid}}
+  - {name: DepositHoldRequested, owner: order, consumers: [payment, audit], aggregate: order, fifo: false, payload: {order_id: uuid, pool_id: uuid, buyer_id: uuid, booking_id: uuid}}
   - {name: StockReservationRequested, owner: order, consumers: [quote, audit], aggregate: order, fifo: false, payload: {order_id: uuid, booking_id: uuid, quote_id: uuid, variant_id: uuid, colour: string}}
   - {name: TierResolved, owner: order, consumers: [quote, realtime, notification, audit], aggregate: order_pool_resolution, fifo: false, payload: {pool_id: uuid, quote_id: uuid, confirmed_count: int, min_fulfilment: int, outcome: "enum(RESOLVED|VOID)", resolved_tier: "int?", resolved_cash_payable_paise: "paise?"}}
-  - {name: BookingsIssued, owner: order, consumers: [pool, audit], aggregate: order_pool_resolution, fifo: false, payload: {pool_id: uuid, round_set: int, bookings_count: int, void_quote_count: int}}
+  - {name: BookingsIssued, owner: order, consumers: [pool, audit], aggregate: order_pool_resolution, fifo: false, payload: {pool_id: uuid, round_set: int, bookings_count: int, void_quote_count: int, void_buyer_ids: "uuid[]"}}
   - {name: BookingIssued, owner: order, consumers: [dealer, realtime, notification, audit], aggregate: booking, fifo: false, payload: {booking_id: uuid, order_id: uuid, pool_id: uuid, dealership_id: uuid, variant_id: uuid, final_cash_payable_paise: paise, promised_delivery_date: "date?", dealer_confirm_deadline: timestamp}}
   - {name: BookingConfirmedByDealer, owner: order, consumers: [realtime, notification, audit], aggregate: booking, fifo: false, payload: {booking_id: uuid, dealership_id: uuid}}
   - {name: DeliveryScheduled, owner: order, consumers: [realtime, notification, audit], aggregate: booking, fifo: false, payload: {booking_id: uuid, scheduled_date: date, later_than_promised: bool}}
@@ -78,9 +83,9 @@ events:
   - {name: PaymentCaptured, owner: payment, consumers: [pool, order, realtime, notification, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, buyer_id: uuid, pool_id: uuid, amount_paise: paise, late: bool, test_mode: bool}}
   - {name: PaymentFailed, owner: payment, consumers: [pool, realtime, notification, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, buyer_id: uuid, pool_id: uuid, failure_code: string}}
   - {name: PaymentVoided, owner: payment, consumers: [pool, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, buyer_id: uuid, pool_id: uuid}}
-  - {name: DepositApplied, owner: payment, consumers: [order, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, booking_id: uuid}}
-  - {name: DepositApplyRejected, owner: payment, consumers: [order, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, booking_id: uuid, reason: string}}
-  - {name: DepositSettled, owner: payment, consumers: [audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, booking_id: uuid}}
+  - {name: DepositHeld, owner: payment, consumers: [order, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, booking_id: uuid}}
+  - {name: DepositHoldRejected, owner: payment, consumers: [order, audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, booking_id: uuid, reason: string}}
+  - {name: DepositReleased, owner: payment, consumers: [audit], aggregate: payment, fifo: false, payload: {payment_id: uuid, booking_id: uuid}}
   - {name: RefundRequested, owner: payment, consumers: [notification, audit], aggregate: payment, fifo: false, payload: {refund_id: uuid, payment_id: uuid, buyer_id: uuid, reason_code: string, amount_paise: paise}}
   - {name: RefundCompleted, owner: payment, consumers: [realtime, notification, audit], aggregate: payment, fifo: false, payload: {refund_id: uuid, payment_id: uuid, buyer_id: uuid, manual: bool}}
   - {name: RefundFailed, owner: payment, consumers: [notification, audit], aggregate: payment, fifo: false, payload: {refund_id: uuid, payment_id: uuid, attempts: int, failure_reason: string}}

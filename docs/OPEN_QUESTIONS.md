@@ -34,6 +34,7 @@ Format: question · options · **default chosen** · impact.
 - Impact: no extension feature. An admin can only cancel the pool.
 
 ### Q-007 — What does the single re-round after a VOID look like?
+> **Superseded by AMENDMENT-002 (P1).** VOID deposits are not refunded when the pool re-rounds; each affected buyer chooses keep or refund within 48 h, and no response means refund.
 - Options: (a) reopen quoting with the same commitments; (b) return to FORMING and have members commit again.
 - **Default: (b).** PLAN §2.2.6 requires automatic refunds on VOID, so the original commitments no longer hold a deposit.
 - Impact: POOL-T09. `round_set = 2`. A re-round is allowed only if a full cycle fits before `purchase_window_end`.
@@ -48,6 +49,7 @@ Format: question · options · **default chosen** · impact.
 - Impact: refund reason `POOL_EXPIRED` for buyers whose deposit was not already refunded.
 
 ### Q-010 — Which payment states are added to PLAN's list?
+> **Clarified by AMENDMENT-003 (P1).** `APPLIED_TO_BOOKING` is renamed `HELD_FOR_BOOKING`; `SETTLED` is replaced by `RELEASED` (deposit returned after delivery). The deposit is never paid to the dealer.
 - **Default:** add `VOIDED_UNPAID` (abandoned or cancelled before capture), `REFUND_PENDING` and the terminal `SETTLED` (applied to a delivered booking). APPLIED_TO_BOOKING stays non-terminal, because a booking can still be cancelled and refunded.
 - Impact: this keeps the invariant "exactly one terminal outcome (applied or refunded)" true.
 
@@ -113,6 +115,7 @@ Format: question · options · **default chosen** · impact.
 - Impact: limits the re-round (Q-007).
 
 ### Q-026 — Can refunds be partial, or carry fees?
+> **Clarified by AMENDMENT-003 (P1).** Every deposit ends REFUNDED or RELEASED, both full. The success fee is a separate dealer receivable.
 - **Default:** all refunds are full deposit refunds. No fees are retained in test mode.
 - Impact: refund amount = payment amount.
 
@@ -133,6 +136,7 @@ Format: question · options · **default chosen** · impact.
 - Impact: no unverified default amounts.
 
 ### Q-031 — Which insurance figure does ranking use?
+> **Tightened by AMENDMENT-004 (P1).** The dealer figure is used only if it declares exactly the baseline cover and is marked binding; otherwise the baseline estimate.
 - **Default:** the dealer's own figure for the standard baseline cover when supplied, otherwise the catalogue estimate.
 - Impact: a buyer actually pays the dealer's figure, so ranking reflects it.
 
@@ -145,6 +149,7 @@ Format: question · options · **default chosen** · impact.
 - Impact: ledger simplicity, documented.
 
 ### Q-034 — Which tier does ranking use?
+> **Extended by AMENDMENT-005 (P1).** Buyers also see a labelled, non-guaranteed "if confirmed count stays at N" projection beside the ceiling.
 - **Default:** the dealer's ceiling tier (the tier containing `min_fulfilment`).
 - Impact: dealers compete on the guaranteed maximum.
 
@@ -169,5 +174,16 @@ Format: question · options · **default chosen** · impact.
 - Impact: one order per buyer per pool.
 
 ### Q-040 — What is the second-admin approval threshold?
+> **Superseded by AMENDMENT-001 (P1).** Every manual refund, ledger adjustment or override needs a second admin, whatever the amount; automatic rule-driven refunds do not.
 - **Default: ₹5,000**, configurable. Deposit refunds (₹999) are below it; money outcomes of disputes above it need a second admin.
 - Impact: AZ-INT-08.
+
+### Q-041 — How much is the platform success fee, and when is it charged?
+- Added in P1 by AMENDMENT-003, which makes the fee a separate receivable from the dealer. PLAN.md does not state an amount.
+- **Default:** `success_fee_paise` is unset, so no J-FEE entry is posted. When set, J-FEE (Dr 1300 / Cr 4100) is posted when a booking is delivered (PAY-T09).
+- Impact: none for the P1 journey, which ends at the booking voucher. Needs a business decision before any dealer agreement.
+
+### Q-042 — What is the default pool minimum (`min_members`)?
+- Added in P1. PLAN.md requires a minimum before quoting (POOL-T01) but states no number.
+- **Default:** a required setting, `pool.min-members`. The demo profile uses 1 so a single test buyer can run the journey. No production value is set; it is a business decision.
+- Impact: forming deadline outcomes (POOL-T11) and dealer interest; set before any real pilot.

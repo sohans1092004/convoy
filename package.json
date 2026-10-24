@@ -1,0 +1,11 @@
+{
+  "name": "convoy",
+  "private": true,
+  "packageManager": "pnpm@10.18.2",
+  "engines": { "node": ">=22.12 <23" },
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck"
+  }
+}

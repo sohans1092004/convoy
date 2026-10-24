@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application.name: pool
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/convoy}
+    username: pool
+    password: ${DB_PASSWORD}
+    hikari.maximum-pool-size: ${DB_POOL_SIZE:8}
+    hikari.schema: pool
+  flyway:
+    schemas: pool
+    default-schema: pool
+    locations: classpath:db/platform,classpath:db/migration
+  threads.virtual.enabled: true
+logging.structured.format.console: ecs
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+  endpoint.health.probes.enabled: true
+convoy:
+  service-name: pool
+  identity-url: ${IDENTITY_URL:http://identity:8080}
+  client-id: pool
+  client-secret: ${CLIENT_SECRET_POOL:}
+  issuers:
+    convoy-gateway: ${GATEWAY_JWKS:http://gateway:8080/.well-known/jwks.json}
+    convoy-identity: ${IDENTITY_JWKS:http://identity:8080/.well-known/jwks.json}
+  aws:
+    endpoint: ${AWS_ENDPOINT:}
+    region: ${AWS_REGION:ap-south-1}
+pool:
+  min-members: ${POOL_MIN_MEMBERS:1}
+  sweeper-interval: ${POOL_SWEEPER_INTERVAL:5s}
+  durations:
+    forming: ${POOL_FORMING:P7D}
+    sealed-round: ${DEMO_SEALED_ROUND_SECONDS:259200}s
+    final-round: ${DEMO_FINAL_ROUND_SECONDS:86400}s
+    decision: ${DEMO_DECISION_SECONDS:172800}s
+    confirmation: ${DEMO_CONFIRMATION_SECONDS:172800}s
+    dealer-wait: P3D
+  terms-version: "2026-10-24-p0"
+  services:
+    payment: ${PAYMENT_URL:http://payment:8080}
+    quote: ${QUOTE_URL:http://quote:8080}
+    dealer: ${DEALER_URL:http://dealer:8080}
+    catalog: ${CATALOG_URL:http://catalog:8080}

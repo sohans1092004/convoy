@@ -2,9 +2,10 @@
  "accounts": {
   "1100": "Razorpay clearing (asset)",
   "1200": "Platform bank (asset)",
+  "1300": "Success fees receivable from dealers (asset)",
   "2100": "Customer deposits held (liability)",
-  "2200": "Deposits applied to bookings (liability)",
-  "2300": "Dealer settlement payable (liability)"
+  "2200": "Deposits held for bookings (liability)",
+  "4100": "Success fee revenue (income)"
  },
  "cases": [
   {
@@ -49,6 +50,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "BUYER_LEFT",
      "state": "REFUNDED"
     },
@@ -100,6 +102,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "NO_ACCEPTANCE",
      "state": "REFUNDED"
     },
@@ -151,6 +154,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "POOL_EXPIRED",
      "state": "REFUNDED"
     },
@@ -202,6 +206,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "POOL_NO_QUOTES",
      "state": "REFUNDED"
     },
@@ -253,6 +258,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "POOL_CANCELLED",
      "state": "REFUNDED"
     },
@@ -269,6 +275,7 @@
     "accept",
     "confirm",
     "TierResolved(VOID)",
+    "BookingsIssued(bookings_count >= 1)",
     "webhook refund.processed"
    ],
    "expected": {
@@ -306,17 +313,18 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "QUOTE_VOID",
      "state": "REFUNDED"
     },
     "side_effects": [
      "buyer notified with reason",
-     "pool may re-round once"
+     "offered similar pools"
     ]
    },
    "id": "D06",
    "plan_row": "Quote VOID",
-   "situation": "Confirmed count below minimum fulfilment"
+   "situation": "Quote VOID while another quote in the pool resolves (bookings_count >= 1): no re-round, refunded now"
   },
   {
    "events": [
@@ -361,6 +369,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "DEALER_CANCELLED",
      "state": "REFUNDED"
     },
@@ -380,7 +389,7 @@
     "accept",
     "confirm",
     "TierResolved(RESOLVED)",
-    "DepositApplyRequested",
+    "DepositHoldRequested",
     "StockUnavailable",
     "webhook refund.processed"
    ],
@@ -402,7 +411,7 @@
       ]
      },
      {
-      "entry": "J-APPLY",
+      "entry": "J-HOLD",
       "lines": [
        {
         "account": "2100",
@@ -434,6 +443,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "STOCK_UNAVAILABLE",
      "state": "REFUNDED"
     },
@@ -454,7 +464,7 @@
     "accept",
     "confirm",
     "TierResolved(RESOLVED)",
-    "DepositApplyRequested",
+    "DepositHoldRequested",
     "BookingCancelled(DEALER_CANCELLED)",
     "webhook refund.processed"
    ],
@@ -476,7 +486,7 @@
       ]
      },
      {
-      "entry": "J-APPLY",
+      "entry": "J-HOLD",
       "lines": [
        {
         "account": "2100",
@@ -508,6 +518,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "DEALER_CANCELLED",
      "state": "REFUNDED"
     },
@@ -527,7 +538,7 @@
     "accept",
     "confirm",
     "TierResolved(RESOLVED)",
-    "DepositApplyRequested",
+    "DepositHoldRequested",
     "dealer_confirm_deadline passes",
     "webhook refund.processed"
    ],
@@ -549,7 +560,7 @@
       ]
      },
      {
-      "entry": "J-APPLY",
+      "entry": "J-HOLD",
       "lines": [
        {
         "account": "2100",
@@ -581,6 +592,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "DEALER_NOT_HONOURED",
      "state": "REFUNDED"
     },
@@ -637,6 +649,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "MISSED_CONFIRMATION_DEADLINE",
      "state": "REFUNDED"
     },
@@ -689,6 +702,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "BUYER_DECLINED",
      "state": "REFUNDED"
     },
@@ -742,6 +756,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "BUYER_CANCELLED",
      "state": "REFUNDED"
     },
@@ -760,7 +775,7 @@
     "accept",
     "confirm",
     "TierResolved(RESOLVED)",
-    "DepositApplyRequested",
+    "DepositHoldRequested",
     "BookingCancelled(BUYER_CANCELLED)",
     "webhook refund.processed"
    ],
@@ -782,7 +797,7 @@
       ]
      },
      {
-      "entry": "J-APPLY",
+      "entry": "J-HOLD",
       "lines": [
        {
         "account": "2100",
@@ -814,6 +829,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "BUYER_CANCELLED",
      "state": "REFUNDED"
     },
@@ -867,6 +883,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "LATE_CAPTURE",
      "state": "REFUNDED"
     },
@@ -918,6 +935,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "LATE_CAPTURE",
      "state": "REFUNDED"
     },
@@ -1040,6 +1058,7 @@
     ],
     "payment_state": "REFUNDED",
     "refund": {
+     "kind": "REFUND",
      "reason_code": "BUYER_LEFT",
      "state": "REFUNDED"
     },
@@ -1056,8 +1075,9 @@
     "accept",
     "confirm",
     "TierResolved(RESOLVED)",
-    "DepositApplyRequested",
-    "BookingDelivered"
+    "DepositHoldRequested",
+    "BookingDelivered",
+    "webhook refund.processed"
    ],
    "expected": {
     "ledger": [
@@ -1077,7 +1097,7 @@
       ]
      },
      {
-      "entry": "J-APPLY",
+      "entry": "J-HOLD",
       "lines": [
        {
         "account": "2100",
@@ -1092,7 +1112,7 @@
       ]
      },
      {
-      "entry": "J-SETTLE",
+      "entry": "J-RELEASE",
       "lines": [
        {
         "account": "2200",
@@ -1100,20 +1120,27 @@
         "dr": 99900
        },
        {
-        "account": "2300",
+        "account": "1100",
         "cr": 99900,
         "dr": 0
        }
       ]
      }
     ],
-    "payment_state": "SETTLED",
-    "refund": null,
-    "side_effects": []
+    "payment_state": "RELEASED",
+    "refund": {
+     "kind": "RELEASE",
+     "reason_code": "DELIVERY_RELEASE",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "deposit returned in full after delivery (AMENDMENT-003)",
+     "success fee is a separate dealer receivable (J-FEE 1300/4100, only if success_fee_paise is configured, Q-041)"
+    ]
    },
    "id": "D20",
    "plan_row": "(happy path)",
-   "situation": "Booking delivered: deposit settled"
+   "situation": "Booking delivered: deposit released"
   },
   {
    "events": [
@@ -1164,7 +1191,8 @@
     },
     "side_effects": [
      "alarm REFUND_STUCK",
-     "admin queue entry"
+     "admin queue entry",
+     "resolution needs approval by a second, different admin (AMENDMENT-001)"
     ]
    },
    "id": "D21",
@@ -1221,6 +1249,223 @@
    "id": "D23",
    "plan_row": "(abandoned)",
    "situation": "Checkout never completed within 24 h"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(VOID)",
+    "BookingsIssued(bookings_count = 0)",
+    "PoolReopened",
+    "reround-choice KEEP"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "CAPTURED",
+    "refund": null,
+    "side_effects": [
+     "membership COMMITTED for round_set 2",
+     "no new payment",
+     "committed_count +1"
+    ]
+   },
+   "id": "D24",
+   "plan_row": "Quote VOID, re-round (AMENDMENT-002)",
+   "situation": "Every quote VOID, pool eligible for re-round; buyer keeps the commitment"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(VOID)",
+    "BookingsIssued(bookings_count = 0)",
+    "PoolReopened",
+    "reround-choice REFUND",
+    "MemberReleased(REROUND_REFUND_REQUESTED)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "kind": "REFUND",
+     "reason_code": "REROUND_REFUND_REQUESTED",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D25",
+   "plan_row": "Quote VOID, re-round (AMENDMENT-002)",
+   "situation": "Every quote VOID, pool eligible for re-round; buyer asks for a refund"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(VOID)",
+    "BookingsIssued(bookings_count = 0)",
+    "PoolReopened",
+    "choice_deadline passes",
+    "MemberReleased(REROUND_NO_RESPONSE)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "kind": "REFUND",
+     "reason_code": "REROUND_NO_RESPONSE",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "no response means refund"
+    ]
+   },
+   "id": "D26",
+   "plan_row": "Quote VOID, re-round (AMENDMENT-002)",
+   "situation": "Every quote VOID, pool eligible for re-round; buyer does not respond within 48 h"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(VOID)",
+    "BookingsIssued(bookings_count = 0)",
+    "PoolClosed(EXPIRED, ALL_QUOTES_VOID)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "kind": "REFUND",
+     "reason_code": "QUOTE_VOID",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "automatic refund per PLAN §2.2"
+    ]
+   },
+   "id": "D27",
+   "plan_row": "Quote VOID, no re-round",
+   "situation": "Every quote VOID, pool not eligible (re-round used or purchase window too short)"
   }
  ],
  "deposit_amount_paise": 99900

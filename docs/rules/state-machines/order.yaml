@@ -4,7 +4,7 @@ aggregate: order.orders
 version_field: version
 initial: CONFIRMATION_PENDING
 plan_ref: "PLAN.md §2.2, §2.3, §2.6, §3.1(7-8); ADR-004 (order saga is orchestrated)"
-notes: "One order per accepting buyer per pool, created from AcceptancesFrozen. order is the saga orchestrator: it owns confirmation, tier resolution (one transaction per pool, order.pool_resolutions), booking issue, and asks payment to apply or refund the deposit. Saga state is persisted in order.saga_steps (step, status, attempts, next_attempt_at)."
+notes: "One order per accepting buyer per pool, created from AcceptancesFrozen. order is the saga orchestrator: it owns confirmation, tier resolution (one transaction per pool, order.pool_resolutions), booking issue, and asks payment to hold or refund the deposit. Saga state is persisted in order.saga_steps (step, status, attempts, next_attempt_at)."
 states:
   - {name: CONFIRMATION_PENDING, terminal: false, description: "Ceiling price shown; waiting for buyer to confirm before confirmation_deadline"}
   - {name: CONFIRMED, terminal: false, description: "Buyer confirmed at ceiling or lower; counted for the tier at the deadline"}
@@ -80,7 +80,7 @@ transitions:
     to: VOIDED
     trigger: {kind: deadline, by: system, via: "resolution job (one transaction per pool, order.pool_resolutions row locked FOR UPDATE)"}
     guard: "now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) < quote.min_fulfilment"
-    effects: ["UPDATE order.orders SET state='VOIDED'", "INSERT order.outbox(TierResolved{outcome: VOID}, DepositRefundRequested{reason: QUOTE_VOID})", "UPDATE order.pool_resolutions SET state='DONE' (with BookingsIssued summary)"]
+    effects: ["UPDATE order.orders SET state='VOIDED'", "INSERT order.outbox(TierResolved{outcome: VOID})", "if the pool resolution has bookings_count >= 1 (no re-round possible): INSERT order.outbox(DepositRefundRequested{reason: QUOTE_VOID}); if bookings_count = 0: no refund here - the buyer goes into BookingsIssued.void_buyer_ids and pool decides re-round (POOL-T09 -> buyer choice, AMENDMENT-002) or expiry (POOL-T10 -> refund on PoolClosed)", "UPDATE order.pool_resolutions SET state='DONE' (with BookingsIssued summary)"]
     emits: [TierResolved, DepositRefundRequested, BookingsIssued]
     idempotent_repeat: "pool_resolutions.state='DONE' makes a re-run a no-op"
     late_arrival: "Not applicable."
@@ -92,12 +92,12 @@ transitions:
     to: BOOKED
     trigger: {kind: deadline, by: system, via: "resolution job (same transaction as ORD-T05/T06 for the pool)"}
     guard: "now_db() >= confirmation_deadline AND pool_resolutions.state='PENDING' AND confirmed_count_at_deadline(quote) >= quote.min_fulfilment"
-    effects: ["INSERT order.price_snapshots(kind='FINAL', tier=resolve(confirmed_count), engine output + hash); assert final.cash_payable <= ceiling.cash_payable", "INSERT order.bookings (BKG-T01)", "UPDATE order.orders SET state='BOOKED'", "INSERT order.saga_steps(APPLY_DEPOSIT, RESERVE_STOCK)", "INSERT order.outbox(TierResolved{outcome: RESOLVED}, BookingIssued, DepositApplyRequested, StockReservationRequested, BookingsIssued)"]
-    emits: [TierResolved, BookingIssued, DepositApplyRequested, StockReservationRequested, BookingsIssued]
+    effects: ["INSERT order.price_snapshots(kind='FINAL', tier=resolve(confirmed_count), engine output + hash); assert final.cash_payable <= ceiling.cash_payable", "INSERT order.bookings (BKG-T01)", "UPDATE order.orders SET state='BOOKED'", "INSERT order.saga_steps(HOLD_DEPOSIT, RESERVE_STOCK)", "INSERT order.outbox(TierResolved{outcome: RESOLVED}, BookingIssued, DepositHoldRequested, StockReservationRequested, BookingsIssued)"]
+    emits: [TierResolved, BookingIssued, DepositHoldRequested, StockReservationRequested, BookingsIssued]
     idempotent_repeat: "pool_resolutions.state='DONE' makes a re-run a no-op"
     late_arrival: "Not applicable."
     crash_points: OUTBOX_DEADLINE
-    timeout: "Saga steps: APPLY_DEPOSIT expects DepositApplied within 10 min, RESERVE_STOCK expects StockReserved/StockUnavailable within 10 min; retries with backoff (1, 5, 15 min), then alarm + admin queue."
+    timeout: "Saga steps: HOLD_DEPOSIT expects DepositHeld within 10 min, RESERVE_STOCK expects StockReserved/StockUnavailable within 10 min; retries with backoff (1, 5, 15 min), then alarm + admin queue."
     detected_by: "order scheduler wake-up; saga step sweeper"
     notes: "BookingsIssued (one per pool, bookings_count, void_quote_count) is emitted once by whichever of ORD-T05/T06/T07 commits the resolution - in practice the single resolution transaction emits it once."
   - id: ORD-T08

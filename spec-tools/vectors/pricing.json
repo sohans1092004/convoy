@@ -2910,6 +2910,11 @@
      }
     ],
     "insurance": {
+     "binding": true,
+     "declared_cover": {
+      "addons": [],
+      "idv_bp": 9500
+     },
      "evidence": "DEALER_CONFIRMED",
      "gst_paise": 461500,
      "od_paise": 1500000,
@@ -2940,7 +2945,7 @@
      "variant_id": "test-variant"
     }
    },
-   "snapshot_sha256": "dd85524c371935a7dd819cc5036bd8bed84e5a0b439acd9ac896126e3de60d69"
+   "snapshot_sha256": "52ba656178b868c2747ae553880a55e5de1f20c8c9c22af0f399cda6fb64b0e8"
   },
   {
    "description": "Same configuration in BUYER_CONFIG mode (optional selected items included)",
@@ -3088,6 +3093,11 @@
      }
     ],
     "insurance": {
+     "binding": true,
+     "declared_cover": {
+      "addons": [],
+      "idv_bp": 9500
+     },
      "evidence": "DEALER_CONFIRMED",
      "gst_paise": 461500,
      "od_paise": 1500000,
@@ -3118,7 +3128,7 @@
      "variant_id": "test-variant"
     }
    },
-   "snapshot_sha256": "995199201aa8bbdc13ccd5d1fd6ddbf5d0f899d1e78f6b099149a82ca0f62054"
+   "snapshot_sha256": "628a8670928edfcd8d4786d2aee6dcdfe70b6575f384d7da85d2189fa5c76a8a"
   },
   {
    "description": "Extended warranty listed but not selected",
@@ -4989,6 +4999,561 @@
     }
    },
    "snapshot_sha256": "8e4e80729ed664c518a6e57206fcc70c5193d397e21a489fbe79e550c2212fb1"
+  },
+  {
+   "description": "RANKING mode, dealer insurance not marked binding -> baseline estimate used (AMENDMENT-004)",
+   "expected": {
+    "cash_payable_paise": 90799100,
+    "estimated_net_cost_paise": 90799100,
+    "lines": [
+     {
+      "amount_paise": 80000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -2000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9500000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1520000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 465100,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 400000,
+      "code": "INSURANCE_ADDON:ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 78000000,
+    "warnings": [
+     "DEALER_INSURANCE_NOT_RANKABLE",
+     "INSURANCE_ESTIMATED",
+     "REQUIRED_ACCESSORY:MUDFLAPS"
+    ]
+   },
+   "id": "P052",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 2000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": true
+    },
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": {
+     "binding": false,
+     "declared_cover": {
+      "addons": [],
+      "idv_bp": 9500
+     },
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 461500,
+     "od_paise": 1500000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [
+     {
+      "amount_paise": 400000,
+      "code": "ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Zero depreciation",
+      "selected": true
+     }
+    ],
+    "mode": "RANKING",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 9500000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "2464e8054c501b1b78bee056aef3fcac5b2f850a9131bf29c67907a380326203"
+  },
+  {
+   "description": "RANKING mode, binding dealer insurance with a different cover (IDV 100 %, zero-dep) -> baseline estimate used (AMENDMENT-004)",
+   "expected": {
+    "cash_payable_paise": 90799100,
+    "estimated_net_cost_paise": 90799100,
+    "lines": [
+     {
+      "amount_paise": 80000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -2000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9500000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1520000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 465100,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 400000,
+      "code": "INSURANCE_ADDON:ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 78000000,
+    "warnings": [
+     "DEALER_INSURANCE_NOT_RANKABLE",
+     "INSURANCE_ESTIMATED",
+     "REQUIRED_ACCESSORY:MUDFLAPS"
+    ]
+   },
+   "id": "P053",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 2000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": true
+    },
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": {
+     "binding": true,
+     "declared_cover": {
+      "addons": [
+       "ZERO_DEP"
+      ],
+      "idv_bp": 10000
+     },
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 461500,
+     "od_paise": 1500000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [
+     {
+      "amount_paise": 400000,
+      "code": "ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Zero depreciation",
+      "selected": true
+     }
+    ],
+    "mode": "RANKING",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 9500000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a6370617e98bf9b2c830f5c4293e64ab2f4785fe383b697287481cb4db2caccd"
+  },
+  {
+   "description": "BUYER_CONFIG mode, non-binding dealer insurance is still shown to the buyer as the dealer figure",
+   "expected": {
+    "cash_payable_paise": 93875500,
+    "estimated_net_cost_paise": 93875500,
+    "lines": [
+     {
+      "amount_paise": 80000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -2000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9500000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 461500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 400000,
+      "code": "INSURANCE_ADDON:ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 78000000,
+    "warnings": [
+     "REQUIRED_ACCESSORY:MUDFLAPS"
+    ]
+   },
+   "id": "P054",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 2000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": true
+    },
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": {
+     "binding": false,
+     "declared_cover": {
+      "addons": [],
+      "idv_bp": 9500
+     },
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 461500,
+     "od_paise": 1500000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [
+     {
+      "amount_paise": 400000,
+      "code": "ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Zero depreciation",
+      "selected": true
+     }
+    ],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 9500000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "99ccfa3aa99372be4a605ecb0fe2c926eb8da5f4cd74a41e372e4a7dac2e8f7d"
   }
  ],
  "note": "Synthetic inputs. expected = price_ref.compute(input); snapshot_sha256 = sha256(canonical({inputs, ruleset_version, output})).",

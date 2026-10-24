@@ -25,6 +25,7 @@
         "bookings_count",
         "pool_id",
         "round_set",
+        "void_buyer_ids",
         "void_quote_count"
       ],
       "properties": {
@@ -40,6 +41,13 @@
         },
         "void_quote_count": {
           "type": "integer"
+        },
+        "void_buyer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       }
     }

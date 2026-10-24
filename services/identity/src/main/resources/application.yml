@@ -1,0 +1,49 @@
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application.name: identity
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/convoy}
+    username: identity
+    password: ${DB_PASSWORD}
+    hikari.maximum-pool-size: 5
+    hikari.schema: identity
+  flyway:
+    schemas: identity
+    default-schema: identity
+    locations: classpath:db/platform,classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+  threads.virtual.enabled: true
+logging.structured.format.console: ecs
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+  endpoint.health.probes.enabled: true
+convoy:
+  service-name: identity
+  identity-url: http://localhost:8080
+  issuers:
+    convoy-gateway: ${GATEWAY_JWKS:http://gateway:8080/.well-known/jwks.json}
+    convoy-identity: http://localhost:8080/.well-known/jwks.json
+  public-paths:
+    - /actuator/health
+    - /actuator/health/**
+    - /v3/api-docs/**
+    - /.well-known/jwks.json
+    - /internal/oauth/token
+  aws:
+    endpoint: ${AWS_ENDPOINT:}
+    region: ${AWS_REGION:ap-south-1}
+identity:
+  data-key: ${IDENTITY_DATA_KEY}
+  mail-from: ${MAIL_FROM:no-reply@convoy.test}
+  otp-minutes: 10
+  session-days: 30
+  seed-users-file: ${SEED_USERS_FILE:}
+  clients:
+    gateway: { secret: "${CLIENT_SECRET_GATEWAY}", scopes: { identity: [sessions:validate] } }
+    pool:
+      secret: "${CLIENT_SECRET_POOL}"
+      scopes: { payment: [deposits:create], quote: [rounds:summary], dealer: [eligibility:read], order: [resolution:read], catalog: [models:read] }

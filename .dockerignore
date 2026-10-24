@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+web/storybook-static
+web/playwright-report
+web/test-results
+**/.gradle
+.git
+.env
+**/build/tmp
+**/build/classes
+**/build/reports
+**/build/test-results

@@ -12,7 +12,7 @@
 | Pool doesn't reach its minimum | EXPIRED; refunds; buyers offered similar pools | POOL-T11 | `POOL_EXPIRED` |
 | No valid quotes | NO_QUOTES; refunds | POOL-T04/T06/T12 | `POOL_NO_QUOTES` |
 | Admin cancels pool | CANCELLED with reason; refunds | POOL-T13 | `POOL_CANCELLED` |
-| Offer VOID (too few confirmed) | Refund; pool may re-open once | ORD-T06, POOL-T09 | `QUOTE_VOID` |
+| Offer VOID (too few confirmed) | Refund now if any other offer in the pool goes ahead or no re-round is possible. If the pool re-opens once, the buyer has 48 h to keep the commitment or take a refund; no response means refund (AMENDMENT-002) | ORD-T06, POOL-T09, MEM-T12…T15 | `QUOTE_VOID` / `REROUND_REFUND_REQUESTED` / `REROUND_NO_RESPONSE` |
 | Booked but not delivered by promised date + 7 days | Buyer prompted to open a dispute; admin escalation | BKG-T07/T08, DSP-T01 | — |
 
 Dealer reliability score (dealer service) is decremented on `BookingCancelled` with a dealer reason and on `QuoteWithdrawn{after_final: true}`; the formula is a P3 decision (Q-036).
@@ -23,7 +23,7 @@ Dealer reliability score (dealer service) is decremented on `BookingCancelled` w
 > - You pay a **₹999 test deposit** to commit. It holds your place; it is not a booking.
 > - **Leave any time before confirmation** (until {decision_deadline, e.g. "Fri 20 Nov, 6:00 PM IST"}) and get the full ₹999 back.
 > - If the pool doesn't reach **{min} committed buyers** by {forming_deadline}, it closes and you get the full ₹999 back.
-> - If no dealer makes a valid offer, or an offer can't go ahead because too few buyers confirm, you get the full ₹999 back.
+> - If no dealer makes a valid offer, you get the full ₹999 back. If an offer can't go ahead because too few buyers confirm, you get the full ₹999 back — or, if the pool tries once more, you choose within 48 hours to keep your place or take the refund (no answer means refund).
 > - Later you'll see an exact **maximum price** (the ceiling) and choose whether to confirm. If more buyers confirm, **your price can only fall**.
 > - If you confirm and later cancel, you still get the full ₹999 back (test mode). Your cancellation never changes anyone else's price.
 > - If a dealer cancels or can't deliver the car at the agreed price, you get the full ₹999 back and we open a support case for you automatically.

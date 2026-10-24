@@ -41,7 +41,7 @@ A = allow, O = allow on own resource only (own account / own membership / own or
 | Booking cancel (buyer) | write | — | O | — | — | — | AZ-E086-X |
 | Dispute | open/respond/appeal | — | O | D (respond) | D (respond) | A (assign/resolve) | AZ-E093-X |
 | Dispute evidence | read | — | O | D | D | A (audited) | AZ-E093-X, AZ-T7 |
-| Refund queue / manual resolve | read/write | — | — | — | — | A (+ second admin above threshold) | AZ-INT-08 |
+| Refund queue / manual resolve | read/write | — | — | — | — | A (+ second, different admin; AMENDMENT-001) | AZ-INT-08 |
 | Dealer analytics | read | — | — | — | D | A | **AZ-T5** |
 | Staff invite/revoke | write | — | — | — | D | A | AZ-E012-X, **AZ-T6** |
 | Reviews | write | — | O (delivered booking only) | — | — | hide only | AZ-INT-07 |
@@ -68,4 +68,4 @@ A = allow, O = allow on own resource only (own account / own membership / own or
 | AZ-INT-03 | — | Forged identity headers from the browser are stripped by the BFF and rejected by services. |
 | AZ-INT-06 | integrity | Razorpay webhook with bad signature → 400, no state change; replayed valid webhook → no second effect. |
 | AZ-INT-07 | integrity | Review without a delivered booking with that dealership → 403 review-not-eligible; second review for same booking → 409. |
-| AZ-INT-08 | integrity | Manual refund resolution above threshold requires approval by a different admin; same admin approving → 403. |
+| AZ-INT-08 | integrity | Every manual refund resolution, ledger adjustment or override requires approval by a different admin, whatever the amount (AMENDMENT-001); same admin approving → 403; automatic rule-driven refunds need no approval. |

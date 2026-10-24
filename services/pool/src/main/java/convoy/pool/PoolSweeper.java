@@ -1,0 +1,219 @@
+package convoy.pool;
+
+import convoy.contracts.events.AcceptancesFrozen;
+import convoy.contracts.events.DecisionOpened;
+import convoy.contracts.events.FinalRoundOpened;
+import convoy.contracts.events.QuoteRoundOpened;
+import convoy.contracts.events.RoundClosed;
+import convoy.platform.messaging.Outbox;
+import convoy.platform.messaging.Uuid7;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.RestClientException;
+
+/**
+ * Deadline and system transitions (POOL-T02, T03, T05, T07; RND-T01/T02). The sweeper is the wake-up;
+ * each transition re-reads the pool under lock and checks state, version and the DB clock itself
+ * (deadline-rule.md). Sync calls to dealer/quote happen before the transaction; failures retry next tick.
+ */
+@Component
+public class PoolSweeper {
+    private static final Logger log = LoggerFactory.getLogger(PoolSweeper.class);
+    private final JdbcTemplate jdbc;
+    private final TransactionTemplate tx;
+    private final Outbox outbox;
+    private final Pools pools;
+    private final PoolApplication.Clients clients;
+    private final PoolApplication.PoolSettings settings;
+
+    public PoolSweeper(JdbcTemplate jdbc, TransactionTemplate tx, Outbox outbox, Pools pools, PoolApplication.Clients clients,
+                       PoolApplication.PoolSettings settings, TaskScheduler scheduler) {
+        this.jdbc = jdbc;
+        this.tx = tx;
+        this.outbox = outbox;
+        this.pools = pools;
+        this.clients = clients;
+        this.settings = settings;
+        scheduler.scheduleWithFixedDelay(this::sweep, settings.sweeperInterval());
+    }
+
+    public void sweep() {
+        try {
+            for (UUID id : jdbc.queryForList("select id from pools where state = 'READY_FOR_QUOTES'", UUID.class)) guarded(id, this::openSealedRound);
+            for (UUID id : jdbc.queryForList("select p.id from pools p join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 1 "
+                    + "where p.state = 'QUOTE_OPEN' and r.state = 'OPEN' and r.deadline <= clock_timestamp()", UUID.class)) guarded(id, this::closeSealedRound);
+            for (UUID id : jdbc.queryForList("select p.id from pools p join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 2 "
+                    + "where p.state = 'FINAL_ROUND' and r.state = 'OPEN' and r.deadline <= clock_timestamp()", UUID.class)) guarded(id, this::closeFinalRound);
+            for (UUID id : jdbc.queryForList("select id from pools where state = 'DECISION_OPEN' and decision_deadline <= clock_timestamp()", UUID.class)) guarded(id, this::freezeAcceptances);
+        } catch (RuntimeException e) {
+            log.warn("sweep failed: {}", e.toString());
+        }
+    }
+
+    private void guarded(UUID poolId, java.util.function.Consumer<UUID> step) {
+        try {
+            step.accept(poolId);
+        } catch (RuntimeException e) {
+            log.warn("pool {} transition deferred: {}", poolId, e.toString());
+        }
+    }
+
+    // POOL-T02 + RND-T01
+    @SuppressWarnings("unchecked")
+    void openSealedRound(UUID poolId) {
+        Map<String, Object> p = jdbc.queryForMap("select brand, city from pools where id = ?", poolId);
+        Map<String, Object> elig;
+        try {
+            elig = clients.dealer().get().uri(b -> b.path("/internal/eligibility").queryParam("brand", p.get("brand")).queryParam("city", p.get("city")).build())
+                    .retrieve().body(Map.class);
+        } catch (RestClientException e) {
+            log.info("dealer eligibility unavailable for pool {}: retry next tick", poolId);
+            return;
+        }
+        List<String> invited = ((List<Object>) elig.get("dealership_ids")).stream().map(String::valueOf).toList();
+        if (invited.isEmpty()) return; // re-checked until dealer_wait_deadline; POOL-T12 (NO_QUOTES) is not built in P1
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> pool = pools.lockPool(poolId);
+            if (!"READY_FOR_QUOTES".equals(pool.get("state"))) return;
+            Pools.POOL.check("READY_FOR_QUOTES", "QUOTE_OPEN");
+            Pools.ROUND.check("(none)", "OPEN");
+            UUID roundId = Uuid7.next();
+            int roundSet = (int) pool.get("round_set");
+            Timestamp deadline = jdbc.queryForObject("insert into rounds(id, pool_id, round_set, round_no, kind, state, deadline) values (?, ?, ?, 1, 'SEALED', 'OPEN', "
+                    + "clock_timestamp() + ?::interval) returning deadline", Timestamp.class, roundId, poolId, roundSet, Pools.interval(settings.durations().sealedRound()));
+            for (String d : invited) jdbc.update("insert into round_invitations(round_id, dealership_id) values (?, ?)", roundId, UUID.fromString(d));
+            long v = jdbc.queryForObject("update pools set state = 'QUOTE_OPEN', version = version + 1 where id = ? returning version", Long.class, poolId);
+            outbox.append(poolId, v, new QuoteRoundOpened(poolId.toString(), roundId.toString(), (long) roundSet, 1L, "SEALED", deadline.toInstant(), invited,
+                    variants(pool), ((Number) pool.get("committed_count")).longValue(), (String) pool.get("state_code"), Pools.variantFacts(pool)));
+        });
+    }
+
+    // POOL-T03 + RND-T02 (round 1) + RND-T01 (round 2)
+    void closeSealedRound(UUID poolId) {
+        Map<String, Object> r1 = jdbc.queryForMap("select r.id, r.deadline, p.round_set from rounds r join pools p on p.id = r.pool_id "
+                + "where r.pool_id = ? and r.round_set = p.round_set and r.round_no = 1", poolId);
+        Map<String, Object> summary = summary((UUID) r1.get("id"));
+        if (summary == null) return;
+        long valid = ((Number) summary.get("valid_count")).longValue();
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> pool = pools.lockPool(poolId);
+            if (!"QUOTE_OPEN".equals(pool.get("state")) || Pools.before(pool, (Timestamp) r1.get("deadline"))) return;
+            if (valid == 0) {
+                Pools.POOL.check("QUOTE_OPEN", "NO_QUOTES"); // POOL-T04: 501 in P1
+                return;
+            }
+            Pools.POOL.check("QUOTE_OPEN", "FINAL_ROUND");
+            Pools.ROUND.check("OPEN", "CLOSED");
+            Timestamp closedAt = jdbc.queryForObject("update rounds set state = 'CLOSED', closed_at = clock_timestamp(), version = version + 1 where id = ? returning closed_at",
+                    Timestamp.class, r1.get("id"));
+            UUID r2 = Uuid7.next();
+            Timestamp deadline2 = jdbc.queryForObject("insert into rounds(id, pool_id, round_set, round_no, kind, state, deadline) values (?, ?, ?, 2, 'FINAL', 'OPEN', "
+                    + "clock_timestamp() + ?::interval) returning deadline", Timestamp.class, r2, poolId, pool.get("round_set"), Pools.interval(settings.durations().finalRound()));
+            List<String> invited = jdbc.queryForList("select dealership_id::text from round_invitations where round_id = ?", String.class, r1.get("id"));
+            for (String d : invited) jdbc.update("insert into round_invitations(round_id, dealership_id) values (?, ?)", r2, UUID.fromString(d));
+            long v = jdbc.queryForObject("update pools set state = 'FINAL_ROUND', version = version + 1 where id = ? returning version", Long.class, poolId);
+            outbox.append(poolId, v, new RoundClosed(poolId.toString(), r1.get("id").toString(), "SEALED", ((Timestamp) r1.get("deadline")).toInstant(), closedAt.toInstant(), valid));
+            long v2 = nextVersion(poolId); // one aggregate version per event, so version-ordered consumers never see a tie
+            outbox.append(poolId, v2, new FinalRoundOpened(poolId.toString(), r2.toString(), ((Number) pool.get("round_set")).longValue(), 2L, "FINAL", deadline2.toInstant(),
+                    invited, variants(pool), ((Number) pool.get("committed_count")).longValue(), (String) pool.get("state_code"), Pools.variantFacts(pool)));
+        });
+    }
+
+    // POOL-T05 + RND-T02 (round 2). The summary call after the deadline also finalises the quotes (QUO-T04, idempotent).
+    @SuppressWarnings("unchecked")
+    void closeFinalRound(UUID poolId) {
+        Map<String, Object> r2 = jdbc.queryForMap("select r.id, r.deadline from rounds r join pools p on p.id = r.pool_id "
+                + "where r.pool_id = ? and r.round_set = p.round_set and r.round_no = 2", poolId);
+        Map<String, Object> summary = summary((UUID) r2.get("id"));
+        if (summary == null) return;
+        long finals = ((Number) summary.get("final_count")).longValue();
+        List<Map<String, Object>> quotes = (List<Map<String, Object>>) summary.get("quotes");
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> pool = pools.lockPool(poolId);
+            if (!"FINAL_ROUND".equals(pool.get("state")) || Pools.before(pool, (Timestamp) r2.get("deadline"))) return;
+            if (finals == 0) {
+                Pools.POOL.check("FINAL_ROUND", "NO_QUOTES"); // POOL-T06: 501 in P1
+                return;
+            }
+            Pools.POOL.check("FINAL_ROUND", "DECISION_OPEN");
+            Pools.ROUND.check("OPEN", "CLOSED");
+            Timestamp closedAt = jdbc.queryForObject("update rounds set state = 'CLOSED', closed_at = clock_timestamp(), version = version + 1 where id = ? returning closed_at",
+                    Timestamp.class, r2.get("id"));
+            List<String> finalIds = new ArrayList<>();
+            for (Map<String, Object> q : quotes) {
+                if (!"FINAL".equals(q.get("state"))) continue;
+                finalIds.add((String) q.get("quote_id"));
+                jdbc.update("insert into quote_replica(quote_id, pool_id, dealership_id, state, variant_ids) values (?, ?, ?, 'FINAL', ?::uuid[]) "
+                                + "on conflict (quote_id) do update set state = 'FINAL', variant_ids = excluded.variant_ids",
+                        UUID.fromString((String) q.get("quote_id")), poolId, UUID.fromString((String) q.get("dealership_id")),
+                        "{" + String.join(",", (List<String>) q.get("variant_ids")) + "}");
+            }
+            Timestamp decision = jdbc.queryForObject("update pools set state = 'DECISION_OPEN', decision_deadline = clock_timestamp() + ?::interval, version = version + 1 "
+                    + "where id = ? returning decision_deadline", Timestamp.class, Pools.interval(settings.durations().decision()), poolId);
+            long v = jdbc.queryForObject("select version from pools where id = ?", Long.class, poolId);
+            outbox.append(poolId, v, new RoundClosed(poolId.toString(), r2.get("id").toString(), "FINAL", ((Timestamp) r2.get("deadline")).toInstant(), closedAt.toInstant(), finals));
+            outbox.append(poolId, nextVersion(poolId), new DecisionOpened(poolId.toString(), decision.toInstant(), finalIds));
+        });
+    }
+
+    // POOL-T07 with MEM-T10 (no acceptance -> RELEASED) and MEM-T11 (ACCEPTED -> HANDED_TO_ORDER) in one transaction
+    void freezeAcceptances(UUID poolId) {
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> pool = pools.lockPool(poolId);
+            if (!"DECISION_OPEN".equals(pool.get("state")) || Pools.before(pool, (Timestamp) pool.get("decision_deadline"))) return;
+            Pools.POOL.check("DECISION_OPEN", "CONFIRMATION");
+            List<Map<String, Object>> released = new ArrayList<>(), acceptances = new ArrayList<>();
+            for (Map<String, Object> m : jdbc.queryForList("select id, buyer_id, current_payment_id from memberships where pool_id = ? and state = 'COMMITTED' for update", poolId)) {
+                Pools.MEMBERSHIP.check("COMMITTED", "RELEASED");
+                released.add(Map.of("buyer_id", m.get("buyer_id").toString(), "membership_id", m.get("id").toString(),
+                        "payment_id", String.valueOf(m.get("current_payment_id"))));
+            }
+            for (Map<String, Object> m : jdbc.queryForList("select id, buyer_id, accepted_quote_id, accepted_variant_id, current_payment_id from memberships "
+                    + "where pool_id = ? and state = 'ACCEPTED' for update", poolId)) {
+                Pools.MEMBERSHIP.check("ACCEPTED", "HANDED_TO_ORDER");
+                Map<String, Object> a = new HashMap<>();
+                a.put("buyer_id", m.get("buyer_id").toString());
+                a.put("membership_id", m.get("id").toString());
+                a.put("quote_id", m.get("accepted_quote_id").toString());
+                a.put("variant_id", m.get("accepted_variant_id").toString());
+                a.put("payment_id", String.valueOf(m.get("current_payment_id")));
+                acceptances.add(a);
+            }
+            jdbc.update("update memberships set state = 'RELEASED', release_reason = 'NO_ACCEPTANCE', version = version + 1 where pool_id = ? and state = 'COMMITTED'", poolId);
+            jdbc.update("update memberships set state = 'HANDED_TO_ORDER', version = version + 1 where pool_id = ? and state = 'ACCEPTED'", poolId);
+            Timestamp conf = jdbc.queryForObject("update pools set state = 'CONFIRMATION', confirmation_deadline = clock_timestamp() + ?::interval, version = version + 1 "
+                    + "where id = ? returning confirmation_deadline", Timestamp.class, Pools.interval(settings.durations().confirmation()), poolId);
+            long v = jdbc.queryForObject("select version from pools where id = ?", Long.class, poolId);
+            outbox.append(poolId, v, new AcceptancesFrozen(poolId.toString(), ((Number) pool.get("round_set")).longValue(), conf.toInstant(),
+                    acceptances, pools.acceptanceCounts(poolId), released));
+        });
+    }
+
+    private long nextVersion(UUID poolId) {
+        return jdbc.queryForObject("update pools set version = version + 1 where id = ? returning version", Long.class, poolId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> summary(UUID roundId) {
+        try {
+            return clients.quote().get().uri("/internal/rounds/{id}/summary", roundId).retrieve().body(Map.class);
+        } catch (RestClientException e) {
+            log.info("quote summary for round {} unavailable: {} (retry next tick)", roundId, e.getMessage());
+            return null;
+        }
+    }
+
+    private static List<String> variants(Map<String, Object> pool) {
+        return List.of((Object[]) Pools.toArray(pool.get("accepted_variant_ids"))).stream().map(String::valueOf).toList();
+    }
+}

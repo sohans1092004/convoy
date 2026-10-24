@@ -48,7 +48,9 @@
         "reason": {
           "type": "string",
           "enum": [
-            "LATE_CAPTURE"
+            "LATE_CAPTURE",
+            "REROUND_REFUND_REQUESTED",
+            "REROUND_NO_RESPONSE"
           ]
         }
       }

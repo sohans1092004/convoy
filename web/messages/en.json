@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "brand": "Convoy",
+    "cars": "Cars",
+    "orders": "My orders",
+    "dealer": "Dealer inbox",
+    "bookings": "Bookings",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "testMode": "TEST MODE: no real money"
+  },
+  "home": {
+    "title": "Buy the same car together, with prices you can check",
+    "lede": "Join buyers who want the same model in your city. Verified dealers compete with sealed, itemised offers. You decide alone, and your price can only fall.",
+    "from": "From {price} ex-showroom",
+    "variants": "{count, plural, one {# variant} other {# variants}}",
+    "cityNotConfirmed": "Manufacturer price; city not confirmed"
+  },
+  "precommit": {
+    "title": "Before you commit — TEST MODE: no real money",
+    "deposit": "You pay a ₹999 test deposit to commit. It holds your place; it is not a booking.",
+    "leave": "Leave any time before confirmation (until {decisionDeadline}) and get the full ₹999 back.",
+    "minimum": "If the pool doesn't reach {min} committed buyers by {formingDeadline}, it closes and you get the full ₹999 back.",
+    "noOffer": "If no dealer makes a valid offer, you get the full ₹999 back. If an offer can't go ahead because too few buyers confirm, you get the full ₹999 back — or, if the pool tries once more, you choose within 48 hours to keep your place or take the refund (no answer means refund).",
+    "ceiling": "Later you'll see an exact maximum price (the ceiling) and choose whether to confirm. If more buyers confirm, your price can only fall.",
+    "cancel": "If you confirm and later cancel, you still get the full ₹999 back (test mode). Your cancellation never changes anyone else's price.",
+    "dealer": "If a dealer cancels or can't deliver the car at the agreed price, you get the full ₹999 back and we open a support case for you automatically.",
+    "refunds": "Refunds go back to the original payment method; in test mode no money moves.",
+    "ack": "I've read these terms (version {version})",
+    "commit": "Commit with ₹999 test deposit",
+    "decisionLater": "the decision deadline, once offers are in"
+  },
+  "confirm": {
+    "title": "Confirm at most {ceiling} (cash payable) — TEST MODE",
+    "body": "You will never pay more than {ceiling}. If fewer buyers confirm than the dealer's minimum, this offer can't go ahead and your ₹999 test deposit is refunded (or, if the pool tries once more, you choose to keep your place). You can cancel after confirming and still get your ₹999 back.",
+    "drop": "If {nextMin}+ buyers confirm by {deadline} the price drops to {nextPrice}."
+  }
+}
