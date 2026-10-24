@@ -1,0 +1,54 @@
+machine: round
+owner: pool
+aggregate: pool.rounds
+version_field: version
+initial: OPEN
+plan_ref: "PLAN.md §2.1 (sealed round + one best-and-final round, §10.3)"
+notes: "At most 2 rounds per round_set (round_no 1 = SEALED, 2 = FINAL); round_set 2 exists only after the single re-round (POOL-T09). deadline is immutable once the round row commits; quote service stores a replica from QuoteRoundOpened / FinalRoundOpened and enforces it with its own DB clock (Q-006)."
+states:
+  - {name: OPEN, terminal: false, description: "Accepting quote submissions/revisions until deadline (DB clock at commit)"}
+  - {name: CLOSED, terminal: true, description: "Deadline passed and the pool applied the round outcome"}
+  - {name: CANCELLED, terminal: true, description: "Pool cancelled by admin while the round was open"}
+transitions:
+  - id: RND-T01
+    from: "(none)"
+    to: OPEN
+    trigger: {kind: system, by: pool, via: "inside POOL-T02 (round 1) or POOL-T03 (round 2)"}
+    guard: "enclosing pool transition guard; UNIQUE (pool_id, round_set, round_no)"
+    effects: ["INSERT pool.rounds(state='OPEN', deadline)", "schedule EventBridge one-time wake-up at deadline (outside the transaction; failure tolerated because the sweeper backstops)"]
+    emits: [QuoteRoundOpened]
+    idempotent_repeat: "Unique key makes a second insert fail; enclosing transition is VERSION_NOOP"
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Wake-up scheduling retried 3x; never required for correctness."
+    detected_by: "pool"
+    notes: "For round 2 the emitted event is FinalRoundOpened (same schema, kind=FINAL)."
+  - id: RND-T02
+    from: OPEN
+    to: CLOSED
+    trigger: {kind: deadline, by: system, via: "inside POOL-T03/T04 (round 1) or POOL-T05/T06 (round 2)"}
+    guard: "now_db() >= deadline"
+    effects: ["UPDATE pool.rounds SET state='CLOSED', closed_at=now_db()"]
+    emits: [RoundClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Quote commits at/after the deadline are rejected by quote (409 deadline-passed) regardless of whether this transition has run yet."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Sweeper every 60 s; alarm ROUND_CLOSE_LATE if now_db() - deadline > 5 min."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: RND-T03
+    from: OPEN
+    to: CANCELLED
+    trigger: {kind: actor, by: platform_admin, via: "inside POOL-T13"}
+    guard: "enclosing POOL-T13 guard"
+    effects: ["UPDATE pool.rounds SET state='CANCELLED'"]
+    emits: []
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "If RND-T02 committed first, POOL-T13 still applies to the pool; the round stays CLOSED."
+    crash_points: OUTBOX_STD
+    timeout: "As POOL-T13."
+    detected_by: "admin API"
+invalid_transitions:
+  - {from: [CLOSED, CANCELLED], attempt: "submit, revise or withdraw a quote in this round", error: deadline-passed, note: "quote service answers using its replica; CANCELLED answers invalid-transition"}
+  - {from: ["(none)"], attempt: "submit a quote before the round replica exists in quote", error: round-not-open}
+  - {from: [OPEN], attempt: "extend or change deadline", error: invalid-transition, note: "Deadlines are immutable (Q-006)"}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/StockReservationRequested.schema.json",
+  "title": "StockReservationRequested v1",
+  "description": "Owner: order. Consumers: quote, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "StockReservationRequested"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "colour",
+        "order_id",
+        "quote_id",
+        "variant_id"
+      ],
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "variant_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "colour": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

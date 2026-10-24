@@ -1,0 +1,148 @@
+machine: quote
+owner: quote
+aggregate: quote.quotes
+version_field: version
+initial: DRAFT
+plan_ref: "PLAN.md §2.1 (DRAFT -> SUBMITTED -> REVISED* -> FINAL -> EXPIRED | WITHDRAWN | VOID), §2.2, §2.6, §3.1(5)"
+notes: "Every SUBMITTED/REVISED step writes an immutable quote.quote_versions row (full itemised input + price-engine snapshot hash + diff vs previous). FINAL is quiescent for quotes that win bookings; it stays FINAL with the resolved tier recorded."
+states:
+  - {name: DRAFT, terminal: false, description: "Editable, invisible to buyers and to the pool"}
+  - {name: SUBMITTED, terminal: false, description: "Version 1 sealed in the current round; visible to the pool's buyers (sealed from other dealers)"}
+  - {name: REVISED, terminal: false, description: "Version n > 1 committed before the round deadline"}
+  - {name: FINAL, terminal: false, description: "Latest version committed before the final-round deadline; acceptable by buyers"}
+  - {name: EXPIRED, terminal: true, description: "Never submitted in round 1, no acceptances at decision close, or pool closed"}
+  - {name: WITHDRAWN, terminal: true, description: "Dealer withdrew (before deadline = allowed; after FINAL = dealer cancellation)"}
+  - {name: VOID, terminal: true, description: "Confirmed count < minimum fulfilment at confirmation deadline (§2.2.6)"}
+transitions:
+  - id: QUO-T01
+    from: "(none)"
+    to: DRAFT
+    trigger: {kind: actor, by: dealer_staff, via: "POST /dealer/pools/{poolId}/quotes (Idempotency-Key)"}
+    guard: "caller's dealership invited to round 1 of this pool (replica of QuoteRoundOpened.invited) AND staff active AND round replica OPEN AND now_db() < round.deadline AND no non-terminal quote from this dealership for this pool (unique)"
+    effects: ["INSERT quote.quotes(state='DRAFT')"]
+    emits: []
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "quote API"
+  - id: QUO-T02
+    from: DRAFT
+    to: SUBMITTED
+    trigger: {kind: actor, by: dealer_staff, via: "POST /dealer/quotes/{id}/submit (Idempotency-Key, If-Match) after the confirmation dialog"}
+    guard: "state='DRAFT' AND version=:v AND round replica (round 1) OPEN AND now_db() < round.deadline (read in the committing transaction) AND price-engine validation passes (pricing-model.md §Validation) AND tiers valid (tier-resolution.md §Validation) AND valid_until >= confirmation horizon"
+    effects: ["INSERT quote.quote_versions(n=1, inputs, snapshot_hash)", "UPDATE quote.quotes SET state='SUBMITTED', version=version+1, submitted_at=now_db()", "INSERT quote.audit_trail", "INSERT quote.outbox(QuoteSubmitted)"]
+    emits: [QuoteSubmitted]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Request queued before the deadline but committing at/after it -> 409 deadline-passed with server_time and deadline in the problem body (deadline-rule.md)."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s server budget. Client shows pending and retries with the same key; a retry after the deadline returns the stored success if the first attempt committed in time."
+    detected_by: "quote API"
+  - id: QUO-T03
+    from: [SUBMITTED, REVISED]
+    to: REVISED
+    trigger: {kind: actor, by: dealer_staff, via: "POST /dealer/quotes/{id}/revisions (Idempotency-Key, If-Match)"}
+    guard: "version=:v AND current round replica OPEN (round 1 or round 2) AND now_db() < round.deadline AND validation passes AND (round 2 => dealership submitted in round 1)"
+    effects: ["INSERT quote.quote_versions(n+1, inputs, diff, snapshot_hash)", "UPDATE quote.quotes SET state='REVISED', version=version+1", "INSERT quote.outbox(QuoteRevised)"]
+    emits: [QuoteRevised]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "quote API"
+  - id: QUO-T04
+    from: [SUBMITTED, REVISED]
+    to: FINAL
+    trigger: {kind: event, by: system, via: "quote consumes RoundClosed(kind=FINAL)"}
+    guard: "quote belongs to the pool/round_set AND state IN (SUBMITTED, REVISED); latest version is the one with committed_at < final deadline (always true because later commits were rejected)"
+    effects: ["UPDATE quote.quotes SET state='FINAL', final_version=n, version=version+1", "compute per-variant rank snapshot (ranking-rule.md)", "INSERT quote.inbox(event_id)", "INSERT quote.outbox(QuoteFinalised)"]
+    emits: [QuoteFinalised]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "If RoundClosed is not consumed within 5 min of the deadline, quote's own sweeper finalises from its replica deadline; pool's POOL-T05 summary call also forces finalisation (idempotent)."
+    detected_by: "quote inbox consumer; quote sweeper"
+  - id: QUO-T05
+    from: [DRAFT, SUBMITTED, REVISED]
+    to: WITHDRAWN
+    trigger: {kind: actor, by: dealer_staff, via: "POST /dealer/quotes/{id}/withdraw {reason} (Idempotency-Key, If-Match)"}
+    guard: "version=:v AND current round replica OPEN AND now_db() < round.deadline"
+    effects: ["UPDATE quote.quotes SET state='WITHDRAWN', withdraw_reason, version=version+1", "INSERT quote.audit_trail", "INSERT quote.outbox(QuoteWithdrawn{after_final: false})"]
+    emits: [QuoteWithdrawn]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "After the deadline -> 409 deadline-passed (the quote becomes FINAL at round 2 close and can then only be cancelled via QUO-T06)."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "quote API"
+  - id: QUO-T06
+    from: FINAL
+    to: WITHDRAWN
+    trigger: {kind: actor, by: dealer_admin, via: "POST /dealer/quotes/{id}/cancel {reason} (Idempotency-Key, If-Match)"}
+    guard: "version=:v (dealer_admin of the quote's dealership)"
+    effects: ["UPDATE quote.quotes SET state='WITHDRAWN', withdraw_reason, after_final=true", "INSERT quote.audit_trail", "INSERT quote.outbox(QuoteWithdrawn{after_final: true})"]
+    emits: [QuoteWithdrawn]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Allowed at any time; treated as dealer cancellation: order cancels affected orders/bookings, refunds, auto-opens disputes; dealer reliability score decremented (PLAN §2.6)."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "quote API"
+  - id: QUO-T07
+    from: FINAL
+    to: VOID
+    trigger: {kind: event, by: system, via: "quote consumes TierResolved(outcome=VOID)"}
+    guard: "state='FINAL' AND event.quote_id = id"
+    effects: ["UPDATE quote.quotes SET state='VOID', void_reason='MIN_FULFILMENT_NOT_MET', confirmed_count", "INSERT quote.inbox(event_id)", "INSERT quote.outbox(QuoteVoided)"]
+    emits: [QuoteVoided]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "If the quote was WITHDRAWN (after_final) before resolution, order already treated it as dealer-cancelled; the VOID event is ignored and counted as stale."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "quote inbox consumer"
+  - id: QUO-T08
+    from: FINAL
+    to: EXPIRED
+    trigger: {kind: event, by: system, via: "quote consumes AcceptancesFrozen where acceptance_counts[quote_id] = 0"}
+    guard: "state='FINAL'"
+    effects: ["UPDATE quote.quotes SET state='EXPIRED', expire_reason='NO_ACCEPTANCES'", "INSERT quote.inbox(event_id)", "INSERT quote.outbox(QuoteExpired)"]
+    emits: [QuoteExpired]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "quote inbox consumer"
+  - id: QUO-T09
+    from: DRAFT
+    to: EXPIRED
+    trigger: {kind: event, by: system, via: "quote consumes RoundClosed(kind=SEALED)"}
+    guard: "state='DRAFT'"
+    effects: ["UPDATE quote.quotes SET state='EXPIRED', expire_reason='NOT_SUBMITTED'", "INSERT quote.inbox(event_id)"]
+    emits: []
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "quote inbox consumer"
+  - id: QUO-T10
+    from: [DRAFT, SUBMITTED, REVISED, FINAL]
+    to: EXPIRED
+    trigger: {kind: event, by: system, via: "quote consumes PoolClosed (EXPIRED, NO_QUOTES, CANCELLED)"}
+    guard: "state IN listed AND quote has no confirmed orders (true by construction: PoolClosed is never emitted after BOOKING)"
+    effects: ["UPDATE quote.quotes SET state='EXPIRED', expire_reason='POOL_CLOSED'", "INSERT quote.inbox(event_id)", "INSERT quote.outbox(QuoteExpired)"]
+    emits: [QuoteExpired]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "quote inbox consumer"
+invalid_transitions:
+  - {from: [FINAL], attempt: revise, error: invalid-transition, note: "Immutable once FINAL"}
+  - {from: [SUBMITTED, REVISED], attempt: "revise/withdraw committing at/after round deadline", error: deadline-passed}
+  - {from: [DRAFT], attempt: "submit committing at/after round 1 deadline", error: deadline-passed}
+  - {from: [DRAFT], attempt: "submit with invalid tiers", error: invalid-tiers}
+  - {from: [DRAFT, SUBMITTED, REVISED], attempt: "submit/revise with discount above limit", error: discount-exceeds-limit}
+  - {from: [DRAFT, SUBMITTED, REVISED], attempt: "submit/revise failing price validation", error: quote-invalid}
+  - {from: [SUBMITTED, REVISED, FINAL], attempt: "edit fields in place (PATCH)", error: invalid-transition, note: "Only new versions via /revisions"}
+  - {from: [DRAFT, SUBMITTED, REVISED], attempt: "accept by buyer", error: quote-not-final}
+  - {from: [EXPIRED, WITHDRAWN, VOID], attempt: "any command", error: invalid-transition}
+  - {from: ["*"], attempt: "stale If-Match", error: version-conflict}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/ConfirmationDeclined.schema.json",
+  "title": "ConfirmationDeclined v1",
+  "description": "Owner: order. Consumers: realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "ConfirmationDeclined"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order_id",
+        "pool_id",
+        "reason"
+      ],
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "BUYER_DECLINED",
+            "MISSED_CONFIRMATION_DEADLINE"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3347 @@
+{
+ "booking": {
+  "initial": "ISSUED",
+  "invalid_commands": [
+   {
+    "attempt": "dealer confirm at/after dealer_confirm_deadline",
+    "error": "deadline-passed",
+    "from": [
+     "ISSUED"
+    ]
+   },
+   {
+    "attempt": "schedule delivery before dealer confirmation",
+    "error": "invalid-transition",
+    "from": [
+     "ISSUED"
+    ]
+   },
+   {
+    "attempt": "deliver",
+    "error": "invalid-transition",
+    "from": [
+     "ISSUED",
+     "DEALER_CONFIRMED"
+    ]
+   },
+   {
+    "attempt": "cancel",
+    "error": "invalid-transition",
+    "from": [
+     "DELIVERED"
+    ],
+    "note": "Open a dispute instead"
+   },
+   {
+    "attempt": "deliver with invalid voucher token",
+    "error": "forbidden",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "DELIVERED",
+     "CANCELLED"
+    ]
+   },
+   {
+    "attempt": "stale If-Match",
+    "error": "version-conflict",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "ISSUED",
+    "to": "ISSUED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "ISSUED",
+    "to": "DELIVERY_SCHEDULED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "ISSUED",
+    "to": "DELIVERED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DEALER_CONFIRMED",
+    "to": "ISSUED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DEALER_CONFIRMED",
+    "to": "DELIVERED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERY_SCHEDULED",
+    "to": "ISSUED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERY_SCHEDULED",
+    "to": "DEALER_CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERED",
+    "to": "ISSUED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERED",
+    "to": "DEALER_CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERED",
+    "to": "DELIVERY_SCHEDULED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERED",
+    "to": "DELIVERED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DELIVERED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "ISSUED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "DEALER_CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "DELIVERY_SCHEDULED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "DELIVERED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CANCELLED"
+   }
+  ],
+  "owner": "order",
+  "terminal": [
+   "DELIVERED",
+   "CANCELLED"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "BookingIssued"
+    ],
+    "from": "(none)",
+    "id": "BKG-T01",
+    "to": "ISSUED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "BookingConfirmedByDealer"
+    ],
+    "from": "ISSUED",
+    "id": "BKG-T02",
+    "to": "DEALER_CONFIRMED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "BookingCancelled",
+     "DisputeOpened"
+    ],
+    "from": "ISSUED",
+    "id": "BKG-T03",
+    "to": "CANCELLED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "DeliveryScheduled"
+    ],
+    "from": "DEALER_CONFIRMED",
+    "id": "BKG-T04",
+    "to": "DELIVERY_SCHEDULED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DeliveryScheduled"
+    ],
+    "from": "DELIVERY_SCHEDULED",
+    "id": "BKG-T04",
+    "to": "DELIVERY_SCHEDULED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "BookingDelivered"
+    ],
+    "from": "DELIVERY_SCHEDULED",
+    "id": "BKG-T05",
+    "to": "DELIVERED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "BookingCancelled",
+     "DisputeOpened"
+    ],
+    "from": "ISSUED",
+    "id": "BKG-T06",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "BookingCancelled",
+     "DisputeOpened"
+    ],
+    "from": "DEALER_CONFIRMED",
+    "id": "BKG-T06",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "BookingCancelled",
+     "DisputeOpened"
+    ],
+    "from": "DELIVERY_SCHEDULED",
+    "id": "BKG-T06",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "BookingOverdue"
+    ],
+    "from": "DEALER_CONFIRMED",
+    "id": "BKG-T07",
+    "to": "DEALER_CONFIRMED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "BookingOverdue"
+    ],
+    "from": "DELIVERY_SCHEDULED",
+    "id": "BKG-T08",
+    "to": "DELIVERY_SCHEDULED",
+    "trigger": "deadline"
+   }
+  ]
+ },
+ "dispute": {
+  "initial": "OPEN",
+  "invalid_commands": [
+   {
+    "attempt": "second appeal",
+    "error": "invalid-transition",
+    "from": [
+     "RESOLVED"
+    ]
+   },
+   {
+    "attempt": "resolve",
+    "error": "invalid-transition",
+    "from": [
+     "OPEN",
+     "AWAITING_PARTY"
+    ]
+   },
+   {
+    "attempt": "dealer reads dispute of another dealership",
+    "error": "not-found",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "CLOSED",
+     "WITHDRAWN"
+    ]
+   },
+   {
+    "attempt": "money outcome above threshold without second admin",
+    "error": "second-approval-required",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "OPEN",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "OPEN",
+    "to": "AWAITING_PARTY"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "OPEN",
+    "to": "RESOLVED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "OPEN",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "UNDER_REVIEW",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "UNDER_REVIEW",
+    "to": "UNDER_REVIEW"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "UNDER_REVIEW",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "AWAITING_PARTY",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "AWAITING_PARTY",
+    "to": "AWAITING_PARTY"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "AWAITING_PARTY",
+    "to": "RESOLVED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "AWAITING_PARTY",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RESOLVED",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RESOLVED",
+    "to": "AWAITING_PARTY"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RESOLVED",
+    "to": "RESOLVED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RESOLVED",
+    "to": "WITHDRAWN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "UNDER_REVIEW"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "AWAITING_PARTY"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "RESOLVED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "WITHDRAWN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "UNDER_REVIEW"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "AWAITING_PARTY"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "RESOLVED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "WITHDRAWN"
+   }
+  ],
+  "owner": "order",
+  "terminal": [
+   "CLOSED",
+   "WITHDRAWN"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "DisputeOpened"
+    ],
+    "from": "(none)",
+    "id": "DSP-T01",
+    "to": "OPEN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "OPEN",
+    "id": "DSP-T02",
+    "to": "UNDER_REVIEW",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "UNDER_REVIEW",
+    "id": "DSP-T03",
+    "to": "AWAITING_PARTY",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "AWAITING_PARTY",
+    "id": "DSP-T04",
+    "to": "UNDER_REVIEW",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeResolved"
+    ],
+    "from": "UNDER_REVIEW",
+    "id": "DSP-T05",
+    "to": "RESOLVED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "RESOLVED",
+    "id": "DSP-T06",
+    "to": "CLOSED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "RESOLVED",
+    "id": "DSP-T07",
+    "to": "UNDER_REVIEW",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "OPEN",
+    "id": "DSP-T08",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "UNDER_REVIEW",
+    "id": "DSP-T08",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "DisputeStatusChanged"
+    ],
+    "from": "AWAITING_PARTY",
+    "id": "DSP-T08",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   }
+  ]
+ },
+ "membership": {
+  "initial": "INTERESTED",
+  "invalid_commands": [
+   {
+    "attempt": "any buyer command",
+    "error": "invalid-transition",
+    "from": [
+     "HANDED_TO_ORDER",
+     "LEFT",
+     "RELEASED"
+    ]
+   },
+   {
+    "attempt": "accept_quote",
+    "error": "not-a-member",
+    "from": [
+     "INTERESTED",
+     "COMMIT_PENDING"
+    ],
+    "note": "Only COMMITTED members accept"
+   },
+   {
+    "attempt": "join when a row exists",
+    "error": "already-member",
+    "from": [
+     "(none)"
+    ]
+   },
+   {
+    "attempt": "commit while another active commitment exists for the model",
+    "error": "active-commitment-exists",
+    "from": [
+     "(none)",
+     "INTERESTED"
+    ]
+   },
+   {
+    "attempt": "stale If-Match",
+    "error": "version-conflict",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "INTERESTED",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "INTERESTED",
+    "to": "ACCEPTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "INTERESTED",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMIT_PENDING",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMIT_PENDING",
+    "to": "ACCEPTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMIT_PENDING",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMITTED",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMITTED",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMITTED",
+    "to": "COMMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMMITTED",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "ACCEPTED",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "ACCEPTED",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "ACCEPTED",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "COMMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "ACCEPTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "LEFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "HANDED_TO_ORDER",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "COMMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "ACCEPTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "LEFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "INTERESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "COMMIT_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "COMMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "ACCEPTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "HANDED_TO_ORDER"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "LEFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "RELEASED"
+   }
+  ],
+  "owner": "pool",
+  "terminal": [
+   "HANDED_TO_ORDER",
+   "LEFT",
+   "RELEASED"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "MemberJoined"
+    ],
+    "from": "(none)",
+    "id": "MEM-T01",
+    "to": "INTERESTED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [],
+    "from": "INTERESTED",
+    "id": "MEM-T02",
+    "to": "COMMIT_PENDING",
+    "trigger": "actor"
+   },
+   {
+    "emits": [],
+    "from": "(none)",
+    "id": "MEM-T02",
+    "to": "COMMIT_PENDING",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberCommitted"
+    ],
+    "from": "COMMIT_PENDING",
+    "id": "MEM-T03",
+    "to": "COMMITTED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "MemberCommitted"
+    ],
+    "from": "INTERESTED",
+    "id": "MEM-T03",
+    "to": "COMMITTED",
+    "trigger": "event"
+   },
+   {
+    "emits": [],
+    "from": "COMMIT_PENDING",
+    "id": "MEM-T04",
+    "to": "INTERESTED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "MemberLeft"
+    ],
+    "from": "INTERESTED",
+    "id": "MEM-T05",
+    "to": "LEFT",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberLeft"
+    ],
+    "from": "COMMIT_PENDING",
+    "id": "MEM-T05",
+    "to": "LEFT",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberLeft"
+    ],
+    "from": "COMMITTED",
+    "id": "MEM-T05",
+    "to": "LEFT",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberLeft"
+    ],
+    "from": "ACCEPTED",
+    "id": "MEM-T05",
+    "to": "LEFT",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "MemberReleased"
+    ],
+    "from": "COMMIT_PENDING",
+    "id": "MEM-T06",
+    "to": "RELEASED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "MemberReleased"
+    ],
+    "from": "INTERESTED",
+    "id": "MEM-T06",
+    "to": "RELEASED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "AcceptanceChanged"
+    ],
+    "from": "COMMITTED",
+    "id": "MEM-T07",
+    "to": "ACCEPTED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "AcceptanceChanged"
+    ],
+    "from": "ACCEPTED",
+    "id": "MEM-T08",
+    "to": "ACCEPTED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "AcceptanceChanged"
+    ],
+    "from": "ACCEPTED",
+    "id": "MEM-T09",
+    "to": "COMMITTED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [],
+    "from": "COMMITTED",
+    "id": "MEM-T10",
+    "to": "RELEASED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [],
+    "from": "ACCEPTED",
+    "id": "MEM-T11",
+    "to": "HANDED_TO_ORDER",
+    "trigger": "deadline"
+   }
+  ]
+ },
+ "order": {
+  "initial": "CONFIRMATION_PENDING",
+  "invalid_commands": [
+   {
+    "attempt": "confirm committing at/after confirmation_deadline",
+    "error": "deadline-passed",
+    "from": [
+     "CONFIRMATION_PENDING"
+    ]
+   },
+   {
+    "attempt": "confirm when capacity full",
+    "error": "capacity-reached",
+    "from": [
+     "CONFIRMATION_PENDING"
+    ]
+   },
+   {
+    "attempt": "confirm with stale ceiling_snapshot_hash",
+    "error": "version-conflict",
+    "from": [
+     "CONFIRMATION_PENDING"
+    ]
+   },
+   {
+    "attempt": "confirm",
+    "error": "invalid-transition",
+    "from": [
+     "CONFIRMED",
+     "BOOKED"
+    ],
+    "note": "Idempotent retry with the same key returns the stored 200 instead"
+   },
+   {
+    "attempt": "cancel (use decline)",
+    "error": "invalid-transition",
+    "from": [
+     "CONFIRMATION_PENDING"
+    ]
+   },
+   {
+    "attempt": "cancel on order (cancel the booking)",
+    "error": "invalid-transition",
+    "from": [
+     "BOOKED"
+    ]
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "DECLINED",
+     "VOIDED",
+     "COMPLETED",
+     "CANCELLED"
+    ]
+   },
+   {
+    "attempt": "stale If-Match",
+    "error": "version-conflict",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION_PENDING",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION_PENDING",
+    "to": "VOIDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION_PENDING",
+    "to": "BOOKED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION_PENDING",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMED",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMED",
+    "to": "CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMED",
+    "to": "DECLINED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "DECLINED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "VOIDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "BOOKED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECLINED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "DECLINED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "VOIDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "BOOKED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKED",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKED",
+    "to": "CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKED",
+    "to": "DECLINED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKED",
+    "to": "VOIDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKED",
+    "to": "BOOKED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "DECLINED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "VOIDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "BOOKED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CONFIRMATION_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CONFIRMED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "DECLINED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "VOIDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "BOOKED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CANCELLED"
+   }
+  ],
+  "owner": "order",
+  "terminal": [
+   "DECLINED",
+   "VOIDED",
+   "COMPLETED",
+   "CANCELLED"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "OrderCreated"
+    ],
+    "from": "(none)",
+    "id": "ORD-T01",
+    "to": "CONFIRMATION_PENDING",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "ConfirmationRecorded"
+    ],
+    "from": "CONFIRMATION_PENDING",
+    "id": "ORD-T02",
+    "to": "CONFIRMED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "OrderCancelled",
+     "DepositRefundRequested"
+    ],
+    "from": "CONFIRMED",
+    "id": "ORD-T03",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "ConfirmationDeclined",
+     "DepositRefundRequested"
+    ],
+    "from": "CONFIRMATION_PENDING",
+    "id": "ORD-T04",
+    "to": "DECLINED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "ConfirmationDeclined",
+     "DepositRefundRequested"
+    ],
+    "from": "CONFIRMATION_PENDING",
+    "id": "ORD-T05",
+    "to": "DECLINED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "TierResolved",
+     "DepositRefundRequested",
+     "BookingsIssued"
+    ],
+    "from": "CONFIRMED",
+    "id": "ORD-T06",
+    "to": "VOIDED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "TierResolved",
+     "BookingIssued",
+     "DepositApplyRequested",
+     "StockReservationRequested",
+     "BookingsIssued"
+    ],
+    "from": "CONFIRMED",
+    "id": "ORD-T07",
+    "to": "BOOKED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "AllBookingsClosed"
+    ],
+    "from": "BOOKED",
+    "id": "ORD-T08",
+    "to": "COMPLETED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "OrderCancelled",
+     "DepositRefundRequested",
+     "AllBookingsClosed"
+    ],
+    "from": "BOOKED",
+    "id": "ORD-T09",
+    "to": "CANCELLED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "OrderCancelled",
+     "DepositRefundRequested",
+     "DisputeOpened"
+    ],
+    "from": "CONFIRMATION_PENDING",
+    "id": "ORD-T10",
+    "to": "CANCELLED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "OrderCancelled",
+     "DepositRefundRequested",
+     "DisputeOpened"
+    ],
+    "from": "CONFIRMED",
+    "id": "ORD-T10",
+    "to": "CANCELLED",
+    "trigger": "event"
+   }
+  ]
+ },
+ "payment": {
+  "initial": "INITIATED",
+  "invalid_commands": [
+   {
+    "attempt": "set CAPTURED from browser callback or API poll",
+    "error": "invalid-transition",
+    "from": [
+     "INITIATED",
+     "PENDING"
+    ],
+    "note": "Webhook-only success rule"
+   },
+   {
+    "attempt": "webhook with bad signature",
+    "error": "webhook-signature-invalid",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "apply to booking",
+    "error": "deposit-not-captured",
+    "from": [
+     "INITIATED",
+     "PENDING",
+     "FAILED",
+     "VOIDED_UNPAID"
+    ]
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "SETTLED",
+     "REFUNDED"
+    ]
+   },
+   {
+    "attempt": "apply to booking",
+    "error": "invalid-transition",
+    "from": [
+     "REFUND_PENDING"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "INITIATED",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "INITIATED",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "INITIATED",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "INITIATED",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "INITIATED",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "PENDING",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "PENDING",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "PENDING",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "PENDING",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "PENDING",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "PENDING",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CAPTURED",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FAILED",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOIDED_UNPAID",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "APPLIED_TO_BOOKING",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_PENDING",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SETTLED",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "CAPTURED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "VOIDED_UNPAID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "APPLIED_TO_BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "REFUND_PENDING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "SETTLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "REFUNDED"
+   }
+  ],
+  "owner": "payment",
+  "terminal": [
+   "SETTLED",
+   "REFUNDED"
+  ],
+  "valid": [
+   {
+    "emits": [],
+    "from": "(none)",
+    "id": "PAY-T01",
+    "to": "INITIATED",
+    "trigger": "system"
+   },
+   {
+    "emits": [],
+    "from": "INITIATED",
+    "id": "PAY-T02",
+    "to": "PENDING",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PaymentCaptured"
+    ],
+    "from": "INITIATED",
+    "id": "PAY-T03",
+    "to": "CAPTURED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PaymentCaptured"
+    ],
+    "from": "PENDING",
+    "id": "PAY-T03",
+    "to": "CAPTURED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PaymentCaptured"
+    ],
+    "from": "FAILED",
+    "id": "PAY-T03",
+    "to": "CAPTURED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PaymentFailed"
+    ],
+    "from": "INITIATED",
+    "id": "PAY-T04",
+    "to": "FAILED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PaymentFailed"
+    ],
+    "from": "PENDING",
+    "id": "PAY-T04",
+    "to": "FAILED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PaymentVoided"
+    ],
+    "from": "INITIATED",
+    "id": "PAY-T05",
+    "to": "VOIDED_UNPAID",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "PaymentVoided"
+    ],
+    "from": "PENDING",
+    "id": "PAY-T05",
+    "to": "VOIDED_UNPAID",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "PaymentVoided"
+    ],
+    "from": "FAILED",
+    "id": "PAY-T05",
+    "to": "VOIDED_UNPAID",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "DepositApplied"
+    ],
+    "from": "CAPTURED",
+    "id": "PAY-T06",
+    "to": "APPLIED_TO_BOOKING",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "RefundRequested"
+    ],
+    "from": "CAPTURED",
+    "id": "PAY-T07",
+    "to": "REFUND_PENDING",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "RefundRequested"
+    ],
+    "from": "APPLIED_TO_BOOKING",
+    "id": "PAY-T07",
+    "to": "REFUND_PENDING",
+    "trigger": "event"
+   },
+   {
+    "emits": [],
+    "from": "REFUND_PENDING",
+    "id": "PAY-T08",
+    "to": "REFUNDED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "DepositSettled"
+    ],
+    "from": "APPLIED_TO_BOOKING",
+    "id": "PAY-T09",
+    "to": "SETTLED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PaymentCaptured",
+     "RefundRequested"
+    ],
+    "from": "VOIDED_UNPAID",
+    "id": "PAY-T10",
+    "to": "REFUND_PENDING",
+    "trigger": "event"
+   }
+  ]
+ },
+ "pool": {
+  "initial": "FORMING",
+  "invalid_commands": [
+   {
+    "attempt": "join_interested",
+    "error": "invalid-transition",
+    "from": [
+     "DECISION_OPEN",
+     "CONFIRMATION",
+     "BOOKING"
+    ],
+    "note": "Joining closes at the sealed-round deadline"
+   },
+   {
+    "attempt": "join_interested or commit committing at/after sealed_round_deadline",
+    "error": "deadline-passed",
+    "from": [
+     "QUOTE_OPEN"
+    ]
+   },
+   {
+    "attempt": "commit",
+    "error": "invalid-transition",
+    "from": [
+     "FINAL_ROUND",
+     "DECISION_OPEN",
+     "CONFIRMATION",
+     "BOOKING"
+    ]
+   },
+   {
+    "attempt": "accept_quote",
+    "error": "invalid-transition",
+    "from": [
+     "FORMING",
+     "READY_FOR_QUOTES",
+     "QUOTE_OPEN",
+     "FINAL_ROUND",
+     "CONFIRMATION",
+     "BOOKING"
+    ]
+   },
+   {
+    "attempt": "accept_quote committing at/after decision_deadline",
+    "error": "deadline-passed",
+    "from": [
+     "DECISION_OPEN"
+    ]
+   },
+   {
+    "attempt": "accept_quote naming a quote that is not FINAL in this pool",
+    "error": "quote-not-final",
+    "from": [
+     "DECISION_OPEN"
+    ]
+   },
+   {
+    "attempt": "leave",
+    "error": "invalid-transition",
+    "from": [
+     "CONFIRMATION",
+     "BOOKING"
+    ],
+    "note": "After CONFIRMATION opens a buyer declines or cancels through order (ORD-T05/ORD-T09), not by leaving"
+   },
+   {
+    "attempt": "admin_cancel",
+    "error": "invalid-transition",
+    "from": [
+     "BOOKING"
+    ],
+    "note": "Cancel individual bookings instead"
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "COMPLETED",
+     "EXPIRED",
+     "NO_QUOTES",
+     "CANCELLED"
+    ]
+   },
+   {
+    "attempt": "any state-changing call with stale If-Match",
+    "error": "version-conflict",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FORMING",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "READY_FOR_QUOTES",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "QUOTE_OPEN",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL_ROUND",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DECISION_OPEN",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CONFIRMATION",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "BOOKING",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "COMPLETED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "NO_QUOTES",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "FORMING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "READY_FOR_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "QUOTE_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "FINAL_ROUND"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "DECISION_OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CONFIRMATION"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "BOOKING"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "COMPLETED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "NO_QUOTES"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CANCELLED"
+   }
+  ],
+  "owner": "pool",
+  "terminal": [
+   "COMPLETED",
+   "EXPIRED",
+   "NO_QUOTES",
+   "CANCELLED"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "PoolReady"
+    ],
+    "from": "FORMING",
+    "id": "POOL-T01",
+    "to": "READY_FOR_QUOTES",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteRoundOpened"
+    ],
+    "from": "READY_FOR_QUOTES",
+    "id": "POOL-T02",
+    "to": "QUOTE_OPEN",
+    "trigger": "system"
+   },
+   {
+    "emits": [
+     "RoundClosed",
+     "FinalRoundOpened"
+    ],
+    "from": "QUOTE_OPEN",
+    "id": "POOL-T03",
+    "to": "FINAL_ROUND",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "RoundClosed",
+     "PoolClosed"
+    ],
+    "from": "QUOTE_OPEN",
+    "id": "POOL-T04",
+    "to": "NO_QUOTES",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "RoundClosed",
+     "DecisionOpened"
+    ],
+    "from": "FINAL_ROUND",
+    "id": "POOL-T05",
+    "to": "DECISION_OPEN",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "RoundClosed",
+     "PoolClosed"
+    ],
+    "from": "FINAL_ROUND",
+    "id": "POOL-T06",
+    "to": "NO_QUOTES",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "AcceptancesFrozen"
+    ],
+    "from": "DECISION_OPEN",
+    "id": "POOL-T07",
+    "to": "CONFIRMATION",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "PoolBookingStarted"
+    ],
+    "from": "CONFIRMATION",
+    "id": "POOL-T08",
+    "to": "BOOKING",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PoolReopened"
+    ],
+    "from": "CONFIRMATION",
+    "id": "POOL-T09",
+    "to": "FORMING",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "CONFIRMATION",
+    "id": "POOL-T10",
+    "to": "EXPIRED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "FORMING",
+    "id": "POOL-T11",
+    "to": "EXPIRED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "READY_FOR_QUOTES",
+    "id": "POOL-T12",
+    "to": "NO_QUOTES",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "FORMING",
+    "id": "POOL-T13",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "READY_FOR_QUOTES",
+    "id": "POOL-T13",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "QUOTE_OPEN",
+    "id": "POOL-T13",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "FINAL_ROUND",
+    "id": "POOL-T13",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "DECISION_OPEN",
+    "id": "POOL-T13",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PoolClosed"
+    ],
+    "from": "CONFIRMATION",
+    "id": "POOL-T13",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "PoolCompleted"
+    ],
+    "from": "BOOKING",
+    "id": "POOL-T14",
+    "to": "COMPLETED",
+    "trigger": "event"
+   }
+  ]
+ },
+ "quote": {
+  "initial": "DRAFT",
+  "invalid_commands": [
+   {
+    "attempt": "revise",
+    "error": "invalid-transition",
+    "from": [
+     "FINAL"
+    ],
+    "note": "Immutable once FINAL"
+   },
+   {
+    "attempt": "revise/withdraw committing at/after round deadline",
+    "error": "deadline-passed",
+    "from": [
+     "SUBMITTED",
+     "REVISED"
+    ]
+   },
+   {
+    "attempt": "submit committing at/after round 1 deadline",
+    "error": "deadline-passed",
+    "from": [
+     "DRAFT"
+    ]
+   },
+   {
+    "attempt": "submit with invalid tiers",
+    "error": "invalid-tiers",
+    "from": [
+     "DRAFT"
+    ]
+   },
+   {
+    "attempt": "submit/revise with discount above limit",
+    "error": "discount-exceeds-limit",
+    "from": [
+     "DRAFT",
+     "SUBMITTED",
+     "REVISED"
+    ]
+   },
+   {
+    "attempt": "submit/revise failing price validation",
+    "error": "quote-invalid",
+    "from": [
+     "DRAFT",
+     "SUBMITTED",
+     "REVISED"
+    ]
+   },
+   {
+    "attempt": "edit fields in place (PATCH)",
+    "error": "invalid-transition",
+    "from": [
+     "SUBMITTED",
+     "REVISED",
+     "FINAL"
+    ],
+    "note": "Only new versions via /revisions"
+   },
+   {
+    "attempt": "accept by buyer",
+    "error": "quote-not-final",
+    "from": [
+     "DRAFT",
+     "SUBMITTED",
+     "REVISED"
+    ]
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "EXPIRED",
+     "WITHDRAWN",
+     "VOID"
+    ]
+   },
+   {
+    "attempt": "stale If-Match",
+    "error": "version-conflict",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "DRAFT",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DRAFT",
+    "to": "REVISED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DRAFT",
+    "to": "FINAL"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "DRAFT",
+    "to": "VOID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SUBMITTED",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SUBMITTED",
+    "to": "SUBMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "SUBMITTED",
+    "to": "VOID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REVISED",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REVISED",
+    "to": "SUBMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REVISED",
+    "to": "VOID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL",
+    "to": "SUBMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL",
+    "to": "REVISED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "FINAL",
+    "to": "FINAL"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "SUBMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "REVISED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "FINAL"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "WITHDRAWN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "EXPIRED",
+    "to": "VOID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "SUBMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "REVISED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "FINAL"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "WITHDRAWN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "WITHDRAWN",
+    "to": "VOID"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "DRAFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "SUBMITTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "REVISED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "FINAL"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "EXPIRED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "WITHDRAWN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "VOID",
+    "to": "VOID"
+   }
+  ],
+  "owner": "quote",
+  "terminal": [
+   "EXPIRED",
+   "WITHDRAWN",
+   "VOID"
+  ],
+  "valid": [
+   {
+    "emits": [],
+    "from": "(none)",
+    "id": "QUO-T01",
+    "to": "DRAFT",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteSubmitted"
+    ],
+    "from": "DRAFT",
+    "id": "QUO-T02",
+    "to": "SUBMITTED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteRevised"
+    ],
+    "from": "SUBMITTED",
+    "id": "QUO-T03",
+    "to": "REVISED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteRevised"
+    ],
+    "from": "REVISED",
+    "id": "QUO-T03",
+    "to": "REVISED",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteFinalised"
+    ],
+    "from": "SUBMITTED",
+    "id": "QUO-T04",
+    "to": "FINAL",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteFinalised"
+    ],
+    "from": "REVISED",
+    "id": "QUO-T04",
+    "to": "FINAL",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteWithdrawn"
+    ],
+    "from": "DRAFT",
+    "id": "QUO-T05",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteWithdrawn"
+    ],
+    "from": "SUBMITTED",
+    "id": "QUO-T05",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteWithdrawn"
+    ],
+    "from": "REVISED",
+    "id": "QUO-T05",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteWithdrawn"
+    ],
+    "from": "FINAL",
+    "id": "QUO-T06",
+    "to": "WITHDRAWN",
+    "trigger": "actor"
+   },
+   {
+    "emits": [
+     "QuoteVoided"
+    ],
+    "from": "FINAL",
+    "id": "QUO-T07",
+    "to": "VOID",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteExpired"
+    ],
+    "from": "FINAL",
+    "id": "QUO-T08",
+    "to": "EXPIRED",
+    "trigger": "event"
+   },
+   {
+    "emits": [],
+    "from": "DRAFT",
+    "id": "QUO-T09",
+    "to": "EXPIRED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteExpired"
+    ],
+    "from": "DRAFT",
+    "id": "QUO-T10",
+    "to": "EXPIRED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteExpired"
+    ],
+    "from": "SUBMITTED",
+    "id": "QUO-T10",
+    "to": "EXPIRED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteExpired"
+    ],
+    "from": "REVISED",
+    "id": "QUO-T10",
+    "to": "EXPIRED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "QuoteExpired"
+    ],
+    "from": "FINAL",
+    "id": "QUO-T10",
+    "to": "EXPIRED",
+    "trigger": "event"
+   }
+  ]
+ },
+ "refund": {
+  "initial": "REFUND_REQUESTED",
+  "invalid_commands": [
+   {
+    "attempt": "admin manual resolve",
+    "error": "invalid-transition",
+    "from": [
+     "REFUND_REQUESTED",
+     "REFUND_INITIATED"
+    ]
+   },
+   {
+    "attempt": "manual resolve above threshold without second admin",
+    "error": "second-approval-required",
+    "from": [
+     "REFUND_FAILED"
+    ]
+   },
+   {
+    "attempt": "any command",
+    "error": "invalid-transition",
+    "from": [
+     "REFUNDED"
+    ]
+   },
+   {
+    "attempt": "webhook with bad signature",
+    "error": "webhook-signature-invalid",
+    "from": [
+     "*"
+    ]
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_REQUESTED",
+    "to": "REFUND_REQUESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_REQUESTED",
+    "to": "REFUND_FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_REQUESTED",
+    "to": "REFUNDED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_INITIATED",
+    "to": "REFUND_REQUESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_INITIATED",
+    "to": "REFUND_INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_FAILED",
+    "to": "REFUND_REQUESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUND_FAILED",
+    "to": "REFUND_FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "REFUND_REQUESTED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "REFUND_INITIATED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "REFUND_FAILED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "REFUNDED",
+    "to": "REFUNDED"
+   }
+  ],
+  "owner": "payment",
+  "terminal": [
+   "REFUNDED"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "RefundRequested"
+    ],
+    "from": "(none)",
+    "id": "REF-T01",
+    "to": "REFUND_REQUESTED",
+    "trigger": "event"
+   },
+   {
+    "emits": [],
+    "from": "REFUND_REQUESTED",
+    "id": "REF-T02",
+    "to": "REFUND_INITIATED",
+    "trigger": "system"
+   },
+   {
+    "emits": [],
+    "from": "REFUND_FAILED",
+    "id": "REF-T02",
+    "to": "REFUND_INITIATED",
+    "trigger": "system"
+   },
+   {
+    "emits": [
+     "RefundCompleted"
+    ],
+    "from": "REFUND_INITIATED",
+    "id": "REF-T03",
+    "to": "REFUNDED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "RefundFailed"
+    ],
+    "from": "REFUND_INITIATED",
+    "id": "REF-T04",
+    "to": "REFUND_FAILED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "RefundCompleted"
+    ],
+    "from": "REFUND_FAILED",
+    "id": "REF-T05",
+    "to": "REFUNDED",
+    "trigger": "event"
+   },
+   {
+    "emits": [
+     "RefundCompleted"
+    ],
+    "from": "REFUND_FAILED",
+    "id": "REF-T06",
+    "to": "REFUNDED",
+    "trigger": "actor"
+   }
+  ]
+ },
+ "round": {
+  "initial": "OPEN",
+  "invalid_commands": [
+   {
+    "attempt": "submit, revise or withdraw a quote in this round",
+    "error": "deadline-passed",
+    "from": [
+     "CLOSED",
+     "CANCELLED"
+    ],
+    "note": "quote service answers using its replica; CANCELLED answers invalid-transition"
+   },
+   {
+    "attempt": "submit a quote before the round replica exists in quote",
+    "error": "round-not-open",
+    "from": [
+     "(none)"
+    ]
+   },
+   {
+    "attempt": "extend or change deadline",
+    "error": "invalid-transition",
+    "from": [
+     "OPEN"
+    ],
+    "note": "Deadlines are immutable (Q-006)"
+   },
+   {
+    "attempt": "any (from, to) pair not listed in transitions",
+    "error": "invalid-transition",
+    "from": [
+     "*"
+    ]
+   }
+  ],
+  "invalid_pairs": [
+   {
+    "error": "invalid-transition",
+    "from": "OPEN",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CLOSED",
+    "to": "CANCELLED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "OPEN"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CLOSED"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "CANCELLED",
+    "to": "CANCELLED"
+   }
+  ],
+  "owner": "pool",
+  "terminal": [
+   "CLOSED",
+   "CANCELLED"
+  ],
+  "valid": [
+   {
+    "emits": [
+     "QuoteRoundOpened"
+    ],
+    "from": "(none)",
+    "id": "RND-T01",
+    "to": "OPEN",
+    "trigger": "system"
+   },
+   {
+    "emits": [
+     "RoundClosed"
+    ],
+    "from": "OPEN",
+    "id": "RND-T02",
+    "to": "CLOSED",
+    "trigger": "deadline"
+   },
+   {
+    "emits": [],
+    "from": "OPEN",
+    "id": "RND-T03",
+    "to": "CANCELLED",
+    "trigger": "actor"
+   }
+  ]
+ }
+}

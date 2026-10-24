@@ -1,0 +1,170 @@
+# Convoy catalogue seed (P0). 30 models / 8 brands. Prices in paise. Every price has a source + access date or is null with status UNVERIFIED.
+# See SOURCES.md for method, terms checks and counts. Re-verify before any public use; prices change without notice.
+ruleset_version: "2026.10.24-p0"
+collected_on: "2026-10-24"
+cities: [Mumbai, Delhi, Bengaluru, Pune]
+status_values:
+  VERIFIED: "Price read on the manufacturer's official page on collected_on, for the named variant."
+  UNVERIFIED: "Not obtained (page blocked, not rendered, or variant price not shown). price_paise is null."
+city_basis_values:
+  NOT_STATED: "Official page shows one price without naming a city or state."
+  Delhi: "Page labels the price 'Ex-showroom Price (Delhi)'."
+  ALL_INDIA: "Page labels the price 'Ex-showroom price all India'."
+city_rule: "A city price row is VERIFIED only when city_basis names that city or ALL_INDIA. Otherwise the listed price is applied to each city as an ASSUMPTION (Q-003) and shown with the evidence level CATALOGUE_ESTIMATE plus the text 'city not confirmed'."
+brands:
+  - brand: Maruti Suzuki
+    models:
+      - id: maruti-swift
+        model: Swift
+        body: hatchback
+        source: {url: "https://www.marutisuzuki.com/arena/swift/price", title: "Maruti Suzuki Arena - Swift price", accessed: "2026-10-24", price_label: "'Starting at'; page disclaimer: 'Prices are Ex-showroom Prices and are indicative'", city_basis: NOT_STATED}
+        variants:
+          - {id: swift-lxi-mt, name: "LXi MT", fuel: PETROL, transmission: MT, engine_cc: 1197, price_paise: 58390000, status: VERIFIED}
+          - {id: swift-vxi-amt, name: "VXi AMT", fuel: PETROL, transmission: AMT, engine_cc: 1197, price_paise: 71290000, status: VERIFIED}
+          - {id: swift-vxi-cng, name: "VXi CNG", fuel: CNG, transmission: MT, engine_cc: 1197, price_paise: 75740000, status: VERIFIED}
+          - {id: swift-zxip-amt, name: "ZXi+ AMT", fuel: PETROL, transmission: AMT, engine_cc: 1197, price_paise: 88890000, status: VERIFIED}
+      - id: maruti-dzire
+        model: Dzire
+        body: sedan
+        source: {url: "https://www.marutisuzuki.com/arena/dzire/price", title: "Maruti Suzuki Arena - Dzire price", accessed: "2026-10-24", price_label: "'Starting at'", city_basis: NOT_STATED}
+        variants:
+          - {id: dzire-lxi-mt, name: "LXi MT", fuel: PETROL, transmission: MT, engine_cc: null, price_paise: 63060000, status: VERIFIED, note: "engine_cc not shown on the fetched page (UNVERIFIED)"}
+          - {id: dzire-vxi-amt, name: "VXi AMT", fuel: PETROL, transmission: AMT, engine_cc: null, price_paise: 77210000, status: VERIFIED}
+          - {id: dzire-vxi-cng, name: "VXi CNG", fuel: CNG, transmission: MT, engine_cc: null, price_paise: 81810000, status: VERIFIED}
+          - {id: dzire-zxip-amt, name: "ZXi+ AMT", fuel: PETROL, transmission: AMT, engine_cc: null, price_paise: 94130000, status: VERIFIED}
+      - id: maruti-brezza
+        model: Brezza
+        body: compact SUV
+        source: {url: "https://www.marutisuzuki.com/arena/brezza/price", title: "Maruti Suzuki Arena - Brezza price", accessed: "2026-10-24", price_label: "'Introductory starting price'; 'Ex-showroom Price (Delhi). Effective from 24th July''26'", city_basis: Delhi, effective_from: "2026-07-24"}
+        variants:
+          - {id: brezza-vxi-at, name: "VXI AT", fuel: PETROL, transmission: AT, engine_cc: 1462, price_paise: 106090000, status: VERIFIED}
+          - {id: brezza-zxi-at, name: "ZXI AT", fuel: PETROL, transmission: AT, engine_cc: 1462, price_paise: 120050000, status: VERIFIED}
+          - {id: brezza-zxip-at, name: "ZXI+ AT", fuel: PETROL, transmission: AT, engine_cc: 1462, price_paise: 137050000, status: VERIFIED}
+          - {id: brezza-lxi-mt, name: "LXI MT", fuel: PETROL, transmission: MT, engine_cc: null, price_paise: null, status: UNVERIFIED, note: "Variant listed on page without a price"}
+      - id: maruti-ertiga
+        model: Ertiga
+        body: MPV
+        source: {url: "https://www.marutisuzuki.com/arena/ertiga/price", title: "Maruti Suzuki Arena - Ertiga price", accessed: "2026-10-24", price_label: "'Starting at'", city_basis: NOT_STATED}
+        variants:
+          - {id: ertiga-lxi-mt, name: "LXi MT", fuel: HYBRID, transmission: MT, engine_cc: null, price_paise: 89000000, status: VERIFIED, note: "Page fuel label 'Smart Hybrid' (mild hybrid petrol)"}
+          - {id: ertiga-vxi-cng, name: "VXi CNG", fuel: CNG, transmission: MT, engine_cc: null, price_paise: 109380000, status: VERIFIED}
+          - {id: ertiga-zxi-at, name: "ZXi AT", fuel: HYBRID, transmission: AT, engine_cc: null, price_paise: 123650000, status: VERIFIED}
+          - {id: ertiga-zxip-at, name: "ZXi+ AT", fuel: HYBRID, transmission: AT, engine_cc: null, price_paise: 131410000, status: VERIFIED}
+      - id: maruti-baleno
+        model: Baleno
+        body: hatchback
+        source: {url: "https://www.nexaexperience.com/baleno/price", title: "NEXA - Baleno price", accessed: "2026-10-24", price_label: "Page rendered template placeholders without prices", city_basis: NOT_STATED}
+        variants:
+          - {id: baleno-delta, name: "Delta", fuel: null, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED, note: "Variant name from page title only"}
+          - {id: baleno-alpha, name: "Alpha", fuel: null, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED}
+      - id: maruti-fronx
+        model: Fronx
+        body: crossover
+        source: {url: "https://www.nexaexperience.com/fronx/price", title: "NEXA - Fronx price", accessed: "2026-10-24", price_label: "No prices rendered", city_basis: NOT_STATED}
+        variants:
+          - {id: fronx-delta-plus, name: "Delta Plus", fuel: null, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED}
+          - {id: fronx-delta-cng, name: "Delta CNG", fuel: CNG, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED}
+  - brand: Hyundai
+    models:
+      - id: hyundai-creta
+        model: Creta
+        body: SUV
+        source: {url: "https://www.hyundai.com/in/en/find-a-car/creta/price", title: "Hyundai India - Creta price", accessed: "2026-10-24", price_label: "'Ex-showroom Price'; state/city filters empty", city_basis: NOT_STATED}
+        variants:
+          - {id: creta-e-mt, name: "1.5 MPi Petrol MT E", fuel: PETROL, transmission: MT, engine_cc: null, price_paise: 109070000, status: VERIFIED, note: "Displacement shown as '1.5' only"}
+          - {id: creta-exo-ivt, name: "1.5 MPi Petrol IVT EX(O)", fuel: PETROL, transmission: CVT, engine_cc: null, price_paise: 144970000, status: VERIFIED}
+          - {id: creta-king-dct, name: "1.5 Turbo Petrol DCT King", fuel: PETROL, transmission: DCT, engine_cc: null, price_paise: 199130000, status: VERIFIED}
+          - {id: creta-d-e-mt, name: "1.5 CRDi Diesel MT DSL E", fuel: DIESEL, transmission: MT, engine_cc: null, price_paise: 125280000, status: VERIFIED}
+          - {id: creta-d-king-at, name: "1.5 CRDi Diesel AT DSL King", fuel: DIESEL, transmission: AT, engine_cc: null, price_paise: 197780000, status: VERIFIED}
+      - id: hyundai-venue
+        model: Venue
+        body: compact SUV
+        source: {url: "https://www.hyundai.com/in/en/find-a-car/venue/price", title: "Hyundai India - Venue price", accessed: "2026-10-24", price_label: "'Starting at an attractive VENUE ex showroom price of Rs 7,99,900*' (not tied to a variant)", city_basis: NOT_STATED}
+        starting_price: {price_paise: 79990000, status: VERIFIED, note: "Model starting price only; variant table empty"}
+        variants:
+          - {id: venue-hx2, name: "HX 2", fuel: PETROL, transmission: MT, engine_cc: null, price_paise: null, status: UNVERIFIED, note: "Page: 1.2 L petrol, 5MT for HX 2/HX 4"}
+      - id: hyundai-verna
+        model: Verna
+        body: sedan
+        source: {url: "https://www.hyundai.com/in/en/find-a-car/verna/price", title: "Hyundai India - Verna price", accessed: "2026-10-24", price_label: "'Rs 10,99,200* (ex-showroom)' starting", city_basis: NOT_STATED}
+        starting_price: {price_paise: 109920000, status: VERIFIED, note: "Model starting price only"}
+        variants:
+          - {id: verna-hx2, name: "HX 2", fuel: PETROL, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED}
+      - id: hyundai-i20
+        model: i20
+        body: hatchback
+        source: {url: "https://www.hyundai.com/in/en/find-a-car/i20/price", title: "Hyundai India - i20 price", accessed: "2026-10-24", price_label: "'starts at Rs 5,99,000* (ex-showroom) for the base Era variant'", city_basis: NOT_STATED}
+        variants:
+          - {id: i20-era, name: "Era", fuel: PETROL, transmission: null, engine_cc: null, price_paise: 59900000, status: VERIFIED, note: "Range is 1.2 Kappa petrol, MT or IVT; Era's transmission not mapped on page"}
+          - {id: i20-asta-o, name: "Asta (O)", fuel: PETROL, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED}
+      - id: hyundai-exter
+        model: Exter
+        body: micro SUV
+        source: {url: "https://www.hyundai.com/in/en/find-a-car/exter/price", title: "Hyundai India - Exter price", accessed: "2026-10-24", price_label: "'ex-showroom price starting from Rs 5,80,600*'", city_basis: NOT_STATED}
+        starting_price: {price_paise: 58060000, status: VERIFIED, note: "Model starting price only"}
+        variants:
+          - {id: exter-ex, name: "EX", fuel: PETROL, transmission: MT, engine_cc: null, price_paise: null, status: UNVERIFIED}
+  - brand: Tata Motors
+    models:
+      - {id: tata-nexon, model: Nexon, body: compact SUV, source: {url: "https://cars.tatamotors.com/nexon/ice/price.html", title: "Tata Motors - Nexon", accessed: "2026-10-24", price_label: "Fetch failed: TLS certificate expired", city_basis: NOT_STATED}, variants: []}
+      - {id: tata-punch, model: Punch, body: micro SUV, source: {url: "https://cars.tatamotors.com/punch/ice.html", title: "Tata Motors - Punch", accessed: "2026-10-24", price_label: "Fetch failed: TLS certificate expired", city_basis: NOT_STATED}, variants: []}
+      - {id: tata-harrier, model: Harrier, body: SUV, source: {url: "https://cars.tatamotors.com", title: "Tata Motors", accessed: "2026-10-24", price_label: "Not attempted after two TLS failures on the same host", city_basis: NOT_STATED}, variants: []}
+      - {id: tata-safari, model: Safari, body: SUV, source: {url: "https://cars.tatamotors.com", title: "Tata Motors", accessed: "2026-10-24", price_label: "Not attempted after two TLS failures on the same host", city_basis: NOT_STATED}, variants: []}
+      - {id: tata-altroz, model: Altroz, body: hatchback, source: {url: "https://cars.tatamotors.com", title: "Tata Motors", accessed: "2026-10-24", price_label: "Not attempted after two TLS failures on the same host", city_basis: NOT_STATED}, variants: []}
+  - brand: Mahindra
+    models:
+      - {id: mahindra-xuv3xo, model: XUV 3XO, body: compact SUV, source: {url: "https://auto.mahindra.com/suv/xuv-3xo", title: "Mahindra - XUV 3XO", accessed: "2026-10-24", price_label: "Menu range 'Rs 7.79L - Rs 15.04L' (not labelled ex-showroom, no city)", city_basis: NOT_STATED}, price_range: {min_paise: 77900000, max_paise: 150400000, status: UNVERIFIED, note: "Basis (ex-showroom?) not stated; lakh figures rounded to 2 decimals on page"}, variants: []}
+      - {id: mahindra-scorpio-n, model: Scorpio-N, body: SUV, source: {url: "https://auto.mahindra.com/suv/scorpio-n", title: "Mahindra - Scorpio-N", accessed: "2026-10-24", price_label: "Menu range 'Rs 13.69L - Rs 25.49L' (not labelled)", city_basis: NOT_STATED}, price_range: {min_paise: 136900000, max_paise: 254900000, status: UNVERIFIED}, variants: []}
+      - {id: mahindra-xuv7xo, model: XUV 7XO, body: SUV, source: {url: "https://auto.mahindra.com/suv/xuv700", title: "Mahindra - XUV 7XO (URL /suv/xuv700)", accessed: "2026-10-24", price_label: "Menu range 'Rs 13.99L - Rs 25.94L' (not labelled)", city_basis: NOT_STATED}, price_range: {min_paise: 139900000, max_paise: 259400000, status: UNVERIFIED, note: "The xuv700 URL now shows 'XUV 7XO'"}, variants: []}
+      - {id: mahindra-thar, model: Thar, body: SUV, source: {url: "https://auto.mahindra.com/suv/thar", title: "Mahindra - Thar (menu: THAR OG)", accessed: "2026-10-24", price_label: "Menu range 'Rs 10.32L - Rs 18.99L' (not labelled)", city_basis: NOT_STATED}, price_range: {min_paise: 103200000, max_paise: 189900000, status: UNVERIFIED}, variants: []}
+  - brand: Kia
+    models:
+      - id: kia-sonet
+        model: Sonet
+        body: compact SUV
+        source: {url: "https://www.kia.com/in/our-vehicles/sonet/showroom.html", title: "Kia India - Sonet", accessed: "2026-10-24", price_label: "FAQ: 'starts at price of Rs 7,44,900*(Ex-showroom price all India) after GST cut'", city_basis: ALL_INDIA}
+        starting_price: {price_paise: 74490000, status: VERIFIED, note: "Model starting price; trim not named"}
+        variants:
+          - {id: sonet-hte, name: "HTE", fuel: null, transmission: null, engine_cc: null, price_paise: null, status: UNVERIFIED}
+      - id: kia-seltos
+        model: Seltos
+        body: SUV
+        source: {url: "https://www.kia.com/in/our-vehicles/seltos/showroom.html", title: "Kia India - Seltos", accessed: "2026-10-24", price_label: "FAQ: base HTE 'Rs 11,24,900*', top X Line (O) 'Rs 21,56,900*' (ex-showroom)", city_basis: NOT_STATED}
+        variants:
+          - {id: seltos-hte, name: "HTE", fuel: null, transmission: null, engine_cc: null, price_paise: 112490000, status: VERIFIED, note: "Engine/transmission for this trim not mapped on page"}
+          - {id: seltos-xline-o, name: "X Line (O)", fuel: null, transmission: null, engine_cc: null, price_paise: 215690000, status: VERIFIED}
+      - id: kia-carens
+        model: Carens
+        body: MPV
+        source: {url: "https://www.kia.com/in/our-vehicles/carens/showroom.html", title: "Kia India - Carens", accessed: "2026-10-24", price_label: "'Prices start at Rs 11,11,900*' (not labelled ex-showroom)", city_basis: NOT_STATED}
+        starting_price: {price_paise: 111190000, status: UNVERIFIED, note: "Basis not labelled ex-showroom"}
+        variants: []
+  - brand: Toyota
+    models:
+      - {id: toyota-innova-hycross, model: Innova Hycross, body: MPV, source: {url: "https://www.toyotabharat.com/showroom/innova-hycross/", title: "Toyota Bharat - Innova Hycross", accessed: "2026-10-24", price_label: "HTTP 404 to fetch", city_basis: NOT_STATED}, variants: []}
+      - {id: toyota-fortuner, model: Fortuner, body: SUV, source: {url: "https://www.toyotabharat.com/showroom/fortuner/", title: "Toyota Bharat - Fortuner", accessed: "2026-10-24", price_label: "HTTP 403 to fetch", city_basis: NOT_STATED}, variants: []}
+      - {id: toyota-hyryder, model: Urban Cruiser Hyryder, body: SUV, source: {url: "https://www.toyotabharat.com/", title: "Toyota Bharat", accessed: "2026-10-24", price_label: "Not attempted after 403/404 on the same host", city_basis: NOT_STATED}, variants: []}
+  - brand: Honda
+    models:
+      - {id: honda-city, model: City, body: sedan, source: {url: "https://www.hondacarindia.com/honda-city", title: "Honda Cars India - City", accessed: "2026-10-24", price_label: "'Starts from Rs 11,99,900' (not labelled ex-showroom)", city_basis: NOT_STATED}, starting_price: {price_paise: 119990000, status: UNVERIFIED, note: "Basis not labelled ex-showroom"}, variants: []}
+      - {id: honda-elevate, model: Elevate, body: SUV, source: {url: "https://www.hondacarindia.com/honda-elevate", title: "Honda Cars India - Elevate", accessed: "2026-10-24", price_label: "'Starts from Rs 11,80,000*' (not labelled ex-showroom)", city_basis: NOT_STATED}, starting_price: {price_paise: 118000000, status: UNVERIFIED, note: "Basis not labelled ex-showroom"}, variants: []}
+  - brand: MG Motor
+    models:
+      - id: mg-windsor-ev
+        model: Windsor EV
+        body: crossover
+        source: {url: "https://www.mgmotor.co.in/vehicles/windsor-ev-electric-car-in-india", title: "MG Motor India - Windsor EV", accessed: "2026-10-24", price_label: "'Ex-showroom price*'; 'Ex-showroom prices may vary across the Southern region'", city_basis: NOT_STATED}
+        variants:
+          - {id: windsor-excite, name: "Excite", fuel: EV, transmission: AT, engine_cc: null, price_paise: 148480000, status: VERIFIED, note: "BaaS option (Rs 9.99 lakh + Rs 4.3/km) not modelled"}
+          - {id: windsor-exclusive, name: "Exclusive", fuel: EV, transmission: AT, engine_cc: null, price_paise: 161480000, status: VERIFIED}
+          - {id: windsor-essence, name: "Essence", fuel: EV, transmission: AT, engine_cc: null, price_paise: 171480000, status: VERIFIED}
+          - {id: windsor-essence-pro, name: "Essence Pro", fuel: EV, transmission: AT, engine_cc: null, price_paise: 191480000, status: VERIFIED}
+      - id: mg-hector
+        model: Hector
+        body: SUV
+        source: {url: "https://www.mgmotor.co.in/vehicles/mghector", title: "MG Motor India - Hector", accessed: "2026-10-24", price_label: "'priced between Rs 12,14,000* and Rs 20,14,800* (ex-showroom)'; EMI widget shows a conflicting Rs 11,99,000", city_basis: NOT_STATED}
+        variants:
+          - {id: hector-style, name: "Style", fuel: null, transmission: MT, engine_cc: null, price_paise: 121400000, status: VERIFIED, note: "Fuel not stated on page; transmission inferred from trim naming (UNVERIFIED)"}
+          - {id: hector-smart-pro-cvt, name: "Smart Pro CVT", fuel: null, transmission: CVT, engine_cc: null, price_paise: 171480000, status: VERIFIED}
+          - {id: hector-sharp-pro-mt-7s, name: "Sharp Pro MT (7 seater)", fuel: null, transmission: MT, engine_cc: null, price_paise: 179980000, status: VERIFIED}
+          - {id: hector-savvy-pro-cvt, name: "Savvy Pro CVT", fuel: null, transmission: CVT, engine_cc: null, price_paise: 196480000, status: VERIFIED}

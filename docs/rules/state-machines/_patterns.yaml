@@ -1,0 +1,24 @@
+# Shared crash-point and repeat patterns referenced by transitions (crash_points: <PATTERN>).
+# A transition that needs something different spells its crash points out inline.
+crash_patterns:
+  OUTBOX_STD:
+    before_commit: "Transaction rolls back; no state change, no outbox row. Caller retry (same Idempotency-Key) or the next scheduler wake-up / sweeper pass re-attempts the transition."
+    after_commit_before_publish: "State change and outbox row are durable. Outbox relay publishes on restart (rows with delivered_at IS NULL, ordered by id). No business re-execution."
+    after_publish: "Relay may crash before marking delivered_at; row is re-published. Consumers dedupe on event_id in their inbox, so the duplicate has no business effect."
+  OUTBOX_DEADLINE:
+    before_commit: "Rolls back. Wake-up is not lost: the sweeper (every 60 s) finds aggregates whose deadline <= now_db() and whose state still precedes the transition, and retries."
+    after_commit_before_publish: "Durable; relay publishes on restart. Sweeper sees the new state and does nothing."
+    after_publish: "Duplicate publish absorbed by consumer inbox dedupe."
+  EXTERNAL_CALL_THEN_COMMIT:
+    before_commit: "External call may or may not have happened. The external call always carries a deterministic idempotency key derived from the aggregate id, so the retry returns the same external object instead of creating a second one."
+    after_commit_before_publish: "Durable; relay publishes on restart."
+    after_publish: "Duplicate publish absorbed by consumer inbox dedupe."
+  INBOX_CONSUMER:
+    before_commit: "Business effect and inbox row roll back together; SQS message becomes visible again after the visibility timeout and is redelivered."
+    after_commit_before_publish: "Business effect, inbox row and any outbox row are durable; SQS message was not deleted, so it is redelivered and dropped by the inbox unique key (counted as duplicate)."
+    after_publish: "Same as above; ack happens after commit, a crash before ack only causes a harmless redelivery."
+
+repeat_patterns:
+  VERSION_NOOP: "Second attempt carries a stale expected version: UPDATE ... WHERE version = :v affects 0 rows; service re-reads, sees the target state already reached and returns the current representation (200) for idempotent API calls, or does nothing for system triggers."
+  IDEMPOTENCY_KEY: "Same Idempotency-Key + same request hash returns the stored response (same status and body). Same key + different body returns 422 idempotency-key-reused. Keys are kept 24 h in the owning service DB (unique constraint); Redis is only a fast path."
+  INBOX_DEDUPE: "Event already in inbox (unique consumer + event_id): message acked, no effect, duplicate counter incremented."

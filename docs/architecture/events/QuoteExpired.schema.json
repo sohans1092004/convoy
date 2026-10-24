@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/QuoteExpired.schema.json",
+  "title": "QuoteExpired v1",
+  "description": "Owner: quote. Consumers: pool, realtime, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "QuoteExpired"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "quote"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pool_id",
+        "quote_id",
+        "reason"
+      ],
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "NOT_SUBMITTED",
+            "NO_ACCEPTANCES",
+            "POOL_CLOSED"
+          ]
+        }
+      }
+    }
+  }
+}

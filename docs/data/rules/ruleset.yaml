@@ -1,0 +1,11 @@
+# Price-engine ruleset metadata. All rule files must carry the same ruleset_version; the engine stamps it on every snapshot.
+ruleset_version: "2026.10.24-p0"
+currency: INR
+money_unit: paise
+deposit_amount_paise: 99900               # Rs 999 test-mode deposit (PLAN §2.3), configurable per environment
+deposit_evidence: "PLAN.md §2.3 / §10.4"
+max_discount_bp: 2500                     # ASSUMPTION Q-014: a dealer discount above 25 % of ex-showroom is rejected as a likely data-entry error
+discount_bases: [EX_SHOWROOM]             # Q-014: P0 supports discounts on the ex-showroom price only
+questionable_charge_codes: [HANDLING]     # PLAN §2.4 example; flagged for the buyer to query, still included in cash payable
+fuels: [PETROL, DIESEL, CNG, HYBRID, EV]
+evidence_levels: [DEALER_CONFIRMED, CATALOGUE_ESTIMATE, UNVERIFIED]

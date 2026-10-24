@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/AcceptanceChanged.schema.json",
+  "title": "AcceptanceChanged v1",
+  "description": "Owner: pool. Consumers: realtime, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "AcceptanceChanged"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acceptance_counts",
+        "membership_id",
+        "pool_id",
+        "quote_id",
+        "variant_id"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "membership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "quote_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "variant_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptance_counts": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

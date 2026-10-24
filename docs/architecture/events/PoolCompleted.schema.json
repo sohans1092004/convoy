@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/PoolCompleted.schema.json",
+  "title": "PoolCompleted v1",
+  "description": "Owner: pool. Consumers: realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "PoolCompleted"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pool_id"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

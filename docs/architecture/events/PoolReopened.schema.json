@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/PoolReopened.schema.json",
+  "title": "PoolReopened v1",
+  "description": "Owner: pool. Consumers: realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "PoolReopened"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forming_deadline",
+        "pool_id",
+        "round_set"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "round_set": {
+          "type": "integer"
+        },
+        "forming_deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        }
+      }
+    }
+  }
+}

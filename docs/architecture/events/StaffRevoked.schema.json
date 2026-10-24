@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/StaffRevoked.schema.json",
+  "title": "StaffRevoked v1",
+  "description": "Owner: identity. Consumers: gateway, realtime, dealer, quote, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "StaffRevoked"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "identity"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dealership_id",
+        "revoked_by",
+        "user_id"
+      ],
+      "properties": {
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revoked_by": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

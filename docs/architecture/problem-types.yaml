@@ -1,0 +1,29 @@
+# RFC 9457 problem types. Every error referenced by a state machine or api-outline.md must be listed here.
+# type URI = https://convoy.example/problems/<slug>  (example.* domain: placeholder until a real domain exists)
+base_uri: https://convoy.example/problems/
+problems:
+  validation-failed:        {status: 400, code: VALIDATION_FAILED, title: "Request body or parameters are invalid"}
+  unauthenticated:          {status: 401, code: UNAUTHENTICATED, title: "No valid session or token"}
+  forbidden:                {status: 403, code: FORBIDDEN, title: "Authenticated but not allowed on this resource"}
+  not-found:                {status: 404, code: NOT_FOUND, title: "Resource does not exist or is not visible to the caller"}
+  invalid-transition:       {status: 409, code: INVALID_TRANSITION, title: "The aggregate is not in a state that allows this action"}
+  version-conflict:         {status: 409, code: VERSION_CONFLICT, title: "The aggregate changed since you read it (If-Match / expected version mismatch)"}
+  deadline-passed:          {status: 409, code: DEADLINE_PASSED, title: "The database clock at commit time was at or past the deadline"}
+  round-not-open:           {status: 409, code: ROUND_NOT_OPEN, title: "No quote round is open for this pool yet"}
+  already-member:           {status: 409, code: ALREADY_MEMBER, title: "Buyer already has a membership in this pool"}
+  active-commitment-exists: {status: 409, code: ACTIVE_COMMITMENT_EXISTS, title: "Buyer already holds an active commitment for this model"}
+  not-a-member:             {status: 409, code: NOT_A_MEMBER, title: "Buyer is not a committed member of this pool"}
+  capacity-reached:         {status: 409, code: CAPACITY_REACHED, title: "The quote's max_units confirmations are already taken"}
+  deposit-not-captured:     {status: 409, code: DEPOSIT_NOT_CAPTURED, title: "Deposit has no captured payment yet"}
+  quote-not-final:          {status: 409, code: QUOTE_NOT_FINAL, title: "Only FINAL quotes can be accepted"}
+  quote-invalid:            {status: 422, code: QUOTE_INVALID, title: "Quote fails pricing or tier validation (see errors[])"}
+  invalid-tiers:            {status: 422, code: INVALID_TIERS, title: "Tier ladder is malformed (gap, overlap, non-monotonic, does not cover minimum)"}
+  discount-exceeds-limit:   {status: 422, code: DISCOUNT_EXCEEDS_LIMIT, title: "Discount larger than the allowed maximum"}
+  idempotency-key-reused:   {status: 422, code: IDEMPOTENCY_KEY_REUSED, title: "Idempotency-Key was already used with a different request body"}
+  idempotency-key-missing:  {status: 428, code: IDEMPOTENCY_KEY_MISSING, title: "This endpoint requires an Idempotency-Key header"}
+  precondition-required:    {status: 428, code: PRECONDITION_REQUIRED, title: "This endpoint requires If-Match with the aggregate version"}
+  rate-limited:             {status: 429, code: RATE_LIMITED, title: "Too many requests"}
+  second-approval-required: {status: 409, code: SECOND_APPROVAL_REQUIRED, title: "Action above threshold needs a second admin"}
+  webhook-signature-invalid: {status: 400, code: WEBHOOK_SIGNATURE_INVALID, title: "Razorpay webhook HMAC check failed"}
+  review-not-eligible:      {status: 403, code: REVIEW_NOT_ELIGIBLE, title: "Only buyers with a delivered booking from this dealer can review"}
+  dependency-unavailable:   {status: 503, code: DEPENDENCY_UNAVAILABLE, title: "A required downstream dependency is unavailable; retry with the same Idempotency-Key"}

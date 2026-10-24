@@ -1,0 +1,1227 @@
+{
+ "accounts": {
+  "1100": "Razorpay clearing (asset)",
+  "1200": "Platform bank (asset)",
+  "2100": "Customer deposits held (liability)",
+  "2200": "Deposits applied to bookings (liability)",
+  "2300": "Dealer settlement payable (liability)"
+ },
+ "cases": [
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "MemberLeft",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "BUYER_LEFT",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D01",
+   "plan_row": "Buyer leaves before CONFIRMATION",
+   "situation": "Committed buyer leaves during QUOTE_OPEN"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "AcceptancesFrozen(released)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "NO_ACCEPTANCE",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D02",
+   "plan_row": "Buyer leaves before CONFIRMATION",
+   "situation": "Committed buyer accepts nothing by decision deadline"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "PoolClosed(EXPIRED)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "POOL_EXPIRED",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D03",
+   "plan_row": "Pool EXPIRED",
+   "situation": "Minimum not reached by forming deadline"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "PoolClosed(NO_QUOTES)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "POOL_NO_QUOTES",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D04",
+   "plan_row": "Pool NO_QUOTES",
+   "situation": "No valid quote at sealed deadline"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "PoolClosed(CANCELLED)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "POOL_CANCELLED",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D05",
+   "plan_row": "Pool CANCELLED",
+   "situation": "Admin cancels pool with reason"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(VOID)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "QUOTE_VOID",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "buyer notified with reason",
+     "pool may re-round once"
+    ]
+   },
+   "id": "D06",
+   "plan_row": "Quote VOID",
+   "situation": "Confirmed count below minimum fulfilment"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "QuoteWithdrawn(after_final)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "DEALER_CANCELLED",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "dispute auto-opened",
+     "dealer reliability decremented"
+    ]
+   },
+   "id": "D07",
+   "plan_row": "Quote WITHDRAWN",
+   "situation": "Dealer cancels FINAL quote during CONFIRMATION"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(RESOLVED)",
+    "DepositApplyRequested",
+    "StockUnavailable",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-APPLY",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2200",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2200",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "STOCK_UNAVAILABLE",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "booking CANCELLED",
+     "dispute auto-opened",
+     "dealer reliability decremented"
+    ]
+   },
+   "id": "D08",
+   "plan_row": "Stock unavailable",
+   "situation": "Stock reservation fails after booking issued"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(RESOLVED)",
+    "DepositApplyRequested",
+    "BookingCancelled(DEALER_CANCELLED)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-APPLY",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2200",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2200",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "DEALER_CANCELLED",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "dispute auto-opened",
+     "dealer reliability decremented"
+    ]
+   },
+   "id": "D09",
+   "plan_row": "Dealer cancels",
+   "situation": "Dealer cancels a confirmed booking"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(RESOLVED)",
+    "DepositApplyRequested",
+    "dealer_confirm_deadline passes",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-APPLY",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2200",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2200",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "DEALER_NOT_HONOURED",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "booking CANCELLED",
+     "dispute auto-opened",
+     "admin review"
+    ]
+   },
+   "id": "D10",
+   "plan_row": "Dealer doesn't honour the price",
+   "situation": "Dealer does not confirm the booking within 48 h"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirmation_deadline passes",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "MISSED_CONFIRMATION_DEADLINE",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D11",
+   "plan_row": "Buyer misses the confirmation deadline",
+   "situation": "No confirmation before deadline"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "decline",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "BUYER_DECLINED",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D12",
+   "plan_row": "Buyer misses the confirmation deadline",
+   "situation": "Buyer explicitly declines"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "cancel",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "BUYER_CANCELLED",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "recorded as buyer cancellation; tier unaffected if after deadline"
+    ]
+   },
+   "id": "D13",
+   "plan_row": "Buyer cancels after confirming",
+   "situation": "Cancel before tier resolution"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(RESOLVED)",
+    "DepositApplyRequested",
+    "BookingCancelled(BUYER_CANCELLED)",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-APPLY",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2200",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2200",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "BUYER_CANCELLED",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "other buyers price unchanged"
+    ]
+   },
+   "id": "D14",
+   "plan_row": "Buyer cancels after confirming",
+   "situation": "Cancel after booking issued"
+  },
+  {
+   "events": [
+    "commit",
+    "MemberLeft",
+    "webhook payment.captured",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "LATE_CAPTURE",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D15",
+   "plan_row": "payment.captured after buyer left",
+   "situation": "Buyer leaves while COMMIT_PENDING; capture arrives later"
+  },
+  {
+   "events": [
+    "commit",
+    "PoolClosed(EXPIRED)",
+    "webhook payment.captured",
+    "webhook refund.processed"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "LATE_CAPTURE",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D16",
+   "plan_row": "payment.captured after pool closed",
+   "situation": "Pool EXPIRED while COMMIT_PENDING; capture arrives later"
+  },
+  {
+   "events": [
+    "commit",
+    "commit (same key)",
+    "webhook payment.captured"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "CAPTURED",
+    "refund": null,
+    "side_effects": [
+     "one Razorpay order",
+     "one membership",
+     "committed_count +1"
+    ]
+   },
+   "id": "D17",
+   "plan_row": "Duplicate request",
+   "situation": "Double-click commit with the same Idempotency-Key"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "webhook payment.captured (same event id)"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "CAPTURED",
+    "refund": null,
+    "side_effects": [
+     "second webhook 200, no effect, duplicate counter +1"
+    ]
+   },
+   "id": "D18",
+   "plan_row": "Duplicate webhook",
+   "situation": "payment.captured delivered twice (same event id)"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "MemberLeft",
+    "webhook refund.processed",
+    "webhook refund.processed (same event id)"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "reason_code": "BUYER_LEFT",
+     "state": "REFUNDED"
+    },
+    "side_effects": []
+   },
+   "id": "D19",
+   "plan_row": "Duplicate webhook",
+   "situation": "refund.processed delivered twice"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "accept",
+    "confirm",
+    "TierResolved(RESOLVED)",
+    "DepositApplyRequested",
+    "BookingDelivered"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-APPLY",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2200",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-SETTLE",
+      "lines": [
+       {
+        "account": "2200",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2300",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "SETTLED",
+    "refund": null,
+    "side_effects": []
+   },
+   "id": "D20",
+   "plan_row": "(happy path)",
+   "situation": "Booking delivered: deposit settled"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.captured",
+    "MemberLeft",
+    "webhook refund.failed x5",
+    "admin resolve-manually"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     },
+     {
+      "entry": "J-REFUND-MANUAL",
+      "lines": [
+       {
+        "account": "2100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "1200",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "REFUNDED",
+    "refund": {
+     "manual": true,
+     "reason_code": "BUYER_LEFT",
+     "state": "REFUNDED"
+    },
+    "side_effects": [
+     "alarm REFUND_STUCK",
+     "admin queue entry"
+    ]
+   },
+   "id": "D21",
+   "plan_row": "(refund failure)",
+   "situation": "Refund fails 5 times, admin resolves manually"
+  },
+  {
+   "events": [
+    "commit",
+    "webhook payment.failed",
+    "webhook payment.captured"
+   ],
+   "expected": {
+    "ledger": [
+     {
+      "entry": "J-CAPTURE",
+      "lines": [
+       {
+        "account": "1100",
+        "cr": 0,
+        "dr": 99900
+       },
+       {
+        "account": "2100",
+        "cr": 99900,
+        "dr": 0
+       }
+      ]
+     }
+    ],
+    "payment_state": "CAPTURED",
+    "refund": null,
+    "side_effects": [
+     "membership COMMITTED (MEM-T03 from INTERESTED)"
+    ]
+   },
+   "id": "D22",
+   "plan_row": "(failed then retried)",
+   "situation": "First attempt fails, retry in checkout succeeds"
+  },
+  {
+   "events": [
+    "commit",
+    "24 h pass"
+   ],
+   "expected": {
+    "ledger": [],
+    "payment_state": "VOIDED_UNPAID",
+    "refund": null,
+    "side_effects": [
+     "membership back to INTERESTED"
+    ]
+   },
+   "id": "D23",
+   "plan_row": "(abandoned)",
+   "situation": "Checkout never completed within 24 h"
+  }
+ ],
+ "deposit_amount_paise": 99900
+}

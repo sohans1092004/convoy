@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/ReliabilityScoreChanged.schema.json",
+  "title": "ReliabilityScoreChanged v1",
+  "description": "Owner: dealer. Consumers: audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "ReliabilityScoreChanged"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "dealer"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cause",
+        "dealership_id",
+        "score"
+      ],
+      "properties": {
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "score": {
+          "type": "integer"
+        },
+        "cause": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

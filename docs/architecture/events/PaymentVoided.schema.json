@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/PaymentVoided.schema.json",
+  "title": "PaymentVoided v1",
+  "description": "Owner: payment. Consumers: pool, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "PaymentVoided"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "payment"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buyer_id",
+        "payment_id",
+        "pool_id"
+      ],
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/BookingIssued.schema.json",
+  "title": "BookingIssued v1",
+  "description": "Owner: order. Consumers: dealer, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "BookingIssued"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "dealer_confirm_deadline",
+        "dealership_id",
+        "final_cash_payable_paise",
+        "order_id",
+        "pool_id",
+        "promised_delivery_date",
+        "variant_id"
+      ],
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "variant_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "final_cash_payable_paise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Money in integer paise (ADR-012)"
+        },
+        "promised_delivery_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "description": "Calendar date in IST"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dealer_confirm_deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        }
+      }
+    }
+  }
+}

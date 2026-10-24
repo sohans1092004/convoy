@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/RefundRequested.schema.json",
+  "title": "RefundRequested v1",
+  "description": "Owner: payment. Consumers: notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "RefundRequested"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "payment"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount_paise",
+        "buyer_id",
+        "payment_id",
+        "reason_code",
+        "refund_id"
+      ],
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "payment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount_paise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Money in integer paise (ADR-012)"
+        }
+      }
+    }
+  }
+}

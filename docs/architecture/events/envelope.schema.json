@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/envelope.schema.json",
+  "title": "Convoy event envelope (PLAN §4.3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "aggregate_id",
+    "aggregate_version",
+    "occurred_at",
+    "correlation_id",
+    "causation_id",
+    "producer",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7; inbox dedupe key and SNS FIFO MessageDeduplicationId"
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z]+$"
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregate_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Owner aggregate version after the change; consumers detect gaps/stale events with it"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "DB commit-time clock of the owner (UTC)"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "causation_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "producer": {
+      "type": "string",
+      "enum": [
+        "identity",
+        "catalog",
+        "pool",
+        "dealer",
+        "quote",
+        "order",
+        "payment"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

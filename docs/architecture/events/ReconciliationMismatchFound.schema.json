@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/ReconciliationMismatchFound.schema.json",
+  "title": "ReconciliationMismatchFound v1",
+  "description": "Owner: payment. Consumers: notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "ReconciliationMismatchFound"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "payment"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mismatch_class",
+        "payment_id",
+        "refund_id",
+        "run_id"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mismatch_class": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payment_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "refund_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

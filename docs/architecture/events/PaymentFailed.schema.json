@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/PaymentFailed.schema.json",
+  "title": "PaymentFailed v1",
+  "description": "Owner: payment. Consumers: pool, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "PaymentFailed"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "payment"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buyer_id",
+        "failure_code",
+        "payment_id",
+        "pool_id"
+      ],
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "failure_code": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

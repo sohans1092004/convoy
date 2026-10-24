@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/BookingOverdue.schema.json",
+  "title": "BookingOverdue v1",
+  "description": "Owner: order. Consumers: notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "BookingOverdue"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "promised_delivery_date"
+      ],
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "promised_delivery_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Calendar date in IST"
+        }
+      }
+    }
+  }
+}

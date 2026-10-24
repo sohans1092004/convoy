@@ -1,0 +1,118 @@
+machine: dispute
+owner: order
+aggregate: order.disputes
+version_field: version
+initial: OPEN
+plan_ref: "PLAN.md §2.6, §3.1(9) (category, evidence attachments in S3, status, owner, resolution history)"
+notes: "Categories: NOT_DELIVERED, DELIVERY_OVERDUE, PRICE_NOT_HONOURED, STOCK_UNAVAILABLE, DEALER_CANCELLED, DEALER_NOT_HONOURED, WRONG_VARIANT, CHARGES_DISPUTE, REFUND_NOT_RECEIVED, OTHER. Evidence = S3 objects uploaded via presigned PUT (max 10 files, 10 MB each, image/pdf). Every transition appends to order.dispute_history (actor, from, to, note, at)."
+states:
+  - {name: OPEN, terminal: false, description: "Raised by buyer or auto-opened by the system; unassigned"}
+  - {name: UNDER_REVIEW, terminal: false, description: "Assigned to an admin owner"}
+  - {name: AWAITING_PARTY, terminal: false, description: "Admin asked buyer or dealer for information (72 h response window)"}
+  - {name: RESOLVED, terminal: false, description: "Admin recorded an outcome; 7-day appeal window"}
+  - {name: CLOSED, terminal: true, description: "Appeal window passed or appeal decided"}
+  - {name: WITHDRAWN, terminal: true, description: "Buyer withdrew before resolution"}
+transitions:
+  - id: DSP-T01
+    from: "(none)"
+    to: OPEN
+    trigger: {kind: actor, by: "buyer | system", via: "POST /orders/{id}/disputes {category, description, evidence_keys[]} (Idempotency-Key); system auto-open inside BKG-T03/BKG-T06/ORD-T10"}
+    guard: "buyer owns the order AND order.state IN (BOOKED, COMPLETED, CANCELLED) AND no non-terminal dispute of the same category on this order"
+    effects: ["INSERT order.disputes(state='OPEN')", "INSERT order.dispute_history", "INSERT order.outbox(DisputeOpened)"]
+    emits: [DisputeOpened]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Disputes on COMPLETED orders allowed for 90 days after delivery (Q-020); later -> 409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "SLA: assigned within 1 business day; alarm DISPUTE_UNASSIGNED."
+    detected_by: "order API"
+  - id: DSP-T02
+    from: OPEN
+    to: UNDER_REVIEW
+    trigger: {kind: actor, by: platform_admin, via: "POST /admin/disputes/{id}/assign {owner_id}"}
+    guard: "caller platform_admin"
+    effects: ["UPDATE order.disputes SET state='UNDER_REVIEW', owner_id", "history", "INSERT order.outbox(DisputeStatusChanged)"]
+    emits: [DisputeStatusChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous."
+    detected_by: "admin API"
+  - id: DSP-T03
+    from: UNDER_REVIEW
+    to: AWAITING_PARTY
+    trigger: {kind: actor, by: platform_admin, via: "POST /admin/disputes/{id}/request-info {party: BUYER|DEALER, question}"}
+    guard: "caller is the owner"
+    effects: ["UPDATE state='AWAITING_PARTY', awaiting_party, respond_by=now_db()+72h", "history", "outbox DisputeStatusChanged"]
+    emits: [DisputeStatusChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "respond_by enforced by DSP-T04 (system)."
+    detected_by: "admin API"
+  - id: DSP-T04
+    from: AWAITING_PARTY
+    to: UNDER_REVIEW
+    trigger: {kind: actor, by: "buyer | dealer_staff | system", via: "POST /disputes/{id}/responses (party) or sweeper at respond_by"}
+    guard: "caller is the awaited party, or now_db() >= respond_by (system, records NO_RESPONSE)"
+    effects: ["UPDATE state='UNDER_REVIEW'", "history (response or NO_RESPONSE)", "outbox DisputeStatusChanged"]
+    emits: [DisputeStatusChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "A response after the system already moved it back is attached to history without a state change."
+    crash_points: OUTBOX_STD
+    timeout: "Sweeper every 5 min."
+    detected_by: "order API; order sweeper"
+  - id: DSP-T05
+    from: UNDER_REVIEW
+    to: RESOLVED
+    trigger: {kind: actor, by: platform_admin, via: "POST /admin/disputes/{id}/resolve {outcome, note} (Idempotency-Key)"}
+    guard: "caller is the owner AND outcome IN (REFUND_BUYER, CANCEL_BOOKING, DEALER_WARNING, PRICE_ADJUSTMENT_RECORDED, NO_ACTION) AND (outcome involves money above threshold => second admin approval)"
+    effects: ["UPDATE state='RESOLVED', outcome, appeal_until=now_db()+7d", "CANCEL_BOOKING -> BKG-T06 actor admin", "history", "outbox DisputeResolved"]
+    emits: [DisputeResolved]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous."
+    detected_by: "admin API"
+  - id: DSP-T06
+    from: RESOLVED
+    to: CLOSED
+    trigger: {kind: deadline, by: system, via: "sweeper at appeal_until, or immediately after an appeal decision"}
+    guard: "now_db() >= appeal_until OR appeal_decided"
+    effects: ["UPDATE state='CLOSED'", "history", "outbox DisputeStatusChanged", "AllBookingsClosed check (ORD-T08 rule)"]
+    emits: [DisputeStatusChanged]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Appeal committing at/after appeal_until -> 409 deadline-passed."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Sweeper hourly."
+    detected_by: "order sweeper"
+  - id: DSP-T07
+    from: RESOLVED
+    to: UNDER_REVIEW
+    trigger: {kind: actor, by: buyer, via: "POST /disputes/{id}/appeal {note}"}
+    guard: "buyer owns AND now_db() < appeal_until AND appeal_count = 0"
+    effects: ["UPDATE state='UNDER_REVIEW', appeal_count=1, owner reassigned to a different admin", "history", "outbox DisputeStatusChanged"]
+    emits: [DisputeStatusChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous."
+    detected_by: "order API"
+  - id: DSP-T08
+    from: [OPEN, UNDER_REVIEW, AWAITING_PARTY]
+    to: WITHDRAWN
+    trigger: {kind: actor, by: buyer, via: "POST /disputes/{id}/withdraw"}
+    guard: "buyer owns AND opened_by = buyer (system-opened disputes cannot be withdrawn by the buyer)"
+    effects: ["UPDATE state='WITHDRAWN'", "history", "outbox DisputeStatusChanged"]
+    emits: [DisputeStatusChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous."
+    detected_by: "order API"
+invalid_transitions:
+  - {from: [RESOLVED], attempt: "second appeal", error: invalid-transition}
+  - {from: [OPEN, AWAITING_PARTY], attempt: resolve, error: invalid-transition}
+  - {from: ["*"], attempt: "dealer reads dispute of another dealership", error: not-found}
+  - {from: [CLOSED, WITHDRAWN], attempt: "any command", error: invalid-transition}
+  - {from: ["*"], attempt: "money outcome above threshold without second admin", error: second-approval-required}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

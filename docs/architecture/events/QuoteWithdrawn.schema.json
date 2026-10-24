@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/QuoteWithdrawn.schema.json",
+  "title": "QuoteWithdrawn v1",
+  "description": "Owner: quote. Consumers: order, pool, dealer, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "QuoteWithdrawn"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "quote"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "after_final",
+        "dealership_id",
+        "pool_id",
+        "quote_id",
+        "reason"
+      ],
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "after_final": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

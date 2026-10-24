@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track the order</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>5 · Track the order</h1>
+  <p>Flagship buyer screen 5: timeline, QR voucher, dealer confirmation, delivery, invoice confirmation. The next action is always obvious. <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360" checked><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop"><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Order: Creta EX(O) IVT from Baner Motors, Pune. Tier resolved at 6 confirmed → final price = ceiling ₹16,26,629.</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="test-banner">TEST MODE: no real money</div>
+    <div class="app-bar"><span class="logo">Convoy</span><nav aria-label="App"><a href="#">Discover</a><a href="#">My pools</a><a href="#" aria-current="page">Orders</a></nav></div>
+
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading</span>
+      <div class="skeleton w-60"></div>
+      <div class="cols" style="margin-top:12px"><div class="skeleton h-l"></div><div class="skeleton h-l"></div></div>
+    </section>
+
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · no orders</span>
+      <h2>No orders yet</h2>
+      <p>Orders appear here after you accept an offer in a pool and the decision window closes.</p>
+      <a class="btn secondary" href="#">Go to my pools</a>
+    </section>
+
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error</span>
+      <div class="alert" role="alert"><strong>We couldn't load your order.</strong>Your voucher is saved on this device and still works offline. <button class="btn link" type="button">Try again</button></div>
+    </section>
+
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale</span>
+      <div class="alert soft"><strong>Status last updated Sat 28 Nov, 09:10 IST.</strong>The dealer may have scheduled delivery since. <button class="btn link" type="button">Refresh</button></div>
+    </section>
+
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · invoice confirmation being saved</span>
+      <div class="alert soft" role="status"><strong>Saving your invoice amount…</strong>₹16,24,900 entered. We'll compare it with the catalogue estimate and label it as your realised saving only once saved.</div>
+    </section>
+
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · booking cancelled by dealer while viewing</span>
+      <div class="alert" role="alert"><strong>Baner Motors cancelled this booking at 11:32 IST.</strong>Your ₹999 test deposit is being refunded (reason: dealer cancelled) and a support case was opened for you automatically. Other buyers' prices are unchanged. <a href="order-dispute.html">Open the support case</a></div>
+    </section>
+
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline · voucher available</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>Your voucher QR works offline — the dealer verifies it when they're online.</div>
+      <div class="qr" role="img" aria-label="Voucher QR code (cached)" style="margin-top:12px"></div>
+    </section>
+
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · delivery scheduled</span>
+      <div class="alert" role="status"><strong>Next: take this voucher to Baner Motors on Sat 5 Dec 2026, 11:00 AM IST.</strong>The dealer scans it at handover.</div>
+      <div class="cols" style="margin-top:12px">
+        <div class="stack">
+          <h2>Creta EX(O) IVT · Baner Motors</h2>
+          <ol class="timeline" aria-label="Order timeline">
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Accepted offer</strong><br><span class="small muted">Sat 21 Nov, 19:05 IST</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Confirmed at ceiling ₹16,26,629</strong><br><span class="small muted">Tue 24 Nov, 12:47 IST</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Final price: ₹16,26,629</strong> (6 confirmed → tier 5–9)<br><span class="small muted">Deposit ₹999 applied to booking · Tue 24 Nov, 18:00 IST</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Booking issued</strong> · voucher CV-7Q4M-28<br><span class="small muted">Tue 24 Nov, 18:00 IST</span></div></li>
+            <li class="done"><span class="dot" aria-hidden="true"></span><div><strong>Dealer confirmed price and stock</strong> (white, 1 unit)<br><span class="small muted">Wed 25 Nov, 10:20 IST</span></div></li>
+            <li class="now" aria-current="step"><span class="dot" aria-hidden="true"></span><div><strong>Delivery scheduled</strong> Sat 5 Dec, 11:00 AM IST <span class="small">(promised by 5 Dec)</span></div></li>
+            <li><span class="dot" aria-hidden="true"></span><div><strong>Delivered</strong><br><span class="small muted">Then confirm your invoice and review the dealer</span></div></li>
+          </ol>
+        </div>
+        <aside class="stack">
+          <div class="card"><h3>Voucher</h3><div class="qr" role="img" aria-label="Voucher QR code for booking CV-7Q4M-28"></div><p class="small">CV-7Q4M-28 · signed, single use</p></div>
+          <div class="card"><h3>Price summary</h3><dl class="kv small"><dt>Cash payable</dt><dd>₹16,26,629</dd><dt>TCS (creditable)</dt><dd>₹13,897</dd><dt>Est. net cost</dt><dd>₹16,12,732</dd><dt>Deposit applied</dt><dd>₹999 (test)</dd></dl></div>
+          <div class="card"><h3>Need help?</h3><p class="small">If the car isn't delivered by 5 Dec + 7 days, we'll prompt you to open a support case.</p><div class="row"><a class="btn secondary" href="order-dispute.html">Open a support case</a><button class="btn link" type="button">Cancel booking</button></div></div>
+          <div class="card"><h3>After delivery</h3><label class="field" for="inv">Invoice total (optional)</label><input id="inv" type="text" inputmode="numeric" placeholder="₹ e.g. 16,24,900"><p class="small muted">Used only to show your realised saving against the catalogue estimate.</p></div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

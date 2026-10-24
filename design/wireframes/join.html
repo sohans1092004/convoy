@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join a pool</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>2 · Join a pool</h1>
+  <p>Flagship buyer screen 2. Everything the buyer needs appears before the commit button. <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360" checked><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop"><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Pool: Hyundai Creta · Pune · minimum 8 committed buyers. Double-clicking “Commit” sends one Idempotency-Key → one membership, one count increment; the optimistic +1 is reconciled with the server response.</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="test-banner">TEST MODE: no real money</div>
+    <div class="app-bar"><span class="logo">Convoy</span><nav aria-label="App"><a href="#">Discover</a><a href="#">My pools</a><a href="#">Orders</a></nav></div>
+
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading</span>
+      <div class="skeleton w-60"></div>
+      <div class="skeleton h-m" style="margin-top:12px"></div>
+      <div class="skeleton h-l" style="margin-top:12px"></div>
+      <button class="btn block" type="button" disabled style="margin-top:12px">Commit with ₹999 test deposit</button>
+    </section>
+
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · no pool for this model and city yet</span>
+      <h2>No Creta pool in Pune yet</h2>
+      <p>Start one: you set your preferred variants and purchase month; others who want the same car can join. Nothing is charged to start a pool.</p>
+      <button class="btn" type="button">Start a Creta pool in Pune</button>
+      <p class="small muted">Similar pools: Creta · Mumbai (accepting members, 12 committed).</p>
+    </section>
+
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error · commit failed, nothing charged</span>
+      <div class="alert" role="alert"><strong>We couldn't start your deposit.</strong>The payment service didn't respond. You have not been charged and your place is unchanged. Your terms acknowledgement is kept. <button class="btn link" type="button">Try again</button></div>
+      <p class="small muted">Retrying is safe: it reuses the same request, so you can never be charged twice.</p>
+    </section>
+
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale · counts out of date</span>
+      <div class="alert soft"><strong>Counts last updated 3 min ago.</strong>Live updates paused — refreshing every 10 s. <button class="btn link" type="button">Refresh now</button></div>
+      <p style="margin-top:12px"><span class="big-number">6</span> committed <span class="badge dashed">may have changed</span> · 31 interested</p>
+    </section>
+
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · deposit paid, waiting for confirmation from Razorpay</span>
+      <div class="alert soft" role="status"><strong>Payment received by Razorpay — confirming (usually under a minute).</strong>We only mark you as committed when Razorpay confirms the deposit to us directly. You can leave this page; we'll notify you.</div>
+      <dl class="kv" style="margin-top:12px"><dt>Your status</dt><dd>Commit pending</dd><dt>Test deposit</dt><dd>₹999 · pending</dd><dt>Committed</dt><dd>6 (you'll be 7th)</dd></dl>
+    </section>
+
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · joining closed while you were reading</span>
+      <div class="alert" role="alert"><strong>Joining closed at 18:00:00 IST.</strong>The sealed quote round for this pool ended before your request reached our database (18:00:00.412 IST). You were not charged. <a href="#">See similar pools</a></div>
+    </section>
+
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>You can read the terms below, but committing needs a connection. We won't queue a payment while offline.</div>
+      <button class="btn block" type="button" disabled style="margin-top:12px">Commit with ₹999 test deposit (offline)</button>
+    </section>
+
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · default view before commit, with “joined as interested” confirmation</span>
+      <div class="row" role="status"><span class="badge solid">You're interested</span><span class="small">Next: commit with a test deposit to count towards the minimum.</span></div>
+      <div class="cols" style="margin-top:12px">
+        <div class="stack">
+          <h2>Hyundai Creta · Pune</h2>
+          <p><span class="badge">Accepting members</span> <span class="small">Forming closes <strong>Tue 17 Nov 2026, 6:00 PM IST</strong> · server time 14:02 IST</span></p>
+          <div class="card">
+            <div class="row" style="justify-content:space-between"><span><span class="big-number">6</span> of 8 committed</span><span class="muted">31 interested</span></div>
+            <div class="progress" role="img" aria-label="6 of 8 committed buyers"><span style="width:75%"></span></div>
+            <p class="small muted">Committed = paid the ₹999 test deposit. Interested = saved the pool, no deposit. Counted separately, shown to everyone.</p>
+          </div>
+          <div class="card">
+            <h3>Accepted variants</h3>
+            <ul class="small">
+              <li>1.5 MPi Petrol IVT EX(O) — ex-showroom ₹14,49,700</li>
+              <li>1.5 MPi Petrol IVT SX Premium — ex-showroom ₹17,78,700</li>
+              <li>1.5 CRDi Diesel AT DSL S(O) — ex-showroom ₹17,29,700</li>
+            </ul>
+            <p class="small muted">Dealers must name the exact variants their price covers. A discount on one variant never implies the others.</p>
+          </div>
+          <div class="card">
+            <h3>What happens next</h3>
+            <ol class="small">
+              <li>When 8 buyers commit, verified Hyundai dealers in Pune get 72 h to send sealed, itemised quotes.</li>
+              <li>One best-and-final round (24 h). You compare offers and accept one (not binding).</li>
+              <li>You see your exact maximum price and choose whether to confirm.</li>
+            </ol>
+            <p class="small"><strong>If the target is missed</strong> by Tue 17 Nov, 6:00 PM IST, the pool closes and every deposit is refunded in full. We'll suggest similar pools.</p>
+          </div>
+        </div>
+        <aside class="card emph sticky-summary" aria-labelledby="terms-h">
+          <h3 id="terms-h">Before you commit — TEST MODE: no real money</h3>
+          <ul class="small">
+            <li>You pay a <strong>₹999 test deposit</strong> to commit. It holds your place; it is not a booking.</li>
+            <li><strong>Leave any time before confirmation</strong> (until the buyers' decision window closes — the exact IST time appears here once quoting starts) and get the full ₹999 back.</li>
+            <li>If the pool doesn't reach <strong>8 committed buyers</strong> by Tue 17 Nov, 6:00 PM IST, it closes and you get the full ₹999 back.</li>
+            <li>If no dealer makes a valid offer, or an offer can't go ahead because too few buyers confirm, you get the full ₹999 back.</li>
+            <li>Later you'll see an exact <strong>maximum price</strong> (the ceiling) and choose whether to confirm. If more buyers confirm, <strong>your price can only fall</strong>.</li>
+            <li>If you confirm and later cancel, you still get the full ₹999 back (test mode). Your cancellation never changes anyone else's price.</li>
+            <li>If a dealer cancels or can't deliver the car at the agreed price, you get the full ₹999 back and we open a support case for you automatically.</li>
+            <li>Refunds go back to the original payment method; in test mode no money moves.</li>
+          </ul>
+          <div class="check"><input type="checkbox" id="ack"><label for="ack" class="small">I've read these terms (version 2026-10-24.1)</label></div>
+          <button class="btn block" type="button" style="margin-top:12px">Commit with ₹999 test deposit</button>
+          <button class="btn link" type="button" style="margin-top:8px">Leave pool</button>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

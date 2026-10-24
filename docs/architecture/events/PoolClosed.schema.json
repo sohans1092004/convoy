@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/PoolClosed.schema.json",
+  "title": "PoolClosed v1",
+  "description": "Owner: pool. Consumers: payment, quote, realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "PoolClosed"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "end_reason",
+        "end_state",
+        "pool_id"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "end_state": {
+          "type": "string",
+          "enum": [
+            "EXPIRED",
+            "NO_QUOTES",
+            "CANCELLED"
+          ]
+        },
+        "end_reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

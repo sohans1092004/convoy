@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/BookingCancelled.schema.json",
+  "title": "BookingCancelled v1",
+  "description": "Owner: order. Consumers: dealer, realtime, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "BookingCancelled"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "dealership_id",
+        "order_id",
+        "reason"
+      ],
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "BUYER_CANCELLED",
+            "DEALER_CANCELLED",
+            "DEALER_NO_CONFIRM",
+            "STOCK_UNAVAILABLE",
+            "ADMIN_DISPUTE_RESOLUTION",
+            "DEPOSIT_UNAVAILABLE"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,215 @@
+machine: pool
+owner: pool
+aggregate: pool.pools
+version_field: version
+initial: FORMING
+plan_ref: "PLAN.md §2.1"
+deadlines:
+  forming_deadline: "Set at creation (default created_at + 7 days, config pool.forming_days). Checked by pool."
+  sealed_round_deadline: "Set when round 1 opens (now_db() + 72 h, config). Copied immutably into quote.rounds; checked by quote for submissions and by pool for the transition."
+  final_round_deadline: "Set when round 2 opens (now_db() + 24 h). Same ownership as above."
+  decision_deadline: "Set at DecisionOpened (now_db() + 48 h). Checked by pool for acceptances (membership MEM-T07..T09)."
+  confirmation_deadline: "Set at AcceptancesFrozen (now_db() + 48 h). Checked by order for confirmations."
+  dealer_wait_deadline: "forming_deadline + 72 h. If no eligible dealer by then the pool ends NO_QUOTES."
+  purchase_window_end: "Set at creation from the pool's intended purchase month (last day, 23:59:59 IST). Limits the single re-round."
+states:
+  - {name: FORMING, terminal: false, description: "Accepting interested and committed members; minimum not yet reached"}
+  - {name: READY_FOR_QUOTES, terminal: false, description: "Committed members >= minimum; waiting for eligible dealers to be invited"}
+  - {name: QUOTE_OPEN, terminal: false, description: "Sealed round open; dealers submit and revise quotes"}
+  - {name: FINAL_ROUND, terminal: false, description: "One best-and-final round; dealers see only their own rank per variant"}
+  - {name: DECISION_OPEN, terminal: false, description: "Buyers accept (non-binding) one FINAL quote each"}
+  - {name: CONFIRMATION, terminal: false, description: "Accepting buyers confirm at their ceiling price before confirmation_deadline"}
+  - {name: BOOKING, terminal: false, description: "Bookings issued; per-booking lifecycle runs in order service"}
+  - {name: COMPLETED, terminal: true, description: "Every booking delivered, cancelled, or disputed-and-closed"}
+  - {name: EXPIRED, terminal: true, description: "Demand insufficient: minimum not reached by forming_deadline, or no bookings after confirmation and no re-round allowed"}
+  - {name: NO_QUOTES, terminal: true, description: "Fewer than 1 valid quote at a round deadline, or no eligible dealer by dealer_wait_deadline"}
+  - {name: CANCELLED, terminal: true, description: "Admin cancelled with a reason code"}
+transitions:
+  - id: POOL-T01
+    from: FORMING
+    to: READY_FOR_QUOTES
+    trigger: {kind: event, by: system, via: "pool consumes PaymentCaptured -> membership COMMITTED (MEM-T03) in the same transaction"}
+    guard: "pools.state = 'FORMING' AND pools.version = :v AND pools.committed_count >= pools.min_members AND now_db() < pools.forming_deadline"
+    effects: ["UPDATE pool.pools SET state='READY_FOR_QUOTES', version=version+1", "INSERT pool.outbox(PoolReady)"]
+    emits: [PoolReady]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "A commit that lands at/after forming_deadline is not counted (MEM-T03 guard) and its payment is refunded LATE_CAPTURE; the sweeper then applies POOL-T11 if still below minimum."
+    crash_points: OUTBOX_STD
+    timeout: "None: evaluated on every commit. If missed, sweeper re-evaluates FORMING pools every 60 s."
+    detected_by: "pool membership handler; pool sweeper"
+  - id: POOL-T02
+    from: READY_FOR_QUOTES
+    to: QUOTE_OPEN
+    trigger: {kind: system, by: pool, via: "PoolReady self-consumer / sweeper; calls dealer GET /internal/eligibility?brand&city"}
+    guard: "state = 'READY_FOR_QUOTES' AND version = :v AND eligible_dealer_count >= 1 (dealer API answer; verified dealership, same brand, same city, >= 1 active staff)"
+    effects: ["INSERT pool.rounds(round_no=1, kind='SEALED', state='OPEN', deadline=now_db()+sealed_round_duration)", "INSERT pool.round_invitations(dealership_id ...)", "UPDATE pool.pools SET state='QUOTE_OPEN', version=version+1", "INSERT pool.outbox(QuoteRoundOpened)"]
+    emits: [QuoteRoundOpened]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable (system-initiated)."
+    crash_points: OUTBOX_STD
+    timeout: "If dealer API unavailable, retry with backoff (1 min, max 15 min). If eligible = 0, re-check hourly until dealer_wait_deadline, then POOL-T12."
+    detected_by: "pool sweeper"
+  - id: POOL-T03
+    from: QUOTE_OPEN
+    to: FINAL_ROUND
+    trigger: {kind: deadline, by: system, via: "EventBridge Scheduler wake-up at sealed_round_deadline (wake-up only) + 60 s sweeper backstop"}
+    guard: "state = 'QUOTE_OPEN' AND version = :v AND now_db() >= rounds[1].deadline AND quote summary(round 1).valid_count >= 1"
+    effects: ["UPDATE pool.rounds SET state='CLOSED' WHERE round_no=1", "INSERT pool.rounds(round_no=2, kind='FINAL', state='OPEN', deadline=now_db()+final_round_duration)", "UPDATE pool.pools SET state='FINAL_ROUND', version=version+1", "INSERT pool.outbox(RoundClosed, FinalRoundOpened)"]
+    emits: [RoundClosed, FinalRoundOpened]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Quote submissions committing at/after the deadline are rejected by quote with 409 deadline-passed; they never enter the summary."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Quote summary call: 2 s timeout, 3 retries; on failure the transition is retried by the sweeper. No quotes can commit in the meantime because quote enforces the deadline itself."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: POOL-T04
+    from: QUOTE_OPEN
+    to: NO_QUOTES
+    trigger: {kind: deadline, by: system, via: "same as POOL-T03"}
+    guard: "state = 'QUOTE_OPEN' AND version = :v AND now_db() >= rounds[1].deadline AND quote summary(round 1).valid_count = 0"
+    effects: ["UPDATE pool.rounds SET state='CLOSED'", "UPDATE pool.pools SET state='NO_QUOTES', end_reason='NO_VALID_QUOTES', version=version+1", "INSERT pool.outbox(RoundClosed, PoolClosed)"]
+    emits: [RoundClosed, PoolClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "As POOL-T03."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As POOL-T03."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: POOL-T05
+    from: FINAL_ROUND
+    to: DECISION_OPEN
+    trigger: {kind: deadline, by: system, via: "wake-up at final_round_deadline + sweeper"}
+    guard: "state = 'FINAL_ROUND' AND version = :v AND now_db() >= rounds[2].deadline AND quote summary(round 2).final_count >= 1"
+    effects: ["UPDATE pool.rounds SET state='CLOSED' WHERE round_no=2", "UPDATE pool.pools SET state='DECISION_OPEN', decision_deadline=now_db()+decision_duration, version=version+1", "INSERT pool.outbox(RoundClosed, DecisionOpened)"]
+    emits: [RoundClosed, DecisionOpened]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Final-round revisions committing at/after deadline rejected by quote (409 deadline-passed)."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As POOL-T03."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: POOL-T06
+    from: FINAL_ROUND
+    to: NO_QUOTES
+    trigger: {kind: deadline, by: system, via: "as POOL-T05"}
+    guard: "state = 'FINAL_ROUND' AND version = :v AND now_db() >= rounds[2].deadline AND quote summary(round 2).final_count = 0 (every quote withdrawn)"
+    effects: ["UPDATE pool.rounds SET state='CLOSED'", "UPDATE pool.pools SET state='NO_QUOTES', end_reason='ALL_WITHDRAWN', version=version+1", "INSERT pool.outbox(RoundClosed, PoolClosed)"]
+    emits: [RoundClosed, PoolClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "As POOL-T05."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As POOL-T03."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: POOL-T07
+    from: DECISION_OPEN
+    to: CONFIRMATION
+    trigger: {kind: deadline, by: system, via: "wake-up at decision_deadline + sweeper"}
+    guard: "state = 'DECISION_OPEN' AND version = :v AND now_db() >= decision_deadline"
+    effects: ["UPDATE pool.pools SET state='CONFIRMATION', confirmation_deadline=now_db()+confirmation_duration, version=version+1", "UPDATE pool.memberships (MEM-T10, MEM-T11)", "INSERT pool.outbox(AcceptancesFrozen)"]
+    emits: [AcceptancesFrozen]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Acceptances committing at/after decision_deadline are rejected (409 deadline-passed). In the same transaction members still COMMITTED without an acceptance move to RELEASED (MEM-T10, reason NO_ACCEPTANCE) and ACCEPTED members move to HANDED_TO_ORDER (MEM-T11); AcceptancesFrozen carries the (buyer, quote, variant) list and per-quote acceptance counts."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Pure local transition; sweeper backstop only."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: POOL-T08
+    from: CONFIRMATION
+    to: BOOKING
+    trigger: {kind: event, by: system, via: "pool consumes BookingsIssued(pool_id, bookings_count >= 1) from order"}
+    guard: "state = 'CONFIRMATION' AND event.bookings_count >= 1 AND event.aggregate_version > pools.last_order_version_seen"
+    effects: ["UPDATE pool.pools SET state='BOOKING', version=version+1", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(PoolBookingStarted)"]
+    emits: [PoolBookingStarted]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable: order only emits BookingsIssued after its own confirmation_deadline check."
+    crash_points: INBOX_CONSUMER
+    timeout: "If no BookingsIssued 30 min after confirmation_deadline, pool sweeper calls order GET /internal/pools/{id}/resolution and applies the result; alarm POOL_RESOLUTION_LATE."
+    detected_by: "pool inbox consumer; pool sweeper"
+  - id: POOL-T09
+    from: CONFIRMATION
+    to: FORMING
+    trigger: {kind: event, by: system, via: "BookingsIssued(bookings_count = 0, void_quote_count >= 1)"}
+    guard: "state = 'CONFIRMATION' AND pools.round_set = 1 AND now_db() + forming_days + sealed + final + decision + confirmation durations <= purchase_window_end"
+    effects: ["UPDATE pool.pools SET state='FORMING', round_set=2, forming_deadline=now_db()+forming_duration, committed_count=0, version=version+1", "UPDATE pool.memberships SET state='INTERESTED' WHERE pool_id=:id AND state IN ('COMMITTED','RELEASED')", "INSERT pool.outbox(PoolReopened)"]
+    emits: [PoolReopened]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "As POOL-T08."
+    detected_by: "pool inbox consumer"
+    notes: "Single re-round rule (PLAN §2.2.6). Deposits were already refunded on VOID, so members must commit again (new deposit). See Q-007."
+  - id: POOL-T10
+    from: CONFIRMATION
+    to: EXPIRED
+    trigger: {kind: event, by: system, via: "BookingsIssued(bookings_count = 0) and POOL-T09 guard false"}
+    guard: "state = 'CONFIRMATION' AND NOT (POOL-T09 guard)"
+    effects: ["UPDATE pool.pools SET state='EXPIRED', end_reason = CASE WHEN void_quote_count > 0 THEN 'ALL_QUOTES_VOID' ELSE 'NO_CONFIRMATIONS' END, version=version+1", "INSERT pool.outbox(PoolClosed)"]
+    emits: [PoolClosed]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "As POOL-T08."
+    detected_by: "pool inbox consumer"
+  - id: POOL-T11
+    from: FORMING
+    to: EXPIRED
+    trigger: {kind: deadline, by: system, via: "wake-up at forming_deadline + sweeper"}
+    guard: "state = 'FORMING' AND version = :v AND now_db() >= forming_deadline AND committed_count < min_members"
+    effects: ["UPDATE pool.pools SET state='EXPIRED', end_reason='MINIMUM_NOT_REACHED', version=version+1", "INSERT pool.outbox(PoolClosed)"]
+    emits: [PoolClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Commits that commit after this transition get 409 invalid-transition; captures arriving later are refunded LATE_CAPTURE."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Local; sweeper backstop."
+    detected_by: "scheduler wake-up; pool sweeper"
+  - id: POOL-T12
+    from: READY_FOR_QUOTES
+    to: NO_QUOTES
+    trigger: {kind: deadline, by: system, via: "sweeper at dealer_wait_deadline"}
+    guard: "state = 'READY_FOR_QUOTES' AND version = :v AND now_db() >= dealer_wait_deadline"
+    effects: ["UPDATE pool.pools SET state='NO_QUOTES', end_reason='NO_ELIGIBLE_DEALER', version=version+1", "INSERT pool.outbox(PoolClosed)"]
+    emits: [PoolClosed]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Local."
+    detected_by: "pool sweeper"
+  - id: POOL-T13
+    from: [FORMING, READY_FOR_QUOTES, QUOTE_OPEN, FINAL_ROUND, DECISION_OPEN, CONFIRMATION]
+    to: CANCELLED
+    trigger: {kind: actor, by: platform_admin, via: "POST /admin/pools/{id}/cancel {reason_code, note} with If-Match + Idempotency-Key"}
+    guard: "state IN (listed) AND version = :If-Match AND reason_code IN (FRAUD_SUSPECTED, CATALOGUE_ERROR, DEALER_MISCONDUCT, DUPLICATE_POOL, OTHER) AND caller has role platform_admin"
+    effects: ["UPDATE pool.pools SET state='CANCELLED', end_reason=:reason_code, version=version+1", "INSERT pool.outbox(PoolClosed)"]
+    emits: [PoolClosed]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "If a deadline transition committed first, If-Match fails: 409 version-conflict; admin re-reads."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous API; 5 s server timeout, client retries with same key."
+    detected_by: "admin API"
+  - id: POOL-T14
+    from: BOOKING
+    to: COMPLETED
+    trigger: {kind: event, by: system, via: "pool consumes AllBookingsClosed(pool_id) from order"}
+    guard: "state = 'BOOKING'"
+    effects: ["UPDATE pool.pools SET state='COMPLETED', version=version+1", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(PoolCompleted)"]
+    emits: [PoolCompleted]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Not applicable."
+    crash_points: INBOX_CONSUMER
+    timeout: "Daily reconciliation compares pools in BOOKING against order's booking states; mismatch alarm."
+    detected_by: "pool inbox consumer; nightly reconciliation"
+commands:
+  - {name: join_interested, actor: buyer, allowed_in: [FORMING, READY_FOR_QUOTES, QUOTE_OPEN], machine: membership}
+  - {name: commit, actor: buyer, allowed_in: [FORMING, READY_FOR_QUOTES, QUOTE_OPEN], machine: membership}
+  - {name: leave, actor: buyer, allowed_in: [FORMING, READY_FOR_QUOTES, QUOTE_OPEN, FINAL_ROUND, DECISION_OPEN], machine: membership}
+  - {name: accept_quote, actor: buyer, allowed_in: [DECISION_OPEN], machine: membership}
+  - {name: withdraw_acceptance, actor: buyer, allowed_in: [DECISION_OPEN], machine: membership}
+  - {name: admin_cancel, actor: platform_admin, allowed_in: [FORMING, READY_FOR_QUOTES, QUOTE_OPEN, FINAL_ROUND, DECISION_OPEN, CONFIRMATION], machine: pool}
+invalid_transitions:
+  - {from: [DECISION_OPEN, CONFIRMATION, BOOKING], attempt: join_interested, error: invalid-transition, note: "Joining closes at the sealed-round deadline"}
+  - {from: [QUOTE_OPEN], attempt: "join_interested or commit committing at/after sealed_round_deadline", error: deadline-passed}
+  - {from: [FINAL_ROUND, DECISION_OPEN, CONFIRMATION, BOOKING], attempt: commit, error: invalid-transition}
+  - {from: [FORMING, READY_FOR_QUOTES, QUOTE_OPEN, FINAL_ROUND, CONFIRMATION, BOOKING], attempt: accept_quote, error: invalid-transition}
+  - {from: [DECISION_OPEN], attempt: "accept_quote committing at/after decision_deadline", error: deadline-passed}
+  - {from: [DECISION_OPEN], attempt: "accept_quote naming a quote that is not FINAL in this pool", error: quote-not-final}
+  - {from: [CONFIRMATION, BOOKING], attempt: leave, error: invalid-transition, note: "After CONFIRMATION opens a buyer declines or cancels through order (ORD-T05/ORD-T09), not by leaving"}
+  - {from: [BOOKING], attempt: admin_cancel, error: invalid-transition, note: "Cancel individual bookings instead"}
+  - {from: [COMPLETED, EXPIRED, NO_QUOTES, CANCELLED], attempt: "any command", error: invalid-transition}
+  - {from: ["*"], attempt: "any state-changing call with stale If-Match", error: version-conflict}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

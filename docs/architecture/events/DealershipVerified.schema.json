@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DealershipVerified.schema.json",
+  "title": "DealershipVerified v1",
+  "description": "Owner: dealer. Consumers: notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DealershipVerified"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "dealer"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brand_ids",
+        "city",
+        "dealership_id",
+        "verified_by"
+      ],
+      "properties": {
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "brand_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verified_by": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

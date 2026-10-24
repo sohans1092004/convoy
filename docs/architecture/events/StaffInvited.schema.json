@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/StaffInvited.schema.json",
+  "title": "StaffInvited v1",
+  "description": "Owner: identity. Consumers: notification, dealer, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "StaffInvited"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "identity"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dealership_id",
+        "invite_id",
+        "invited_by",
+        "role"
+      ],
+      "properties": {
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "invite_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "dealer_staff",
+            "dealer_admin"
+          ]
+        },
+        "invited_by": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

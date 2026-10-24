@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DecisionOpened.schema.json",
+  "title": "DecisionOpened v1",
+  "description": "Owner: pool. Consumers: realtime, notification, audit. FIFO: True.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DecisionOpened"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "pool"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_deadline",
+        "final_quote_ids",
+        "pool_id"
+      ],
+      "properties": {
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "decision_deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        },
+        "final_quote_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

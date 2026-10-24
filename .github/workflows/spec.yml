@@ -1,0 +1,32 @@
+name: spec
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Self-checks (stdlib only)
+        run: |
+          python spec-tools/miniyaml.py
+          python spec-tools/price_ref.py
+      - name: Generated artefacts are current
+        run: |
+          python spec-tools/render_machines.py --check
+          python spec-tools/gen_event_schemas.py --check
+          python spec-tools/gen_vectors.py --check
+      - name: Validate spec
+        run: python spec-tools/validate_spec.py
+      - name: miniyaml parity with PyYAML
+        run: |
+          pip install pyyaml==6.0.2
+          python spec-tools/crosscheck_yaml.py

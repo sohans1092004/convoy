@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/InvoiceConfirmed.schema.json",
+  "title": "InvoiceConfirmed v1",
+  "description": "Owner: order. Consumers: audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "InvoiceConfirmed"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "invoice_total_paise"
+      ],
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "invoice_total_paise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Money in integer paise (ADR-012)"
+        }
+      }
+    }
+  }
+}

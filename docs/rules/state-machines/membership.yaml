@@ -1,0 +1,157 @@
+machine: membership
+owner: pool
+aggregate: pool.memberships
+version_field: version
+initial: INTERESTED
+plan_ref: "PLAN.md §2.1, §2.3, §3.1(4); added in P0 because commit/leave/accept drive counts, deposits and tiers (Q-004)"
+notes: "One row per (pool_id, buyer_id) - unique constraint. Partial unique index (buyer_id, model_id) WHERE state IN ('COMMIT_PENDING','COMMITTED','ACCEPTED') enforces one active commitment per model. Counts interested_count / committed_count on pool.pools are updated in the same transaction as the membership row (W3 exactness)."
+states:
+  - {name: INTERESTED, terminal: false, description: "Saved interest; counted in interested_count; no deposit"}
+  - {name: COMMIT_PENDING, terminal: false, description: "Deposit order created; waiting for payment.captured webhook"}
+  - {name: COMMITTED, terminal: false, description: "Deposit captured; counted in committed_count"}
+  - {name: ACCEPTED, terminal: false, description: "Committed and has a non-binding acceptance of one FINAL quote + variant"}
+  - {name: HANDED_TO_ORDER, terminal: true, description: "Acceptances frozen; order service owns the buyer's journey from here"}
+  - {name: LEFT, terminal: true, description: "Buyer left before CONFIRMATION; deposit (if any) refunded"}
+  - {name: RELEASED, terminal: true, description: "Released by the system (pool closed, no acceptance, late capture); deposit refunded"}
+transitions:
+  - id: MEM-T01
+    from: "(none)"
+    to: INTERESTED
+    trigger: {kind: actor, by: buyer, via: "POST /pools/{id}/members (Idempotency-Key)"}
+    guard: "pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND (pool.state <> 'QUOTE_OPEN' OR now_db() < rounds[1].deadline) AND no row for (pool, buyer) AND caller has role buyer and no dealer-staff role"
+    effects: ["INSERT pool.memberships(state='INTERESTED')", "UPDATE pool.pools SET interested_count=interested_count+1, version=version+1", "INSERT pool.outbox(MemberJoined)"]
+    emits: [MemberJoined]
+    idempotent_repeat: "IDEMPOTENCY_KEY; a different key for an existing membership returns 409 already-member with the membership in the body"
+    late_arrival: "Committing after the sealed-round deadline -> 409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "pool API"
+  - id: MEM-T02
+    from: [INTERESTED, "(none)"]
+    to: COMMIT_PENDING
+    trigger: {kind: actor, by: buyer, via: "POST /pools/{id}/commitment (Idempotency-Key); calls payment POST /internal/deposits with key deposit:{buyer}:{pool}:{round_set}"}
+    guard: "MEM-T01 pool guard AND no other active commitment for this model (partial unique index) AND deposit terms version acknowledged in request (terms_version = current)"
+    effects: ["payment creates/returns deposit (PAY-T01) BEFORE the local transaction", "UPSERT pool.memberships SET state='COMMIT_PENDING', current_payment_id=:pid, terms_version=:tv", "interested_count+1 if row was new"]
+    emits: []
+    idempotent_repeat: "IDEMPOTENCY_KEY; payment returns the same deposit for the same deterministic key, so a double-click creates one Razorpay order"
+    late_arrival: "As MEM-T01."
+    crash_points: EXTERNAL_CALL_THEN_COMMIT
+    timeout: "Payment call 3 s timeout; on failure 503 dependency-unavailable, membership unchanged; client retries with the same key."
+    detected_by: "pool API"
+  - id: MEM-T03
+    from: [COMMIT_PENDING, INTERESTED]
+    to: COMMITTED
+    trigger: {kind: event, by: system, via: "pool consumes PaymentCaptured"}
+    guard: "event.payment_id = memberships.current_payment_id AND pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND now_db() < (forming_deadline if FORMING, rounds[1].deadline if QUOTE_OPEN, no limit if READY_FOR_QUOTES)"
+    effects: ["UPDATE pool.memberships SET state='COMMITTED', version=version+1", "UPDATE pool.pools SET committed_count=committed_count+1, version=version+1", "evaluate POOL-T01 in the same transaction", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(MemberCommitted)"]
+    emits: [MemberCommitted]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "Guard false: pool closed or commit deadline passed -> MEM-T06; membership already LEFT/RELEASED -> no-op here, payment refunds via PAY-T10."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable; payment-side sweeper handles missing webhooks."
+    detected_by: "pool inbox consumer"
+  - id: MEM-T04
+    from: COMMIT_PENDING
+    to: INTERESTED
+    trigger: {kind: event, by: system, via: "pool consumes PaymentFailed or PaymentVoided"}
+    guard: "event.payment_id = memberships.current_payment_id"
+    effects: ["UPDATE pool.memberships SET state='INTERESTED', version=version+1", "INSERT pool.inbox(event_id)"]
+    emits: []
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "If PaymentCaptured for the same payment arrives later, MEM-T03 still applies (from INTERESTED)."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "pool inbox consumer"
+  - id: MEM-T05
+    from: [INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED]
+    to: LEFT
+    trigger: {kind: actor, by: buyer, via: "DELETE /pools/{id}/members/me (Idempotency-Key, If-Match)"}
+    guard: "pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN, FINAL_ROUND, DECISION_OPEN) AND (pool.state <> 'DECISION_OPEN' OR now_db() < decision_deadline)"
+    effects: ["UPDATE pool.memberships SET state='LEFT'", "decrement interested_count / committed_count as applicable", "INSERT pool.outbox(MemberLeft{reason: BUYER_LEFT, payment_id})"]
+    emits: [MemberLeft]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "After decision_deadline -> 409 deadline-passed; the buyer can then decline or cancel through order."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "pool API"
+    notes: "Leaving below the minimum after READY_FOR_QUOTES does not move the pool back to FORMING (Q-008)."
+  - id: MEM-T06
+    from: [COMMIT_PENDING, INTERESTED]
+    to: RELEASED
+    trigger: {kind: event, by: system, via: "PaymentCaptured whose MEM-T03 guard is false (pool closed or commit deadline passed)"}
+    guard: "NOT (MEM-T03 guard) AND event.payment_id = memberships.current_payment_id"
+    effects: ["UPDATE pool.memberships SET state='RELEASED', release_reason='LATE_CAPTURE'", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(MemberReleased{reason: LATE_CAPTURE, payment_id})"]
+    emits: [MemberReleased]
+    idempotent_repeat: INBOX_DEDUPE
+    late_arrival: "This transition is the late-arrival handler. If the membership is already LEFT or RELEASED, pool records the inbox row and does nothing: payment already set refund_on_capture when it consumed MemberLeft / PoolClosed and refunds through PAY-T10 (LATE_CAPTURE)."
+    crash_points: INBOX_CONSUMER
+    timeout: "Not applicable."
+    detected_by: "pool inbox consumer"
+  - id: MEM-T07
+    from: COMMITTED
+    to: ACCEPTED
+    trigger: {kind: actor, by: buyer, via: "PUT /pools/{id}/members/me/acceptance {quote_id, variant_id} (Idempotency-Key, If-Match)"}
+    guard: "pool.state = 'DECISION_OPEN' AND now_db() < decision_deadline AND quote is FINAL in this pool (replicated from QuoteFinalised) AND variant is covered by the quote"
+    effects: ["UPDATE pool.memberships SET state='ACCEPTED', accepted_quote_id, accepted_variant_id", "UPDATE pool.quote_acceptance_counts", "INSERT pool.outbox(AcceptanceChanged)"]
+    emits: [AcceptanceChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "pool API"
+  - id: MEM-T08
+    from: ACCEPTED
+    to: ACCEPTED
+    trigger: {kind: actor, by: buyer, via: "PUT acceptance with a different quote/variant"}
+    guard: "as MEM-T07"
+    effects: ["UPDATE accepted_quote_id/variant", "move one count between quotes", "INSERT pool.outbox(AcceptanceChanged)"]
+    emits: [AcceptanceChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "pool API"
+  - id: MEM-T09
+    from: ACCEPTED
+    to: COMMITTED
+    trigger: {kind: actor, by: buyer, via: "DELETE /pools/{id}/members/me/acceptance"}
+    guard: "pool.state = 'DECISION_OPEN' AND now_db() < decision_deadline"
+    effects: ["UPDATE pool.memberships SET state='COMMITTED', accepted_quote_id=NULL", "decrement count", "INSERT pool.outbox(AcceptanceChanged)"]
+    emits: [AcceptanceChanged]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "pool API"
+  - id: MEM-T10
+    from: COMMITTED
+    to: RELEASED
+    trigger: {kind: deadline, by: system, via: "inside POOL-T07, or inside POOL-T04/T06/T10/T11/T12/T13 (pool closed)"}
+    guard: "pool transition commits in the same transaction"
+    effects: ["UPDATE pool.memberships SET state='RELEASED', release_reason = NO_ACCEPTANCE | POOL_<END_REASON>"]
+    emits: []
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As the enclosing pool transition."
+    detected_by: "enclosing pool transition"
+    notes: "Refunds are driven by AcceptancesFrozen.released_buyers / PoolClosed, which payment consumes; no per-member event (keeps fan-out O(1) per pool)."
+  - id: MEM-T11
+    from: ACCEPTED
+    to: HANDED_TO_ORDER
+    trigger: {kind: deadline, by: system, via: "inside POOL-T07"}
+    guard: "pool transition commits in the same transaction"
+    effects: ["UPDATE pool.memberships SET state='HANDED_TO_ORDER'"]
+    emits: []
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As POOL-T07."
+    detected_by: "POOL-T07"
+invalid_transitions:
+  - {from: [HANDED_TO_ORDER, LEFT, RELEASED], attempt: "any buyer command", error: invalid-transition}
+  - {from: [INTERESTED, COMMIT_PENDING], attempt: accept_quote, error: not-a-member, note: "Only COMMITTED members accept"}
+  - {from: ["(none)"], attempt: "join when a row exists", error: already-member}
+  - {from: ["(none)", INTERESTED], attempt: "commit while another active commitment exists for the model", error: active-commitment-exists}
+  - {from: ["*"], attempt: "stale If-Match", error: version-conflict}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

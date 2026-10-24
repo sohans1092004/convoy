@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DealershipSuspended.schema.json",
+  "title": "DealershipSuspended v1",
+  "description": "Owner: dealer. Consumers: quote, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DealershipSuspended"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "dealer"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dealership_id",
+        "reason"
+      ],
+      "properties": {
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

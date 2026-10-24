@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discover and compare</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#screen">Skip to screen</a>
+<header class="wf-head">
+  <h1>1 · Discover and compare</h1>
+  <p>Flagship buyer screen 1 (PLAN §5.1). <a href="index.html">All wireframes</a></p>
+</header>
+<main id="main">
+  <form class="wf-controls" aria-label="Wireframe controls">
+    <fieldset><legend>Interaction state (§5.2)</legend>
+      <input type="radio" name="state" id="s-loading"><label for="s-loading">Loading</label>
+      <input type="radio" name="state" id="s-empty"><label for="s-empty">Empty</label>
+      <input type="radio" name="state" id="s-error"><label for="s-error">Error</label>
+      <input type="radio" name="state" id="s-stale"><label for="s-stale">Stale</label>
+      <input type="radio" name="state" id="s-pending"><label for="s-pending">Pending</label>
+      <input type="radio" name="state" id="s-conflict"><label for="s-conflict">Conflict</label>
+      <input type="radio" name="state" id="s-offline"><label for="s-offline">Offline</label>
+      <input type="radio" name="state" id="s-success" checked><label for="s-success">Success</label>
+    </fieldset>
+    <fieldset><legend>Width</legend>
+      <input type="radio" name="width" id="w-360" checked><label for="w-360">Mobile 360 px</label>
+      <input type="radio" name="width" id="w-desktop"><label for="w-desktop">Desktop</label>
+    </fieldset>
+  </form>
+  <p class="wf-note">Prices: catalogue ex-showroom from official manufacturer pages (accessed 24 Oct 2026). On-road figures are engine estimates (ruleset 2026.10.24-p0) for Mumbai/Pune (Maharashtra rules).</p>
+
+  <div class="frame" id="screen" tabindex="-1">
+    <div class="app-bar"><span class="logo">Convoy</span><nav aria-label="App"><a href="#">Discover</a><a href="#">My pools</a><a href="#">Orders</a></nav></div>
+
+    <!-- LOADING -->
+    <section class="state st-loading" aria-busy="true" aria-label="Loading state">
+      <span class="state-tag">loading · skeletons keep layout stable</span>
+      <div class="row"><div class="skeleton w-60"></div></div>
+      <div class="grid-cards" style="margin-top:12px">
+        <div class="card"><div class="skeleton h-l"></div><div class="skeleton" style="margin-top:8px"></div><div class="skeleton w-60" style="margin-top:8px"></div></div>
+        <div class="card"><div class="skeleton h-l"></div><div class="skeleton" style="margin-top:8px"></div><div class="skeleton w-60" style="margin-top:8px"></div></div>
+        <div class="card only-desktop"><div class="skeleton h-l"></div><div class="skeleton" style="margin-top:8px"></div></div>
+      </div>
+    </section>
+
+    <!-- EMPTY -->
+    <section class="state st-empty" aria-label="Empty state">
+      <span class="state-tag">empty · filters match nothing</span>
+      <h2>No cars match these filters</h2>
+      <p>Diesel + automatic + under ₹8 lakh in Pune returned no models in our catalogue.</p>
+      <div class="row"><button class="btn secondary" type="button">Remove “under ₹8 lakh”</button><button class="btn link" type="button">Clear all filters</button></div>
+      <p class="small muted">Our catalogue has about 30 models; prices for some brands are not yet verified and are hidden from search.</p>
+    </section>
+
+    <!-- ERROR -->
+    <section class="state st-error" aria-label="Error state">
+      <span class="state-tag">error · recoverable, filters kept</span>
+      <div class="alert" role="alert"><strong>We couldn't load cars right now.</strong>Your filters (Pune · Petrol · Automatic) are saved. <button class="btn link" type="button">Try again</button></div>
+      <p class="small muted">Error reference: 7f3c-91 · 18:04 IST</p>
+    </section>
+
+    <!-- STALE -->
+    <section class="state st-stale" aria-label="Stale state">
+      <span class="state-tag">stale · price data changed since you loaded</span>
+      <div class="alert soft"><strong>Prices were updated on 24 Oct 2026, 11:20 IST.</strong>The figures below are from your earlier view. <button class="btn link" type="button">Refresh prices</button></div>
+      <div class="card" style="margin-top:12px">
+        <h3>Hyundai Creta</h3>
+        <p><span class="badge dashed">outdated</span> Ex-showroom from ₹10.91 lakh</p>
+      </div>
+    </section>
+
+    <!-- PENDING -->
+    <section class="state st-pending" aria-label="Pending state">
+      <span class="state-tag">pending · saving a car</span>
+      <div class="card">
+        <h3>Maruti Suzuki Swift</h3>
+        <p>Ex-showroom from ₹5,83,900</p>
+        <button class="btn secondary" type="button" aria-disabled="true"><span class="spin" aria-hidden="true">◌</span> Saving to your cars…</button>
+        <p class="small muted" aria-live="polite">Saving. You can keep browsing.</p>
+      </div>
+    </section>
+
+    <!-- CONFLICT -->
+    <section class="state st-conflict" aria-label="Conflict state">
+      <span class="state-tag">conflict · comparison item no longer available</span>
+      <div class="alert" role="alert"><strong>One variant in your comparison was withdrawn from the catalogue.</strong>“Creta 1.5 Turbo DCT King DT” was removed on 24 Oct 2026. The other 2 variants are still compared. <button class="btn link" type="button">Pick a replacement</button></div>
+    </section>
+
+    <!-- OFFLINE -->
+    <section class="state st-offline" aria-label="Offline state">
+      <span class="state-tag">offline · cached view</span>
+      <div class="alert soft" role="status"><strong>You're offline.</strong>Showing cars saved on this device (last updated 24 Oct, 10:02 IST). Prices may be out of date; saving and joining pools resume when you reconnect.</div>
+      <div class="card" style="margin-top:12px"><h3>Maruti Suzuki Swift</h3><p>Ex-showroom from ₹5,83,900 <span class="badge dashed">cached</span></p></div>
+    </section>
+
+    <!-- SUCCESS (populated) -->
+    <section class="state st-success" aria-label="Success state">
+      <span class="state-tag">success · populated view; “Saved” confirmation shown</span>
+      <div class="row" role="status"><span class="badge solid">Saved</span><span class="small">Swift added to your cars. Next: see pools for Swift in Mumbai →</span></div>
+      <div class="cols" style="margin-top:12px">
+        <div class="stack">
+          <details class="only-mobile"><summary>Filters (3)</summary>
+            <div class="stack" style="margin-top:8px">
+              <label class="field" for="f-city-m">City</label><select id="f-city-m"><option>Pune</option><option>Mumbai</option><option>Delhi</option><option>Bengaluru</option></select>
+              <label class="field" for="f-fuel-m">Fuel</label><select id="f-fuel-m"><option>Any</option><option>Petrol</option><option>Diesel</option><option>CNG</option><option>Electric</option></select>
+            </div>
+          </details>
+          <div class="grid-cards">
+            <article class="card">
+              <div class="ph-img">Swift image</div>
+              <h3>Maruti Suzuki Swift</h3>
+              <p class="big-number">₹5,83,900</p>
+              <p class="small">Ex-showroom, LXi MT · <span class="ev ev-ce">catalogue estimate</span> · official page, 24 Oct 2026 · city not confirmed</p>
+              <p class="small">Estimated on-road, Mumbai: <strong>₹6,74,575</strong> <span class="muted">(RTO and insurance are estimates)</span></p>
+              <div class="row"><button class="btn secondary" type="button" aria-pressed="true">Saved ✓</button><a class="btn link" href="#">2 pools nearby</a></div>
+            </article>
+            <article class="card">
+              <div class="ph-img">Creta image</div>
+              <h3>Hyundai Creta</h3>
+              <p class="big-number">₹10,90,700</p>
+              <p class="small">Ex-showroom, 1.5 MPi Petrol MT E · <span class="ev ev-ce">catalogue estimate</span> · 24 Oct 2026</p>
+              <p class="small">Pool in Pune: <strong>accepting members</strong> · closes in 2 days</p>
+              <div class="row"><button class="btn secondary" type="button" aria-pressed="false">Save</button><a class="btn link" href="#">Compare variants</a></div>
+            </article>
+            <article class="card">
+              <div class="ph-img">Windsor EV image</div>
+              <h3>MG Windsor EV</h3>
+              <p class="big-number">₹14,84,800</p>
+              <p class="small">Ex-showroom, Excite · <span class="ev ev-ce">catalogue estimate</span> · insurance estimate unavailable for EVs</p>
+              <div class="row"><button class="btn secondary" type="button" aria-pressed="false">Save</button></div>
+            </article>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Creta variant comparison (scrolls horizontally)">
+            <table>
+              <caption>Compare Creta variants (no back-and-forth)</caption>
+              <thead><tr><th scope="col">Variant</th><th scope="col">Fuel · gearbox</th><th scope="col" class="num">Ex-showroom</th><th scope="col" class="num">Est. on-road (Pune)</th><th scope="col">Evidence</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">1.5 MPi Petrol MT E</th><td>Petrol · Manual</td><td class="num">₹10,90,700</td><td class="num">₹12,70,299*</td><td><span class="ev ev-ce">estimate</span></td></tr>
+                <tr><th scope="row">1.5 MPi Petrol IVT EX(O)</th><td>Petrol · CVT</td><td class="num">₹14,49,700</td><td class="num">₹16,84,018</td><td><span class="ev ev-ce">estimate</span></td></tr>
+                <tr><th scope="row">1.5 CRDi Diesel MT E</th><td>Diesel · Manual</td><td class="num">₹12,52,800</td><td class="num">₹14,82,163</td><td><span class="ev ev-ce">estimate</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small muted">*Estimates: MH road tax by price band, ₹600 registration, ₹200 smart card (applicability unverified), comprehensive yr-1 OD + 3-yr TP insurance, TCS 1% above ₹10 lakh. Creta insurance band assumes the 1.5 L engine is ≤ 1,500 cc (engine cc not shown on the official page — unverified). Source dates on each figure; tap a figure for its source.</p>
+        </div>
+        <aside class="panel only-desktop" aria-label="Filters">
+          <h3>Filters</h3>
+          <div class="stack">
+            <label class="field" for="f-city">City</label><select id="f-city"><option>Pune</option><option>Mumbai</option><option>Delhi</option><option>Bengaluru</option></select>
+            <label class="field" for="f-fuel">Fuel</label><select id="f-fuel"><option>Any</option><option>Petrol</option><option>Diesel</option><option>CNG</option><option>Electric</option></select>
+            <label class="field" for="f-budget">Max ex-showroom (₹ lakh)</label><input id="f-budget" type="number" value="16">
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

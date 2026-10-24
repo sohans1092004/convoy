@@ -1,0 +1,122 @@
+machine: booking
+owner: order
+aggregate: order.bookings
+version_field: version
+initial: ISSUED
+plan_ref: "PLAN.md §2.6, §3.1(8) (booking issued -> dealer confirmed -> delivery scheduled -> delivered / cancelled), voucher with QR verification"
+notes: "1:1 with a BOOKED order. voucher_code = 128-bit random, QR encodes a signed token (ES256, kid) {booking_id, voucher_code, exp}; dealer scans it at handover. promised_delivery_date comes from the quote's stock claim for the variant/colour."
+states:
+  - {name: ISSUED, terminal: false, description: "Booking + voucher issued; dealer must confirm within 48 h"}
+  - {name: DEALER_CONFIRMED, terminal: false, description: "Dealer confirmed price and stock allocation"}
+  - {name: DELIVERY_SCHEDULED, terminal: false, description: "Delivery date set (may be rescheduled; overdue flag after promised date + grace)"}
+  - {name: DELIVERED, terminal: true, description: "Voucher scanned at handover; buyer may confirm invoice and review"}
+  - {name: CANCELLED, terminal: true, description: "Cancelled by buyer, dealer, system or admin with reason code"}
+transitions:
+  - id: BKG-T01
+    from: "(none)"
+    to: ISSUED
+    trigger: {kind: deadline, by: system, via: "inside ORD-T07"}
+    guard: "UNIQUE (order_id)"
+    effects: ["INSERT order.bookings(state='ISSUED', voucher_code, final_price_snapshot_id, promised_delivery_date, dealer_confirm_deadline=now_db()+48h)"]
+    emits: [BookingIssued]
+    idempotent_repeat: "Unique key; enclosing resolution is a no-op on re-run"
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "As ORD-T07."
+    detected_by: "order resolution job"
+  - id: BKG-T02
+    from: ISSUED
+    to: DEALER_CONFIRMED
+    trigger: {kind: actor, by: dealer_staff, via: "POST /dealer/bookings/{id}/confirm (Idempotency-Key, If-Match)"}
+    guard: "staff belongs to booking.dealership_id AND now_db() < dealer_confirm_deadline AND saga step RESERVE_STOCK = DONE"
+    effects: ["UPDATE order.bookings SET state='DEALER_CONFIRMED'", "INSERT order.outbox(BookingConfirmedByDealer)"]
+    emits: [BookingConfirmedByDealer]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "409 deadline-passed; BKG-T03 cancels the booking."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+  - id: BKG-T03
+    from: ISSUED
+    to: CANCELLED
+    trigger: {kind: deadline, by: system, via: "order sweeper at dealer_confirm_deadline, or StockUnavailable event from quote (saga RESERVE_STOCK failed)"}
+    guard: "state='ISSUED' AND (now_db() >= dealer_confirm_deadline OR stock reservation failed)"
+    effects: ["UPDATE order.bookings SET state='CANCELLED', cancel_reason = DEALER_NO_CONFIRM | STOCK_UNAVAILABLE", "ORD-T09 in the same transaction", "INSERT order.disputes (auto, category STOCK_UNAVAILABLE or DEALER_NOT_HONOURED)", "INSERT order.outbox(BookingCancelled, DisputeOpened)"]
+    emits: [BookingCancelled, DisputeOpened]
+    idempotent_repeat: VERSION_NOOP
+    late_arrival: "A dealer confirm committing after this transition gets 409 invalid-transition."
+    crash_points: OUTBOX_DEADLINE
+    timeout: "Sweeper every 60 s."
+    detected_by: "order sweeper; order inbox consumer"
+  - id: BKG-T04
+    from: [DEALER_CONFIRMED, DELIVERY_SCHEDULED]
+    to: DELIVERY_SCHEDULED
+    trigger: {kind: actor, by: dealer_staff, via: "PUT /dealer/bookings/{id}/delivery {scheduled_date, slot} (Idempotency-Key, If-Match)"}
+    guard: "staff belongs to dealership AND scheduled_date >= today_ist()"
+    effects: ["UPDATE order.bookings SET state='DELIVERY_SCHEDULED', scheduled_date, reschedule_count = reschedule_count + (from = DELIVERY_SCHEDULED)", "INSERT order.outbox(DeliveryScheduled)"]
+    emits: [DeliveryScheduled]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+    notes: "scheduled_date later than promised_delivery_date is allowed but shown to the buyer as 'later than promised'."
+  - id: BKG-T05
+    from: DELIVERY_SCHEDULED
+    to: DELIVERED
+    trigger: {kind: actor, by: dealer_staff, via: "POST /dealer/bookings/{id}/deliver {voucher_token} (Idempotency-Key)"}
+    guard: "voucher token signature valid, not expired, matches booking AND staff belongs to dealership"
+    effects: ["UPDATE order.bookings SET state='DELIVERED', delivered_at=now_db()", "ORD-T08 in the same transaction", "INSERT order.outbox(BookingDelivered)"]
+    emits: [BookingDelivered]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+  - id: BKG-T06
+    from: [ISSUED, DEALER_CONFIRMED, DELIVERY_SCHEDULED]
+    to: CANCELLED
+    trigger: {kind: actor, by: "buyer | dealer_admin | platform_admin | system", via: "POST /bookings/{id}/cancel (buyer), POST /dealer/bookings/{id}/cancel (dealer), dispute resolution (admin), QuoteWithdrawn after_final (system)"}
+    guard: "caller owns the booking (buyer) or its dealership (dealer_admin) or is platform_admin; reason code valid for the actor"
+    effects: ["UPDATE order.bookings SET state='CANCELLED', cancel_reason = BUYER_CANCELLED | DEALER_CANCELLED | ADMIN_DISPUTE_RESOLUTION", "ORD-T09 in the same transaction", "if actor is dealer: INSERT order.disputes (auto, DEALER_CANCELLED) and outbox DisputeOpened (reliability score is decremented by dealer on BookingCancelled with dealer reason)", "INSERT order.outbox(BookingCancelled)"]
+    emits: [BookingCancelled, DisputeOpened]
+    idempotent_repeat: IDEMPOTENCY_KEY
+    late_arrival: "Cancel after DELIVERED -> 409 invalid-transition; buyer opens a dispute instead."
+    crash_points: OUTBOX_STD
+    timeout: "Synchronous; 5 s."
+    detected_by: "order API"
+  - id: BKG-T07
+    from: DEALER_CONFIRMED
+    to: DEALER_CONFIRMED
+    trigger: {kind: deadline, by: system, via: "daily job at 09:00 IST"}
+    guard: "today_ist() > promised_delivery_date + grace_days (default 7) AND overdue_flag = false"
+    effects: ["UPDATE order.bookings SET overdue_flag=true", "INSERT order.outbox(BookingOverdue)"]
+    emits: [BookingOverdue]
+    idempotent_repeat: "overdue_flag makes it once-only"
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Daily."
+    detected_by: "order daily job"
+    notes: "Flag-only self-transition; buyer is prompted to open a dispute and admin escalation starts (PLAN §2.6)."
+  - id: BKG-T08
+    from: DELIVERY_SCHEDULED
+    to: DELIVERY_SCHEDULED
+    trigger: {kind: deadline, by: system, via: "daily job at 09:00 IST"}
+    guard: "as BKG-T07"
+    effects: ["UPDATE order.bookings SET overdue_flag=true", "INSERT order.outbox(BookingOverdue)"]
+    emits: [BookingOverdue]
+    idempotent_repeat: "overdue_flag makes it once-only"
+    late_arrival: "Not applicable."
+    crash_points: OUTBOX_STD
+    timeout: "Daily."
+    detected_by: "order daily job"
+    notes: "As BKG-T07. Rescheduling (BKG-T04) does not clear the flag."
+invalid_transitions:
+  - {from: [ISSUED], attempt: "dealer confirm at/after dealer_confirm_deadline", error: deadline-passed}
+  - {from: [ISSUED], attempt: "schedule delivery before dealer confirmation", error: invalid-transition}
+  - {from: [ISSUED, DEALER_CONFIRMED], attempt: deliver, error: invalid-transition}
+  - {from: [DELIVERED], attempt: cancel, error: invalid-transition, note: "Open a dispute instead"}
+  - {from: ["*"], attempt: "deliver with invalid voucher token", error: forbidden}
+  - {from: [DELIVERED, CANCELLED], attempt: "any command", error: invalid-transition}
+  - {from: ["*"], attempt: "stale If-Match", error: version-conflict}
+  - {from: ["*"], attempt: "any (from, to) pair not listed in transitions", error: invalid-transition}

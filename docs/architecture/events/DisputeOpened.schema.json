@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/DisputeOpened.schema.json",
+  "title": "DisputeOpened v1",
+  "description": "Owner: order. Consumers: dealer, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "DisputeOpened"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "order"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "booking_id",
+        "category",
+        "dealership_id",
+        "dispute_id",
+        "opened_by",
+        "order_id"
+      ],
+      "properties": {
+        "dispute_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "booking_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "opened_by": {
+          "type": "string",
+          "enum": [
+            "BUYER",
+            "SYSTEM"
+          ]
+        }
+      }
+    }
+  }
+}

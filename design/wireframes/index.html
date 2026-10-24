@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convoy wireframes</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<a class="skip" href="#list">Skip to the list</a>
+<header class="wf-head">
+  <h1>Convoy · P0 wireframes</h1>
+  <p>Grayscale, static HTML, one shared stylesheet, no JavaScript. Each screen has a state switcher (all 8 states from PLAN §5.2) and a width switcher (360 px mobile / desktop). Everything works by keyboard: Tab to a group, then use the arrow keys.</p>
+</header>
+<main id="main">
+  <ul class="index-list" id="list">
+    <li><a href="discover.html"><strong>1 · Discover and compare</strong><br><span class="small muted">Model cards, variant comparison, on-road estimates with source dates, saved cars, mobile filters</span></a></li>
+    <li><a href="join.html"><strong>2 · Join a pool</strong><br><span class="small muted">Minimum, interested vs committed, accepted variants, deadline, deposit terms and pre-commit cancellation copy, all before the Commit button</span></a></li>
+    <li><a href="compare.html"><strong>3 · Compare offers</strong><br><span class="small muted">Dealer cards, itemised breakdown, evidence per line, tier ladder ("price can only fall"), stock, delivery</span></a></li>
+    <li><a href="confirm.html"><strong>4 · Accept and confirm</strong><br><span class="small muted">Ceiling price, deposit status, live tier status, deadline, cancellation terms, explicit pending/failed states</span></a></li>
+    <li><a href="track.html"><strong>5 · Track the order</strong><br><span class="small muted">Timeline, QR voucher, dealer confirmation, delivery date, support actions, invoice confirmation</span></a></li>
+    <li><a href="quote-builder.html"><strong>6 · Dealer quote builder</strong><br><span class="small muted">Live engine summary, validation, tier editor with what-if preview, confirmation dialog, versions, rank with the published rule</span></a></li>
+    <li><a href="order-dispute.html"><strong>7 · Order timeline with a dispute opened</strong><br><span class="small muted">Delivery overdue → support case under review, with evidence and history</span></a></li>
+  </ul>
+  <p class="wf-note">Content is realistic: catalogue prices come from official pages (24 Oct 2026) and on-road figures from the reference price engine. Dealers are synthetic. Times are in IST. Every payment screen carries "TEST MODE: no real money".</p>
+</main>
+</body>
+</html>

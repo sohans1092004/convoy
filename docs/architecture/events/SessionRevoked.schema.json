@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/SessionRevoked.schema.json",
+  "title": "SessionRevoked v1",
+  "description": "Owner: identity. Consumers: gateway, realtime, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "SessionRevoked"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "identity"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "session_id_hash",
+        "user_id"
+      ],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "session_id_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "LOGOUT",
+            "ADMIN",
+            "STAFF_REVOKED",
+            "PASSWORD_RESET",
+            "ERASURE"
+          ]
+        }
+      }
+    }
+  }
+}

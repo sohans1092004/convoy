@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/RankChanged.schema.json",
+  "title": "RankChanged v1",
+  "description": "Owner: quote. Consumers: realtime, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "RankChanged"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "quote"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dealership_id",
+        "of_n",
+        "pool_id",
+        "quote_id",
+        "rank",
+        "rule_version",
+        "variant_id"
+      ],
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "dealership_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "variant_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rank": {
+          "type": "integer"
+        },
+        "of_n": {
+          "type": "integer"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
