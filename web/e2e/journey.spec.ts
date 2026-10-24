@@ -117,6 +117,12 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await expect(page.getByRole('heading', { name: 'Final price', exact: true })).toBeVisible();
   await axe(page, 'order (voucher)');
   step('booked; voucher with QR shown');
+  // Honest UI (P2 step 0.7): cancellation is a stated rule whose path still answers 501.
+  await page.getByRole('button', { name: 'Cancel my booking' }).click();
+  await expect(page.getByText('Not available in this test build yet')).toBeVisible();
+  await expect(page.getByText('Nothing was changed: your order, booking and deposit are exactly as they were.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Final price', exact: true })).toBeVisible();
+  step('cancel attempt explained honestly (501), nothing changed');
 
   // One trace spans web -> gateway -> pool -> SNS/SQS -> order (the accept call; order builds its acceptance read model).
   await expect.poll(async () => {

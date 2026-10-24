@@ -85,6 +85,10 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
     setQuote(r.data);
   });
 
+  // Revision (QUO-T03) and withdrawal (QUO-T05) are specified but still answer 501; the attempt explains that honestly.
+  const revise = useCommand(async () => call(api.POST('/dealer/quotes/{id}/revisions', { params: { path: { id: quoteId } } })));
+  const withdraw = useCommand(async () => call(api.POST('/dealer/quotes/{id}/withdraw', { params: { path: { id: quoteId } } })));
+
   if (!quote || !request) return <Skeleton className="h-96" label="Loading the quote" />;
   const editable = quote.state === 'DRAFT';
   const set = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
@@ -163,6 +167,14 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
           <Button onClick={() => setConfirmOpen(true)}>Submit sealed quote</Button>
         </div>
       ) : null}
+      {quote.state === 'SUBMITTED' ? (
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" loading={revise.state.kind === 'loading'} onClick={() => revise.execute()}>Revise (new version)</Button>
+          <Button variant="secondary" loading={withdraw.state.kind === 'loading'} onClick={() => withdraw.execute()}>Withdraw quote</Button>
+        </div>
+      ) : null}
+      <CommandStatus state={revise.state} />
+      <CommandStatus state={withdraw.state} />
       <CommandStatus state={save.state} successText="Draft saved." />
       <CommandStatus state={submit.state} successText="Quote submitted. It is sealed from other dealers." />
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
