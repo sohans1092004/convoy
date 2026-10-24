@@ -77,6 +77,18 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
 
     @Bean IdempotencyStore idempotencyStore(JdbcTemplate jdbc) { return new IdempotencyStore(jdbc); }
 
+    /** @Idempotent handlers run in one transaction with their idempotency record (IdempotentHandlerAdapter). */
+    @Bean
+    static org.springframework.boot.autoconfigure.web.servlet.WebMvcRegistrations idempotentHandlers(ObjectProvider<IdempotencyStore> store,
+            ObjectProvider<TransactionTemplate> tx, ObjectProvider<ObjectMapper> json) {
+        return new org.springframework.boot.autoconfigure.web.servlet.WebMvcRegistrations() {
+            @Override
+            public org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter getRequestMappingHandlerAdapter() {
+                return new convoy.platform.idempotency.IdempotentHandlerAdapter(store, tx, json);
+            }
+        };
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // Authorisation before binding and validation: a caller without the scope learns nothing about the request shape.
@@ -119,8 +131,8 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     }
 
     @Bean
-    FilterRegistrationBean<IdempotencyFilter> idempotencyFilter(IdempotencyStore store) {
-        FilterRegistrationBean<IdempotencyFilter> r = new FilterRegistrationBean<>(new IdempotencyFilter(store));
+    FilterRegistrationBean<IdempotencyFilter> idempotencyFilter() {
+        FilterRegistrationBean<IdempotencyFilter> r = new FilterRegistrationBean<>(new IdempotencyFilter());
         r.setOrder(Ordered.HIGHEST_PRECEDENCE + 40);
         return r;
     }

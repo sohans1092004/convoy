@@ -131,6 +131,36 @@ class PoolIT extends ServiceTest {
         // Same key, different body: 422.
         Resp reused = send("POST", "/pools/" + pool + "/members", buyer(b), "{\"x\":1}", Map.of("Idempotency-Key", key));
         assertThat(reused.status()).isEqualTo(422);
+        assertThat(JSON.readTree(reused.body()).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
+    }
+
+    @Test
+    void crashAfterCommitBeforeTheResponseReplaysOnRetry() throws Exception {
+        UUID pool = freshPool();
+        UUID b = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        convoy.platform.Faults.arm(convoy.platform.idempotency.IdempotentHandlerAdapter.CRASH_AFTER_COMMIT);
+        Resp crashed = send("POST", "/pools/" + pool + "/members", buyer(b), null, Map.of("Idempotency-Key", key));
+        assertThat(crashed.status()).as("the client never saw a success").isEqualTo(500);
+        // The business change and its idempotency record committed together.
+        assertThat(jdbc.queryForObject("select count(*) from memberships where pool_id = ? and buyer_id = ?", Integer.class, pool, b)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select status from idempotency_keys where key = ?", Integer.class, key)).isEqualTo(201);
+        Resp retry = send("POST", "/pools/" + pool + "/members", buyer(b), null, Map.of("Idempotency-Key", key));
+        assertThat(retry.status()).isEqualTo(201);
+        assertThat(retry.headers().firstValue("Idempotent-Replayed")).contains("true");
+        assertThat(JSON.readTree(retry.body()).path("pool_id").asText()).isEqualTo(pool.toString());
+        assertThat(jdbc.queryForObject("select interested_count from pools where id = ?", Integer.class, pool)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ? and event_type = 'MemberJoined'", Integer.class, pool)).isEqualTo(1);
+    }
+
+    @Test
+    void failedRequestStoresNothingSoTheRetryRunsAgain() throws Exception {
+        UUID pool = freshPool();
+        UUID b = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        Resp wrongTerms = send("POST", "/pools/" + pool + "/commitment", buyer(b), "{\"terms_version\":\"old\"}", Map.of("Idempotency-Key", key));
+        assertThat(wrongTerms.status()).isBetween(400, 499);
+        assertThat(jdbc.queryForObject("select count(*) from idempotency_keys where key = ?", Integer.class, key)).isZero();
     }
 
     @Test

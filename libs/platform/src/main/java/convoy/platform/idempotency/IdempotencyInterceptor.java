@@ -5,6 +5,7 @@ import convoy.platform.problem.ProblemType;
 import convoy.platform.security.Caller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -12,11 +13,13 @@ import java.util.Optional;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/** Enforces {@link Idempotent}: 428 without a key, 422 on body mismatch, replay of the stored response. */
+/**
+ * Enforces {@link Idempotent} before binding: 428 without a key, 422 when the key was used for a different
+ * request, replay of a stored response. New keys continue to {@link IdempotentHandlerAdapter}.
+ */
 public class IdempotencyInterceptor implements HandlerInterceptor {
     public static final String HEADER = "Idempotency-Key";
-    static final String CLAIM_ATTR = IdempotencyInterceptor.class.getName() + ".claim";
-    private static final long WAIT_MS = 10_000;
+    static final String KEY_ATTR = IdempotencyInterceptor.class.getName() + ".key";
     private final IdempotencyStore store;
 
     public IdempotencyInterceptor(IdempotencyStore store) { this.store = store; }
@@ -28,40 +31,29 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         if (key == null || key.isBlank() || key.length() > 200) {
             throw ApiProblem.of(ProblemType.IDEMPOTENCY_KEY_MISSING, "Send an Idempotency-Key header (a UUID per user action).");
         }
-        if (!(req instanceof IdempotencyFilter.CachedBodyRequest) && !(unwrap(req) instanceof IdempotencyFilter.CachedBodyRequest)) {
+        if (!(unwrap(req) instanceof IdempotencyFilter.CachedBodyRequest cached)) {
             throw new IllegalStateException("IdempotencyFilter must wrap idempotent requests");
         }
-        byte[] body = ((IdempotencyFilter.CachedBodyRequest) unwrap(req)).body;
-        String hash = sha256(req.getMethod() + " " + req.getRequestURI() + "\n", body);
-        IdempotencyStore.Claim claim = new IdempotencyStore.Claim(key, Caller.current().subject());
-        long until = System.currentTimeMillis() + WAIT_MS;
-        while (true) {
-            if (store.claim(claim, hash)) {
-                req.setAttribute(CLAIM_ATTR, claim);
-                return true;
-            }
-            Optional<IdempotencyStore.Stored> s = store.find(claim);
-            if (s.isEmpty()) continue; // released by a failed attempt: claim again
-            IdempotencyStore.Stored st = s.get();
-            if (!st.requestSha256().equals(hash)) {
-                throw ApiProblem.of(ProblemType.IDEMPOTENCY_KEY_REUSED, "This Idempotency-Key was used for a different request.");
-            }
-            if (st.status() != null) {
-                res.setStatus(st.status());
-                if (st.contentType() != null) res.setContentType(st.contentType());
-                res.setHeader("Idempotent-Replayed", "true");
-                if (st.body() != null) res.getOutputStream().write(st.body());
-                return false;
-            }
-            if (st.abandoned() && store.takeOver(claim, hash)) {
-                req.setAttribute(CLAIM_ATTR, claim);
-                return true;
-            }
-            if (System.currentTimeMillis() > until) {
-                throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "The first request with this key is still running; retry with the same key.");
-            }
-            Thread.sleep(50); // the same action is in flight (double click): wait for its response
+        IdempotencyStore.Key k = new IdempotencyStore.Key(key, Caller.current().subject(),
+                sha256(req.getMethod() + " " + req.getRequestURI() + "\n", cached.body));
+        Optional<IdempotencyStore.Stored> stored = store.find(k.key(), k.caller());
+        if (stored.isPresent()) {
+            replay(k, stored.get(), res);
+            return false;
         }
+        req.setAttribute(KEY_ATTR, k);
+        return true;
+    }
+
+    /** Writes the stored response, or 422 if the key belongs to a different request. */
+    static void replay(IdempotencyStore.Key k, IdempotencyStore.Stored st, HttpServletResponse res) throws IOException {
+        if (!st.requestSha256().equals(k.requestSha256())) {
+            throw ApiProblem.of(ProblemType.IDEMPOTENCY_KEY_REUSED, "This Idempotency-Key was used for a different request.");
+        }
+        res.setStatus(st.status());
+        if (st.contentType() != null) res.setContentType(st.contentType());
+        res.setHeader("Idempotent-Replayed", "true");
+        if (st.body() != null) res.getOutputStream().write(st.body());
     }
 
     private static HttpServletRequest unwrap(HttpServletRequest r) {
