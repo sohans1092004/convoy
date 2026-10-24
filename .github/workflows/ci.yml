@@ -4,7 +4,7 @@ name: ci
 # against docker compose on every PR. The spec checks stay in spec.yml.
 on:
   push:
-    branches: [main]
+    branches: [main, "p*/**"] # phase branches get CI before their PR opens
   pull_request:
 
 permissions:
