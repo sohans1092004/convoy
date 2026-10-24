@@ -133,7 +133,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         ConfirmBody: {
-            ceilingSnapshotHash: string;
+            ceiling_snapshot_hash: string;
         };
     };
     responses: never;

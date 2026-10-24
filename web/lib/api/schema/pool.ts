@@ -118,17 +118,17 @@ export interface components {
     schemas: {
         AcceptBody: {
             /** Format: uuid */
-            quoteId: string;
+            quote_id: string;
             /** Format: uuid */
-            variantId: string;
+            variant_id: string;
         };
         CreateBody: {
-            modelSlug: string;
+            model_slug: string;
             city: string;
-            purchaseMonth: string;
+            purchase_month: string;
         };
         CommitBody: {
-            termsVersion: string;
+            terms_version: string;
         };
     };
     responses: never;

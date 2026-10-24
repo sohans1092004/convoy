@@ -153,52 +153,50 @@
   "components": {
     "schemas": {
       "CallbackBody": {
-        "type": "object",
         "properties": {
-          "razorpayPaymentId": {
+          "razorpay_payment_id": {
             "type": "string",
             "minLength": 1
           },
-          "razorpayOrderId": {
+          "razorpay_order_id": {
             "type": "string",
             "minLength": 1
           },
-          "razorpaySignature": {
+          "razorpay_signature": {
             "type": "string",
             "minLength": 1
           }
         },
         "required": [
-          "razorpayOrderId",
-          "razorpayPaymentId",
-          "razorpaySignature"
+          "razorpay_order_id",
+          "razorpay_payment_id",
+          "razorpay_signature"
         ]
       },
       "DepositBody": {
-        "type": "object",
         "properties": {
-          "buyerId": {
+          "buyer_id": {
             "type": "string",
             "format": "uuid"
           },
-          "poolId": {
+          "pool_id": {
             "type": "string",
             "format": "uuid"
           },
-          "roundSet": {
+          "round_set": {
             "type": "integer",
             "format": "int32"
           },
-          "amountPaise": {
+          "amount_paise": {
             "type": "integer",
             "format": "int64"
           }
         },
         "required": [
-          "amountPaise",
-          "buyerId",
-          "poolId",
-          "roundSet"
+          "amount_paise",
+          "buyer_id",
+          "pool_id",
+          "round_set"
         ]
       }
     }

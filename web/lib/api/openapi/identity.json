@@ -276,44 +276,41 @@
   "components": {
     "schemas": {
       "ConsentBody": {
-        "type": "object",
         "properties": {
           "granted": {
             "type": "boolean"
           },
-          "noticeVersion": {
+          "notice_version": {
             "type": "string",
             "minLength": 1
           }
         },
         "required": [
           "granted",
-          "noticeVersion"
+          "notice_version"
         ]
       },
       "ValidateBody": {
-        "type": "object",
         "properties": {
-          "sessionId": {
+          "session_id": {
             "type": "string",
             "minLength": 1
           }
         },
         "required": [
-          "sessionId"
+          "session_id"
         ]
       },
       "TokenBody": {
-        "type": "object",
         "properties": {
-          "grantType": {
+          "grant_type": {
             "type": "string"
           },
-          "clientId": {
+          "client_id": {
             "type": "string",
             "minLength": 1
           },
-          "clientSecret": {
+          "client_secret": {
             "type": "string",
             "minLength": 1
           },
@@ -324,12 +321,11 @@
         },
         "required": [
           "audience",
-          "clientId",
-          "clientSecret"
+          "client_id",
+          "client_secret"
         ]
       },
       "OtpVerify": {
-        "type": "object",
         "properties": {
           "email": {
             "type": "string",
@@ -348,7 +344,6 @@
         ]
       },
       "OtpStart": {
-        "type": "object",
         "properties": {
           "email": {
             "type": "string",

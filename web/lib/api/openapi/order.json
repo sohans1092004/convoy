@@ -253,15 +253,14 @@
   "components": {
     "schemas": {
       "ConfirmBody": {
-        "type": "object",
         "properties": {
-          "ceilingSnapshotHash": {
+          "ceiling_snapshot_hash": {
             "type": "string",
             "minLength": 1
           }
         },
         "required": [
-          "ceilingSnapshotHash"
+          "ceiling_snapshot_hash"
         ]
       }
     }

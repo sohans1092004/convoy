@@ -11,6 +11,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,21 +26,32 @@ public class JwtVerifier {
     private final Map<String, DefaultJWTProcessor<SecurityContext>> processors = new HashMap<>();
 
     public JwtVerifier(String audience, Map<String, String> issuerJwks) {
+        this(audience, remote(issuerJwks), true);
+    }
+
+    /** Issuer -> key source (tests use in-memory key sets). */
+    public JwtVerifier(String audience, Map<String, JWKSource<SecurityContext>> sources, boolean unused) {
+        sources.forEach((iss, src) -> {
+            DefaultJWTProcessor<SecurityContext> p = new DefaultJWTProcessor<>();
+            p.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.ES256, src));
+            DefaultJWTClaimsVerifier<SecurityContext> v = new DefaultJWTClaimsVerifier<>(
+                    Set.of(audience), new JWTClaimsSet.Builder().issuer(iss).build(), Set.of("sub", "exp", "iat"), null);
+            v.setMaxClockSkew(30);
+            p.setJWTClaimsSetVerifier(v);
+            processors.put(iss, p);
+        });
+    }
+
+    private static Map<String, JWKSource<SecurityContext>> remote(Map<String, String> issuerJwks) {
+        Map<String, JWKSource<SecurityContext>> out = new LinkedHashMap<>();
         issuerJwks.forEach((iss, uri) -> {
             try {
-                JWKSource<SecurityContext> src = JWKSourceBuilder.create(URI.create(uri).toURL())
-                        .cache(5 * 60_000L, 15_000L).rateLimited(10_000L).retrying(true).build();
-                DefaultJWTProcessor<SecurityContext> p = new DefaultJWTProcessor<>();
-                p.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.ES256, src));
-                DefaultJWTClaimsVerifier<SecurityContext> v = new DefaultJWTClaimsVerifier<>(
-                        Set.of(audience), new JWTClaimsSet.Builder().issuer(iss).build(), Set.of("sub", "exp", "iat"), null);
-                v.setMaxClockSkew(30);
-                p.setJWTClaimsSetVerifier(v);
-                processors.put(iss, p);
+                out.put(iss, JWKSourceBuilder.create(URI.create(uri).toURL()).cache(5 * 60_000L, 15_000L).rateLimited(10_000L).retrying(true).build());
             } catch (java.net.MalformedURLException e) {
                 throw new IllegalArgumentException("bad JWKS uri " + uri, e);
             }
         });
+        return out;
     }
 
     /** Returns the caller, or throws if the token is not valid for this service. */

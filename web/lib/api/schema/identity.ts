@@ -182,15 +182,15 @@ export interface components {
     schemas: {
         ConsentBody: {
             granted: boolean;
-            noticeVersion: string;
+            notice_version: string;
         };
         ValidateBody: {
-            sessionId: string;
+            session_id: string;
         };
         TokenBody: {
-            grantType?: string;
-            clientId: string;
-            clientSecret: string;
+            grant_type?: string;
+            client_id: string;
+            client_secret: string;
             audience: string;
         };
         OtpVerify: {

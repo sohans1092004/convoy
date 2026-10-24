@@ -328,26 +328,24 @@
   "components": {
     "schemas": {
       "AcceptBody": {
-        "type": "object",
         "properties": {
-          "quoteId": {
+          "quote_id": {
             "type": "string",
             "format": "uuid"
           },
-          "variantId": {
+          "variant_id": {
             "type": "string",
             "format": "uuid"
           }
         },
         "required": [
-          "quoteId",
-          "variantId"
+          "quote_id",
+          "variant_id"
         ]
       },
       "CreateBody": {
-        "type": "object",
         "properties": {
-          "modelSlug": {
+          "model_slug": {
             "type": "string",
             "minLength": 1
           },
@@ -355,27 +353,26 @@
             "type": "string",
             "minLength": 1
           },
-          "purchaseMonth": {
+          "purchase_month": {
             "type": "string",
             "minLength": 1
           }
         },
         "required": [
           "city",
-          "modelSlug",
-          "purchaseMonth"
+          "model_slug",
+          "purchase_month"
         ]
       },
       "CommitBody": {
-        "type": "object",
         "properties": {
-          "termsVersion": {
+          "terms_version": {
             "type": "string",
             "minLength": 1
           }
         },
         "required": [
-          "termsVersion"
+          "terms_version"
         ]
       }
     }

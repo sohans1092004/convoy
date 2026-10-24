@@ -69,19 +69,19 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         CallbackBody: {
-            razorpayPaymentId: string;
-            razorpayOrderId: string;
-            razorpaySignature: string;
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
         };
         DepositBody: {
             /** Format: uuid */
-            buyerId: string;
+            buyer_id: string;
             /** Format: uuid */
-            poolId: string;
+            pool_id: string;
             /** Format: int32 */
-            roundSet: number;
+            round_set: number;
             /** Format: int64 */
-            amountPaise: number;
+            amount_paise: number;
         };
     };
     responses: never;

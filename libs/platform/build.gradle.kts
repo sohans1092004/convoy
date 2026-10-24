@@ -1,5 +1,7 @@
 // Shared platform for every Spring MVC service (problem+json, idempotency, internal JWT,
 // outbox/inbox over SNS/SQS, aggregate versions, tracing, state-machine tables).
+plugins { `java-test-fixtures` }
+
 dependencies {
     api(project(":libs:contracts"))
     api("org.springframework.boot:spring-boot-starter-web")
@@ -17,6 +19,12 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation(testFixtures(project(":libs:contracts")))
+    testFixturesApi(testFixtures(project(":libs:contracts")))
+    testFixturesApi("org.springframework.boot:spring-boot-starter-test")
+    testFixturesApi("org.springframework.boot:spring-boot-testcontainers")
+    testFixturesApi("org.testcontainers:junit-jupiter")
+    testFixturesApi("org.testcontainers:postgresql")
+    testFixturesApi(libs.nimbus.jose.jwt)
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")

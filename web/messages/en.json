@@ -32,7 +32,7 @@
   },
   "confirm": {
     "title": "Confirm at most {ceiling} (cash payable) — TEST MODE",
-    "body": "You will never pay more than {ceiling}. If fewer than {min} buyers confirm, this offer can't go ahead and your deposit is refunded.",
+    "body": "You will never pay more than {ceiling}. If fewer buyers confirm than the dealer's minimum, this offer can't go ahead and your ₹999 test deposit is refunded (or, if the pool tries once more, you choose to keep your place). You can cancel after confirming and still get your ₹999 back.",
     "drop": "If {nextMin}+ buyers confirm by {deadline} the price drops to {nextPrice}."
   }
 }

@@ -190,6 +190,8 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_CHECKOUT_URL: ${RAZORPAY_CHECKOUT_URL:-http://localhost:9090/checkout.js}
       COOKIE_SECURE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: web
     ports: ["127.0.0.1:3000:3000"]
     depends_on: [gateway]
     mem_limit: 320m

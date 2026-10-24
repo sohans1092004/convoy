@@ -63,6 +63,13 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 .featuresToDisable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
+    /** OpenAPI schemas use the same snake_case names as the JSON on the wire. */
+    @Bean
+    io.swagger.v3.core.jackson.ModelResolver snakeCaseModelResolver() {
+        return new io.swagger.v3.core.jackson.ModelResolver(new ObjectMapper()
+                .setPropertyNamingStrategy(com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE));
+    }
+
     @Bean DbClock dbClock(JdbcTemplate jdbc) { return new DbClock(jdbc); }
 
     @Bean IdempotencyStore idempotencyStore(JdbcTemplate jdbc) { return new IdempotencyStore(jdbc); }
