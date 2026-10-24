@@ -1,0 +1,1169 @@
+{
+ "cases": [
+  {
+   "description": "Exact lower boundary of tier 2 (5)",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 5,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 85500000,
+    "resolved_tier": 1,
+    "status": "OK"
+   },
+   "id": "T01",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Exact upper boundary of tier 1 (4)",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 4,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 90000000,
+    "resolved_tier": 0,
+    "status": "OK"
+   },
+   "id": "T02",
+   "input": {
+    "confirmed_count": 4,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Exact upper boundary of tier 2 (9)",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 9,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 85500000,
+    "resolved_tier": 1,
+    "status": "OK"
+   },
+   "id": "T03",
+   "input": {
+    "confirmed_count": 9,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Exact lower boundary of unbounded tier (10)",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 10,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 84000000,
+    "resolved_tier": 2,
+    "status": "OK"
+   },
+   "id": "T04",
+   "input": {
+    "confirmed_count": 10,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Single confirmed buyer, min 1",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 1,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 90000000,
+    "resolved_tier": 0,
+    "status": "OK"
+   },
+   "id": "T05",
+   "input": {
+    "confirmed_count": 1,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Far above last tier start (100)",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 100,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 84000000,
+    "resolved_tier": 2,
+    "status": "OK"
+   },
+   "id": "T06",
+   "input": {
+    "confirmed_count": 100,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Confirmed below minimum fulfilment -> VOID",
+   "expected": {
+    "ceiling_price_paise": 85500000,
+    "ceiling_tier": 1,
+    "confirmed_count": 4,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T07",
+   "input": {
+    "confirmed_count": 4,
+    "max_units": null,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Confirmed exactly at minimum; ceiling = tier containing minimum",
+   "expected": {
+    "ceiling_price_paise": 85500000,
+    "ceiling_tier": 1,
+    "confirmed_count": 5,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 85500000,
+    "resolved_tier": 1,
+    "status": "OK"
+   },
+   "id": "T08",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Minimum 5, confirmed 12: price falls below ceiling",
+   "expected": {
+    "ceiling_price_paise": 85500000,
+    "ceiling_tier": 1,
+    "confirmed_count": 12,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 84000000,
+    "resolved_tier": 2,
+    "status": "OK"
+   },
+   "id": "T09",
+   "input": {
+    "confirmed_count": 12,
+    "max_units": null,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Zero confirmed, min 1 -> VOID",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 0,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T10",
+   "input": {
+    "confirmed_count": 0,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Zero confirmed, min 5 -> VOID",
+   "expected": {
+    "ceiling_price_paise": 85500000,
+    "ceiling_tier": 1,
+    "confirmed_count": 0,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T11",
+   "input": {
+    "confirmed_count": 0,
+    "max_units": null,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Single tier, 1 confirmed",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 1,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 90000000,
+    "resolved_tier": 0,
+    "status": "OK"
+   },
+   "id": "T12",
+   "input": {
+    "confirmed_count": 1,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": null,
+      "min": 1,
+      "price_paise": 90000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Single tier, 0 confirmed -> VOID",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 0,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T13",
+   "input": {
+    "confirmed_count": 0,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": null,
+      "min": 1,
+      "price_paise": 90000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Single tier, min 3, 2 confirmed -> VOID",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 2,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T14",
+   "input": {
+    "confirmed_count": 2,
+    "max_units": null,
+    "min_fulfilment": 3,
+    "tiers": [
+     {
+      "max": null,
+      "min": 1,
+      "price_paise": 90000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Single tier, min 3, 3 confirmed",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 3,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 90000000,
+    "resolved_tier": 0,
+    "status": "OK"
+   },
+   "id": "T15",
+   "input": {
+    "confirmed_count": 3,
+    "max_units": null,
+    "min_fulfilment": 3,
+    "tiers": [
+     {
+      "max": null,
+      "min": 1,
+      "price_paise": 90000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Gap between tiers (1-4, 6+) -> INVALID at submission",
+   "expected": {
+    "errors": [
+     "TIER_GAP:1"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T16",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": null,
+      "min": 6,
+      "price_paise": 85500000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Overlapping tiers -> INVALID",
+   "expected": {
+    "errors": [
+     "TIER_OVERLAP:1"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T17",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": null,
+      "min": 4,
+      "price_paise": 85500000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Price rises with more buyers -> INVALID (\"price can only fall\")",
+   "expected": {
+    "errors": [
+     "TIER_PRICE_INCREASES:1"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T18",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": null,
+      "min": 5,
+      "price_paise": 90500000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Last tier bounded -> INVALID",
+   "expected": {
+    "errors": [
+     "LAST_TIER_MUST_BE_UNBOUNDED"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T19",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Minimum fulfilment 0 -> INVALID",
+   "expected": {
+    "errors": [
+     "MIN_FULFILMENT_INVALID"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T20",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 0,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Minimum fulfilment below first tier start -> INVALID",
+   "expected": {
+    "errors": [
+     "MIN_FULFILMENT_BELOW_FIRST_TIER"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T21",
+   "input": {
+    "confirmed_count": 5,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": null,
+      "min": 3,
+      "price_paise": 90000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Equal prices across tiers allowed; resolved = ceiling",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 7,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 90000000,
+    "resolved_tier": 1,
+    "status": "OK"
+   },
+   "id": "T22",
+   "input": {
+    "confirmed_count": 7,
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": null,
+      "min": 5,
+      "price_paise": 90000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Every buyer cancels AFTER the deadline: count fixed at deadline (7), price unchanged; 7 bookings later cancelled with refunds BUYER_CANCELLED",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 7,
+    "outcome": "RESOLVED",
+    "per_booking_refund_reason": "BUYER_CANCELLED",
+    "post_deadline_cancellations": 7,
+    "price_after_cancellations_paise": 85500000,
+    "refund_reason": null,
+    "resolved_price_paise": 85500000,
+    "resolved_tier": 1,
+    "status": "OK"
+   },
+   "id": "T23",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-21T05:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     }
+    ],
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Two of six cancel BEFORE the deadline: count 4",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 4,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 90000000,
+    "resolved_tier": 0,
+    "status": "OK"
+   },
+   "id": "T24",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-20T10:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-20T10:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     }
+    ],
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Confirmation committed exactly at the deadline is not counted (now() < deadline)",
+   "expected": {
+    "ceiling_price_paise": 85500000,
+    "ceiling_tier": 1,
+    "confirmed_count": 4,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T25",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-20T12:30:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     }
+    ],
+    "max_units": null,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Confirmation without captured deposit is not counted",
+   "expected": {
+    "ceiling_price_paise": 85500000,
+    "ceiling_tier": 1,
+    "confirmed_count": 4,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T26",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": null
+     }
+    ],
+    "max_units": null,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "max_units 5 with minimum 3, 5 confirmed",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 5,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 85500000,
+    "resolved_tier": 1,
+    "status": "OK"
+   },
+   "id": "T27",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     }
+    ],
+    "max_units": 5,
+    "min_fulfilment": 3,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "max_units below minimum fulfilment -> INVALID",
+   "expected": {
+    "errors": [
+     "MAX_UNITS_BELOW_MIN_FULFILMENT"
+    ],
+    "status": "INVALID"
+   },
+   "id": "T28",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": null,
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     }
+    ],
+    "max_units": 3,
+    "min_fulfilment": 5,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "Minimum 10: ceiling is the unbounded tier",
+   "expected": {
+    "ceiling_price_paise": 84000000,
+    "ceiling_tier": 2,
+    "confirmed_count": 10,
+    "outcome": "RESOLVED",
+    "refund_reason": null,
+    "resolved_price_paise": 84000000,
+    "resolved_tier": 2,
+    "status": "OK"
+   },
+   "id": "T29",
+   "input": {
+    "confirmed_count": 10,
+    "max_units": null,
+    "min_fulfilment": 10,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  },
+  {
+   "description": "All buyers cancel before the deadline: count 0 -> VOID",
+   "expected": {
+    "ceiling_price_paise": 90000000,
+    "ceiling_tier": 0,
+    "confirmed_count": 0,
+    "outcome": "VOID",
+    "refund_reason": "QUOTE_VOID",
+    "resolved_price_paise": null,
+    "resolved_tier": null,
+    "status": "OK"
+   },
+   "id": "T30",
+   "input": {
+    "confirmation_deadline": "2026-11-20T12:30:00Z",
+    "confirmations": [
+     {
+      "cancelled_at": "2026-11-20T11:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-20T11:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     },
+     {
+      "cancelled_at": "2026-11-20T11:00:00Z",
+      "confirmed_at": "2026-11-19T10:00:00Z",
+      "deposit_captured_at": "2026-11-01T09:00:00Z"
+     }
+    ],
+    "max_units": null,
+    "min_fulfilment": 1,
+    "tiers": [
+     {
+      "max": 4,
+      "min": 1,
+      "price_paise": 90000000
+     },
+     {
+      "max": 9,
+      "min": 5,
+      "price_paise": 85500000
+     },
+     {
+      "max": null,
+      "min": 10,
+      "price_paise": 84000000
+     }
+    ]
+   }
+  }
+ ],
+ "note": "price_paise per tier = engine cash payable for the buyer configuration at that tier discount (tier-resolution.md)."
+}
