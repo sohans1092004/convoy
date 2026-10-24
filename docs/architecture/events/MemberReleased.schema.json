@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://convoy.example/schemas/events/MemberReleased.schema.json",
   "title": "MemberReleased v1",
-  "description": "Owner: pool. Consumers: payment, notification, audit. FIFO: True.",
+  "description": "Owner: pool. Consumers: payment, realtime, notification, audit. FIFO: True.",
   "allOf": [
     {
       "$ref": "envelope.schema.json"
@@ -23,6 +23,8 @@
       "additionalProperties": false,
       "required": [
         "buyer_id",
+        "committed_count",
+        "interested_count",
         "membership_id",
         "payment_id",
         "pool_id",
@@ -52,6 +54,12 @@
             "REROUND_REFUND_REQUESTED",
             "REROUND_NO_RESPONSE"
           ]
+        },
+        "interested_count": {
+          "type": "integer"
+        },
+        "committed_count": {
+          "type": "integer"
         }
       }
     }

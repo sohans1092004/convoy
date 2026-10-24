@@ -12,6 +12,7 @@ public record StockReservationRequested(
         @JsonProperty("colour") String colour) implements EventPayload {
     public static final String TYPE = "StockReservationRequested";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "order";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

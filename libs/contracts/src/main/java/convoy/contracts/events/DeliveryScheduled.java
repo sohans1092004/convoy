@@ -11,6 +11,7 @@ public record DeliveryScheduled(
         @JsonProperty("later_than_promised") Boolean laterThanPromised) implements EventPayload {
     public static final String TYPE = "DeliveryScheduled";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "booking";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

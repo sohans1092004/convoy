@@ -59,12 +59,12 @@ public class OrderApplication {
     @Bean
     static Subscriptions subscriptions(Orders o) {
         return new Subscriptions()
-                .on(QuoteFinalised.class, Subscriptions.Ordering.NONE, (e, p) -> o.quoteFinalised(p))
-                .on(PaymentCaptured.class, Subscriptions.Ordering.NONE, (e, p) -> o.paymentCaptured(p))
-                .on(convoy.contracts.events.AcceptanceChanged.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> o.acceptanceChanged(p))
-                .on(AcceptancesFrozen.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> o.acceptancesFrozen(p))
-                .on(DepositHeld.class, Subscriptions.Ordering.NONE, (e, p) -> o.stepDone(UUID.fromString(p.bookingId()), "HOLD_DEPOSIT"))
-                .on(StockReserved.class, Subscriptions.Ordering.NONE, (e, p) -> o.stepDone(UUID.fromString(p.bookingId()), "RESERVE_STOCK"));
+                .on(QuoteFinalised.class, (e, p) -> o.quoteFinalised(p))
+                .on(PaymentCaptured.class, (e, p) -> o.paymentCaptured(p))
+                .on(convoy.contracts.events.AcceptanceChanged.class, (e, p) -> o.acceptanceChanged(p))
+                .on(AcceptancesFrozen.class, (e, p) -> o.acceptancesFrozen(p))
+                .on(DepositHeld.class, (e, p) -> o.stepDone(UUID.fromString(p.bookingId()), "HOLD_DEPOSIT"))
+                .on(StockReserved.class, (e, p) -> o.stepDone(UUID.fromString(p.bookingId()), "RESERVE_STOCK"));
     }
 
     private final Orders orders;

@@ -70,6 +70,12 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 .setPropertyNamingStrategy(com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE));
     }
 
+    /** Every subscription must be listed in event-catalogue.yaml (checked at startup, messaging on or off). */
+    @Bean
+    org.springframework.beans.factory.SmartInitializingSingleton subscriptionsMatchCatalogue(ConvoyProperties p, ObjectProvider<Subscriptions> subs) {
+        return () -> subs.ifAvailable(s -> s.all().forEach(x -> Subscriptions.Kind.of(p.serviceName(), x.aggregate())));
+    }
+
     /** Required / nullable markers from record components (see RecordSchemas). */
     @Bean convoy.platform.web.RecordSchemas recordSchemas() { return new convoy.platform.web.RecordSchemas(); }
 
@@ -202,6 +208,6 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     InboxConsumer inboxConsumer(ConvoyProperties p, SqsClient sqs, Topology topology, JdbcTemplate jdbc, TransactionTemplate tx,
                                 ObjectMapper json, ObjectProvider<Subscriptions> subscriptions) {
         return new InboxConsumer(p.serviceName(), sqs, topology, jdbc, tx, json,
-                subscriptions.getIfAvailable(Subscriptions::new), p.messaging().waitSeconds());
+                subscriptions.getIfAvailable(Subscriptions::new), p.messaging().waitSeconds(), p.messaging().gapSnapshotAfter());
     }
 }

@@ -11,6 +11,7 @@ public record PaymentFailed(
         @JsonProperty("failure_code") String failureCode) implements EventPayload {
     public static final String TYPE = "PaymentFailed";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "payment";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

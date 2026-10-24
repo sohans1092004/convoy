@@ -10,6 +10,7 @@ public record StaffRevoked(
         @JsonProperty("revoked_by") String revokedBy) implements EventPayload {
     public static final String TYPE = "StaffRevoked";
     public static final String PRODUCER = "identity";
+    public static final String AGGREGATE = "dealership_staff";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

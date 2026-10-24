@@ -11,6 +11,7 @@ public record ErasureRequested(
         @JsonProperty("requested_at") Instant requestedAt) implements EventPayload {
     public static final String TYPE = "ErasureRequested";
     public static final String PRODUCER = "identity";
+    public static final String AGGREGATE = "user";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

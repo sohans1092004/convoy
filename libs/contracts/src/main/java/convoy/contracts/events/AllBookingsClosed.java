@@ -10,6 +10,7 @@ public record AllBookingsClosed(
         @JsonProperty("cancelled") Long cancelled) implements EventPayload {
     public static final String TYPE = "AllBookingsClosed";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "order_pool_resolution";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

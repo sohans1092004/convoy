@@ -255,13 +255,15 @@ export interface MemberLeft {
   committed_count: number;
 }
 
-/** Owner: pool. Consumers: payment, notification, audit. FIFO: True. */
+/** Owner: pool. Consumers: payment, realtime, notification, audit. FIFO: True. */
 export interface MemberReleased {
   pool_id: string;
   membership_id: string;
   buyer_id: string;
   payment_id: string;
   reason: "LATE_CAPTURE" | "REROUND_REFUND_REQUESTED" | "REROUND_NO_RESPONSE";
+  interested_count: number;
+  committed_count: number;
 }
 
 /** Owner: order. Consumers: realtime, notification, audit. FIFO: False. */

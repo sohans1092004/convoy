@@ -14,6 +14,7 @@ public record TierResolved(
         @JsonProperty("resolved_cash_payable_paise") Long resolvedCashPayablePaise) implements EventPayload {
     public static final String TYPE = "TierResolved";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "order_pool_resolution";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

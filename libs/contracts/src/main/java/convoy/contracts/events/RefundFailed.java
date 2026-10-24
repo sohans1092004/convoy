@@ -11,6 +11,7 @@ public record RefundFailed(
         @JsonProperty("failure_reason") String failureReason) implements EventPayload {
     public static final String TYPE = "RefundFailed";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "payment";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

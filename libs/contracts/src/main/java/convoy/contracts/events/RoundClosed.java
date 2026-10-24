@@ -14,6 +14,7 @@ public record RoundClosed(
         @JsonProperty("valid_quote_count") Long validQuoteCount) implements EventPayload {
     public static final String TYPE = "RoundClosed";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 

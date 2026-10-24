@@ -9,6 +9,7 @@ public record InvoiceConfirmed(
         @JsonProperty("invoice_total_paise") Long invoiceTotalPaise) implements EventPayload {
     public static final String TYPE = "InvoiceConfirmed";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "booking";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

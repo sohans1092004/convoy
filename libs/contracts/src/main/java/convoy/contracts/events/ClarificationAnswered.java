@@ -11,6 +11,7 @@ public record ClarificationAnswered(
         @JsonProperty("question_type") String questionType) implements EventPayload {
     public static final String TYPE = "ClarificationAnswered";
     public static final String PRODUCER = "quote";
+    public static final String AGGREGATE = "quote";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

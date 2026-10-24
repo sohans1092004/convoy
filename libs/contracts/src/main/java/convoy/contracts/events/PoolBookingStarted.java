@@ -9,6 +9,7 @@ public record PoolBookingStarted(
         @JsonProperty("bookings_count") Long bookingsCount) implements EventPayload {
     public static final String TYPE = "PoolBookingStarted";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 

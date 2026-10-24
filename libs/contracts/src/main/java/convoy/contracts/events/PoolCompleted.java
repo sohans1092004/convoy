@@ -8,6 +8,7 @@ public record PoolCompleted(
         @JsonProperty("pool_id") String poolId) implements EventPayload {
     public static final String TYPE = "PoolCompleted";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 

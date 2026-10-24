@@ -11,6 +11,7 @@ public record RefundCompleted(
         @JsonProperty("manual") Boolean manual) implements EventPayload {
     public static final String TYPE = "RefundCompleted";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "payment";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

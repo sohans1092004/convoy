@@ -13,6 +13,7 @@ public record BookingDelivered(
         @JsonProperty("delivered_at") Instant deliveredAt) implements EventPayload {
     public static final String TYPE = "BookingDelivered";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "booking";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

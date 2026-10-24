@@ -53,16 +53,16 @@ public class QuoteApplication {
     @Bean
     static Subscriptions subscriptions(Quotes q) {
         return new Subscriptions()
-                .on(QuoteRoundOpened.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundOpened(p))
-                .on(FinalRoundOpened.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundOpened(new QuoteRoundOpened(p.poolId(), p.roundId(), p.roundSet(),
+                .on(QuoteRoundOpened.class, (e, p) -> q.roundOpened(p))
+                .on(FinalRoundOpened.class, (e, p) -> q.roundOpened(new QuoteRoundOpened(p.poolId(), p.roundId(), p.roundSet(),
                         p.roundNo(), p.kind(), p.deadline(), p.invitedDealershipIds(), p.acceptedVariantIds(), p.committedCount(), p.stateCode(), p.variants())))
-                .on(RoundClosed.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundClosed(p))
-                .on(MemberCommitted.class, Subscriptions.Ordering.NONE, (e, p) -> q.memberCommitted(p))
-                .on(MemberLeft.class, Subscriptions.Ordering.NONE, (e, p) -> q.memberLeft(p))
-                .on(AcceptanceChanged.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> q.acceptanceChanged(p))
-                .on(AcceptancesFrozen.class, Subscriptions.Ordering.NONE, (e, p) -> q.acceptancesFrozen(p))
-                .on(ConfirmationRecorded.class, Subscriptions.Ordering.NONE, (e, p) -> q.confirmationRecorded(p))
-                .on(StockReservationRequested.class, Subscriptions.Ordering.NONE, (e, p) -> q.reserveStock(p));
+                .on(RoundClosed.class, (e, p) -> q.roundClosed(p))
+                .on(MemberCommitted.class, (e, p) -> q.memberCommitted(p))
+                .on(MemberLeft.class, (e, p) -> q.memberLeft(p))
+                .on(AcceptanceChanged.class, (e, p) -> q.acceptanceChanged(p))
+                .on(AcceptancesFrozen.class, (e, p) -> q.acceptancesFrozen(p))
+                .on(ConfirmationRecorded.class, (e, p) -> q.confirmationRecorded(p))
+                .on(StockReservationRequested.class, (e, p) -> q.reserveStock(p));
     }
 
     private final Quotes quotes;

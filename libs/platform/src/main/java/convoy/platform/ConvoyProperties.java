@@ -31,7 +31,7 @@ public record ConvoyProperties(
         issuers = issuers == null ? Map.of() : issuers;
         publicPaths = publicPaths == null ? List.of("/actuator/health/**", "/actuator/health", "/v3/api-docs/**") : publicPaths;
         aws = aws == null ? new Aws(null, "ap-south-1") : aws;
-        messaging = messaging == null ? new Messaging(200, 1, true) : messaging;
+        messaging = messaging == null ? new Messaging(200, 1, true, null) : messaging;
     }
 
     public record Aws(String endpoint, String region) {}
@@ -40,6 +40,11 @@ public record ConvoyProperties(
      * @param relayIntervalMs  outbox poll interval
      * @param waitSeconds      SQS long-poll wait (short locally for a snappy demo)
      * @param enabled          false in tests that have no broker
+     * @param gapSnapshotAfter a FULL subscriber's version gap older than this falls back to the owner snapshot (catalogue: 5 min)
      */
-    public record Messaging(long relayIntervalMs, int waitSeconds, boolean enabled) {}
+    public record Messaging(long relayIntervalMs, int waitSeconds, boolean enabled, java.time.Duration gapSnapshotAfter) {
+        public Messaging {
+            gapSnapshotAfter = gapSnapshotAfter == null ? java.time.Duration.ofMinutes(5) : gapSnapshotAfter;
+        }
+    }
 }

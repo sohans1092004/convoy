@@ -14,6 +14,7 @@ public record CatalogPriceUpdated(
         @JsonProperty("source_url") String sourceUrl) implements EventPayload {
     public static final String TYPE = "CatalogPriceUpdated";
     public static final String PRODUCER = "catalog";
+    public static final String AGGREGATE = "variant";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

@@ -3,15 +3,18 @@ package convoy.contracts.events;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** Owner: pool. Consumers: payment, notification, audit. FIFO: True. */
+/** Owner: pool. Consumers: payment, realtime, notification, audit. FIFO: True. */
 public record MemberReleased(
         @JsonProperty("pool_id") String poolId,
         @JsonProperty("membership_id") String membershipId,
         @JsonProperty("buyer_id") String buyerId,
         @JsonProperty("payment_id") String paymentId,
-        @JsonProperty("reason") String reason) implements EventPayload {
+        @JsonProperty("reason") String reason,
+        @JsonProperty("interested_count") Long interestedCount,
+        @JsonProperty("committed_count") Long committedCount) implements EventPayload {
     public static final String TYPE = "MemberReleased";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 
