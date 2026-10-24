@@ -18,5 +18,6 @@ rnd() { head -c 24 /dev/urandom | base64 | tr -d '/+=' ; }
   echo "DEMO_FINAL_ROUND_SECONDS=0"
   echo "DEMO_DECISION_SECONDS=60"
   echo "DEMO_CONFIRMATION_SECONDS=60"
+  echo "POOL_MIN_MEMBERS=1"
 } > .env
 echo "wrote .env"

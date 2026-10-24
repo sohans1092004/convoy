@@ -178,12 +178,14 @@ Format: question · options · **default chosen** · impact.
 - **Default: ₹5,000**, configurable. Deposit refunds (₹999) are below it; money outcomes of disputes above it need a second admin.
 - Impact: AZ-INT-08.
 
-### Q-041 — How much is the platform success fee, and when is it charged?
+### Q-041 — How much is the platform success fee, and when is it charged? — RESOLVED (AMENDMENT-007)
+- **Resolved 2026-10-24:** flat ₹2,500 (250000 paise) per delivered booking, a dealer receivable (J-FEE in PAY-T09), configurable, never from a buyer deposit.
 - Added in P1 by AMENDMENT-003, which makes the fee a separate receivable from the dealer. PLAN.md does not state an amount.
 - **Default:** `success_fee_paise` is unset, so no J-FEE entry is posted. When set, J-FEE (Dr 1300 / Cr 4100) is posted when a booking is delivered (PAY-T09).
 - Impact: none for the P1 journey, which ends at the booking voucher. Needs a business decision before any dealer agreement.
 
-### Q-042 — What is the default pool minimum (`min_members`)?
+### Q-042 — What is the default pool minimum (`min_members`)? — RESOLVED (AMENDMENT-007)
+- **Resolved 2026-10-24:** 5 in production, 1 in the local demo stack.
 - Added in P1. PLAN.md requires a minimum before quoting (POOL-T01) but states no number.
 - **Default:** a required setting, `pool.min-members`. The demo profile uses 1 so a single test buyer can run the journey. No production value is set; it is a business decision.
 - Impact: forming deadline outcomes (POOL-T11) and dealer interest; set before any real pilot.

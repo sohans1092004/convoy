@@ -40,3 +40,5 @@ payment:
   razorpay-key-secret: ${RAZORPAY_KEY_SECRET}
   razorpay-webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
   deposit-amount-paise: ${DEPOSIT_AMOUNT_PAISE:99900}
+  # AMENDMENT-007 (Q-041): flat Rs 2,500 per delivered booking, a dealer receivable (J-FEE), never from a buyer deposit. 0 = off.
+  success-fee-paise: ${SUCCESS_FEE_PAISE:250000}

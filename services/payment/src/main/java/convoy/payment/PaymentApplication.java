@@ -39,7 +39,8 @@ public class PaymentApplication {
 
     /** Razorpay TEST mode settings (env only) and the configured deposit (ruleset default 99900 paise). */
     @ConfigurationProperties(prefix = "payment")
-    public record PaymentSettings(String razorpayBaseUrl, String razorpayKeyId, String razorpayKeySecret, String razorpayWebhookSecret, long depositAmountPaise) {}
+    public record PaymentSettings(String razorpayBaseUrl, String razorpayKeyId, String razorpayKeySecret, String razorpayWebhookSecret, long depositAmountPaise,
+                                  long successFeePaise) {}
 
     @Bean
     static RazorpayClient razorpayClient(PaymentSettings s) {
@@ -50,13 +51,14 @@ public class PaymentApplication {
     @Bean
     static Subscriptions subscriptions(Payments payments) {
         return new Subscriptions()
-                .on(DepositHoldRequested.class, Subscriptions.Ordering.NONE, (e, p) ->
+                .on(DepositHoldRequested.class, (e, p) ->
                         payments.hold(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), UUID.fromString(p.bookingId())))
-                .on(DepositRefundRequested.class, Subscriptions.Ordering.NONE, (e, p) ->
+                .on(DepositRefundRequested.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
-                .on(MemberLeft.class, Subscriptions.Ordering.MONOTONIC, (e, p) ->
+                .on(MemberLeft.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
-                .on(AcceptancesFrozen.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> p.releasedBuyers().forEach(r ->
+                .on(convoy.contracts.events.BookingDelivered.class, (e, p) -> payments.bookingDelivered(UUID.fromString(p.bookingId())))
+                .on(AcceptancesFrozen.class, (e, p) -> p.releasedBuyers().forEach(r ->
                         payments.requestRefund(UUID.fromString(String.valueOf(r.get("buyer_id"))), UUID.fromString(p.poolId()), "NO_ACCEPTANCE")));
     }
 

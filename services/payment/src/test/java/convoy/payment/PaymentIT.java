@@ -161,6 +161,26 @@ class PaymentIT extends ServiceTest {
     }
 
     @Test
+    void deliveryReleasesTheDepositInFullAndBooksTheSuccessFeeAsADealerReceivable() throws Exception {
+        UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID(), booking = Uuid7.next();
+        Map<String, Object> d = deposit(buyer, pool);
+        String pid = (String) d.get("payment_id");
+        captured((String) d.get("razorpay_order_id"), "evt_c_" + pid);
+        inTx(() -> payments.hold(buyer, pool, booking));
+        inTx(() -> payments.bookingDelivered(booking)); // PAY-T09
+        inTx(() -> payments.bookingDelivered(booking)); // repeat: the existing refund wins, no second fee
+        assertThat(state(pid)).isEqualTo("REFUND_PENDING");
+        Map<String, Object> rf = jdbc.queryForMap("select kind, reason_code, amount_paise, source_account from refunds where payment_id = ?::uuid", pid);
+        assertThat(rf).containsEntry("kind", "RELEASE").containsEntry("reason_code", "DELIVERY_RELEASE").containsEntry("amount_paise", 99900L).containsEntry("source_account", "2200");
+        // AMENDMENT-007: flat Rs 2,500, Dr 1300 / Cr 4100, never a deposit account.
+        List<Map<String, Object>> fee = jdbc.queryForList("select l.account, l.dr, l.cr from journal_lines l join journal_entries e on e.id = l.entry_id "
+                + "where e.payment_id = ?::uuid and e.kind = 'J-FEE' order by l.line_no", pid);
+        assertThat(fee).containsExactly(Map.of("account", "1300", "dr", 250000L, "cr", 0L), Map.of("account", "4100", "dr", 0L, "cr", 250000L));
+        assertThat(jdbc.queryForObject("select count(*) from journal_lines l join journal_entries e on e.id = l.entry_id where e.kind = 'J-FEE' "
+                + "and l.account in ('2100', '2200')", Integer.class)).isZero();
+    }
+
+    @Test
     void ledgerRowsAreImmutableAndEntriesMustBalance() {
         UUID payment = UUID.fromString((String) deposit0().get("payment_id"));
         assertThatThrownBy(() -> jdbc.update("update journal_lines set dr = dr + 1")).hasMessageContaining("immutable");

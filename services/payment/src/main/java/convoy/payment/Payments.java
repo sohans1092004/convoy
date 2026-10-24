@@ -30,7 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class Payments {
     private static final Logger log = LoggerFactory.getLogger(Payments.class);
     public static final TransitionTable PAYMENT = TransitionTable.load("payment",
-            Set.of("PAY-T01", "PAY-T02", "PAY-T03", "PAY-T04", "PAY-T06", "PAY-T07", "PAY-T08"));
+            Set.of("PAY-T01", "PAY-T02", "PAY-T03", "PAY-T04", "PAY-T06", "PAY-T07", "PAY-T08", "PAY-T09"));
     public static final TransitionTable REFUND = TransitionTable.load("refund", Set.of("REF-T01", "REF-T02", "REF-T03"));
 
     public record Payment(UUID id, String depositKey, UUID buyerId, UUID poolId, int roundSet, long amountPaise, String state,
@@ -41,8 +41,10 @@ public class Payments {
     private final RazorpayClient razorpay;
     private final Ledger ledger;
     private final Outbox outbox;
+    private final PaymentApplication.PaymentSettings settings;
 
-    public Payments(JdbcTemplate jdbc, TransactionTemplate tx, RazorpayClient razorpay, Ledger ledger, Outbox outbox) {
+    public Payments(JdbcTemplate jdbc, TransactionTemplate tx, RazorpayClient razorpay, Ledger ledger, Outbox outbox, PaymentApplication.PaymentSettings settings) {
+        this.settings = settings;
         this.jdbc = jdbc;
         this.tx = tx;
         this.razorpay = razorpay;
@@ -176,6 +178,24 @@ public class Payments {
         long v = move(p, "HELD_FOR_BOOKING", "booking_id = ?", bookingId);
         ledger.hold(p.id(), p.amountPaise());
         outbox.append(p.id(), v, new DepositHeld(p.id().toString(), bookingId.toString()));
+    }
+
+    // ------------------------------------------------------------------ PAY-T09 delivery: release the deposit, post the success fee
+
+    /** The deposit is refunded in full after delivery (AMENDMENT-003); the fee is the dealer's receivable (AMENDMENT-007). */
+    public void bookingDelivered(UUID bookingId) {
+        Optional<Payment> found = one("booking_id = ? for update", bookingId);
+        if (found.isEmpty()) {
+            log.error("ALARM BookingDelivered for booking {} with no held deposit", bookingId);
+            return;
+        }
+        Payment p = found.get();
+        if (!p.state().equals("HELD_FOR_BOOKING") || jdbc.queryForObject("select count(*) from refunds where payment_id = ?", Integer.class, p.id()) > 0) {
+            log.error("ALARM BookingDelivered for booking {} but payment {} is {} with a refund already: the existing refund wins", bookingId, p.id(), p.state());
+            return;
+        }
+        requestRefund(p, "DELIVERY_RELEASE", "RELEASE");
+        if (settings.successFeePaise() > 0) ledger.successFee(p.id(), settings.successFeePaise());
     }
 
     // ------------------------------------------------------------------ PAY-T07 + REF-T01
