@@ -81,7 +81,9 @@ Also: pre-commit copy in cancellation-rules.md aligned with AMENDMENT-002 (misse
 
 **Contracts:** every outbox row written in the pool, payment, quote, order and identity tests validates against its JSON Schema (envelope + payload).
 
-**CI:** `.github/workflows/ci.yml` (path-filtered JVM matrix, Node/web checks, full E2E on every PR) plus `spec.yml`. CI time and runner memory headroom are measured on the PR run (the e2e job prints `free -m` and `docker stats`); see the PR checks.
+**CI:** `.github/workflows/ci.yml` (path-filtered JVM matrix, Node/web checks, full E2E on every PR) plus `spec.yml`. First green PR run (PR #2): **8 min 27 s wall clock**. The longest job is e2e at **8 min 24 s**: jars about 2 min, images and stack about 2 min (healthy 43 s after `up`), Playwright 4.1 min. The ten JVM matrix jobs take 0.9–2.0 min each in parallel, node 43 s, spec checks 6–9 s. **Runner memory headroom** during e2e (GitHub ubuntu-latest, 16 GB): 5.0 GiB used, 10.7 GiB available, so the stack fits with room to spare.
+
+The first PR run failed on two CI-only issues, now fixed: `gradlew` lost its executable bit when committed from Windows, and the Razorpay fake read `WEBHOOK_URL` at import time, before its contract test set it.
 
 ## 5. Measurements
 Docker Desktop on Windows 11, WSL2 VM capped at 10 GB, 20 logical CPUs. JVMs: Temurin 21, SerialGC, `MaxRAMPercentage=70` of a 420 MiB container limit, OTel Java agent attached.
