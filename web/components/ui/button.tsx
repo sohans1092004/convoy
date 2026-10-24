@@ -27,12 +27,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, block, asChild, loading, children, disabled, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
+    if (asChild) {
+      // Slot needs exactly one child (React counts a null sibling too), so no spinner slot here.
+      return <Slot ref={ref} className={cn(buttonVariants({ variant, block }), className)} {...props}>{children}</Slot>;
+    }
     return (
-      <Comp ref={ref} className={cn(buttonVariants({ variant, block }), className)} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
+      <button ref={ref} className={cn(buttonVariants({ variant, block }), className)} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
         {loading ? <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" /> : null}
         {children}
-      </Comp>
+      </button>
     );
   },
 );

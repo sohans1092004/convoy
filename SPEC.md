@@ -42,7 +42,7 @@ P1-priority additions: structured clarifications, marketplace analytics, web pus
    - money as integer paise ([ADR-012](docs/adr/ADR-012-money-as-integer-paise.md));
    - one price spec with shared vectors ([ADR-011](docs/adr/ADR-011-one-price-spec-two-implementations.md));
    - Redis non-authoritative ([ADR-010](docs/adr/ADR-010-redis-non-authoritative.md));
-   - the defaults in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) (Q-001…Q-041), as amended below.
+   - the defaults in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) (Q-001…Q-042), as amended below.
 
 ## 4. Document index
 **Rules (business, frozen)**
@@ -110,6 +110,19 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 **AMENDMENT-006 — SNS FIFO to SQS standard queues (closes P0 risk 6).**
 - Rule: ordering consumers (quote, order, realtime; payment for membership events) use FIFO queues on pool-events.fifo; notification and audit use standard queues. Source: [AWS, 2023-09-14](https://aws.amazon.com/about-aws/whats-new/2023/09/amazon-sns-fifo-topics-message-delivery-sqs-standard-queues/), accessed 2026-10-24.
 - Files: event-catalogue.yaml header, ADR-002. LocalStack behaviour: recorded in reports/P1_REPORT.md. Phase: P1.
+
+### Contract additions in P1 (no business-rule change)
+Interface additions made while building the walking skeleton. None changes a rule above; each is reflected in the linked spec file and validated by `validate_spec.py`.
+
+| Addition | Why | Files |
+|---|---|---|
+| Problem type `not-implemented-in-p1` (501) | P1 prompt: commands outside the skeleton return 501 so gaps stay visible. Removed once every command is built. | problem-types.yaml |
+| E029 `GET /internal/models/{slug}` (catalog, `service:pool`, scope `models:read`) | pool must learn a model's brand, variants and variant facts without trusting the client. | api-outline.md, auth-contract.md §5 |
+| `QuoteRoundOpened` / `FinalRoundOpened` carry `state_code`, `variants[]` | quote prices quotes without a sync call to catalog ("catalog down → submit still works", services.md). | event-catalogue.yaml |
+| `QuoteFinalised` carries `ruleset_version`, `tiers[]`, `variant_inputs[]` | order computes CEILING/FINAL snapshots with the engine without a sync call to quote. | event-catalogue.yaml |
+| New consumers: quote ← `MemberCommitted`, `MemberLeft`, `AcceptanceChanged`, `ConfirmationRecorded`; order ← `AcceptanceChanged` | quote shows offers only to committed members and needs N for the AMENDMENT-005 projection; order builds the acceptance read model named in the P1 prompt. | event-catalogue.yaml |
+| E014 consent and E052 dealership profile built in P1 (outline phases P5/P3) | The P1 prompt asks for dealer-disclosure consent records and a dealer read API. | api-outline.md (phase column unchanged) |
+| Pre-commit copy aligned with AMENDMENT-002 | Step 0 missed the VOID line of the copy. | cancellation-rules.md |
 
 ### PLAN.md edits log
 _None. PLAN.md is unchanged in P0._

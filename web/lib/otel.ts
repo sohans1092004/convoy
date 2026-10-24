@@ -25,13 +25,15 @@ function start() {
 export async function withBffSpan<T>(name: string, fn: (headers: Record<string, string>, span: Span) => Promise<T>): Promise<T> {
   start();
   const tracer = trace.getTracer('convoy-web');
-  return tracer.startActiveSpan(name, { kind: SpanKind.SERVER }, async (span) => {
+  const span = tracer.startSpan(name, { kind: SpanKind.SERVER });
+  {
+    // No async context manager is registered, so put the span into the context explicitly before injecting.
     const carrier: Record<string, string> = {};
-    propagation.inject(context.active(), carrier);
+    propagation.inject(trace.setSpan(context.active(), span), carrier);
     try {
       return await fn(carrier, span);
     } finally {
       span.end();
     }
-  });
+  }
 }

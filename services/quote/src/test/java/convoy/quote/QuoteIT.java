@@ -102,6 +102,8 @@ class QuoteIT extends ServiceTest {
         // Second quote for the same pool from the same dealership is refused; other dealerships cannot read it (AZ-E067-X).
         assertThat(code(send("POST", "/dealer/pools/" + r.pool() + "/quotes", dealer(r.dealership()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString())))).isEqualTo("INVALID_TRANSITION");
         assertThat(get("/dealer/quotes/" + id, dealer(UUID.randomUUID())).status()).isEqualTo(404);
+        // AZ-T5: another dealership cannot submit on this quote either.
+        assertThat(send("POST", "/dealer/quotes/" + id + "/submit", dealer(UUID.randomUUID()), null, Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"1\"")).status()).isEqualTo(404);
         assertThat(code(send("POST", "/dealer/quotes/" + id + "/revisions", dealer(r.dealership()), "{}", Map.of()))).isEqualTo("NOT_IMPLEMENTED_IN_P1");
     }
 
@@ -138,7 +140,10 @@ class QuoteIT extends ServiceTest {
         assertThat(v.at("/projection/guaranteed").asBoolean()).isFalse();
         assertThat(v.at("/projection/label").asText()).startsWith("If the count stays at 0");
         // 6 buyers accepting: projection falls to the 5+ tier, ceiling unchanged (AMENDMENT-005).
+        String dealerBefore = get("/dealer/inbox", dealer(r.dealership())).body().replaceAll("\"server_time\":\"[^\"]*\"", "");
         inTx(() -> quotes.acceptanceChanged(new AcceptanceChanged(r.pool().toString(), Uuid7.next().toString(), id, SWIFT, Map.of(id, 6L))));
+        // AZ-T3: acceptances are invisible to dealers: the dealer inbox is unchanged by them.
+        assertThat(get("/dealer/inbox", dealer(r.dealership())).body().replaceAll("\"server_time\":\"[^\"]*\"", "")).isEqualTo(dealerBefore);
         JsonNode after = JSON.readTree(get("/pools/" + r.pool() + "/quotes/" + id, token).body()).at("/variants/0");
         assertThat(after.at("/projection/cash_payable_paise").asLong()).isLessThan(after.at("/ceiling/cash_payable_paise").asLong());
         assertThat(after.at("/ceiling/cash_payable_paise").asLong()).isEqualTo(66347500L);

@@ -72,9 +72,10 @@ export function OrderView({ orderId }: { orderId: string }) {
           <p className="text-sm">{t('body', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</p>
           <Countdown deadline={o.confirmation_deadline} label="Confirm by" />
           <Button loading={confirm.state.kind === 'loading'} onClick={() => confirm.execute()}>Confirm at most {rupees(ceiling.output.cash_payable_paise)}</Button>
-          <CommandStatus state={confirm.state} successText="Confirmed. Your final price is set when confirmations close; it can only be the same or lower." />
         </Card>
       ) : null}
+      {/* Outside the card: the card disappears once the order is confirmed, the outcome must stay visible. */}
+      <CommandStatus state={confirm.state} successText="Confirmed. Your final price is set when confirmations close; it can only be the same or lower." />
       {o.state === 'CONFIRMED' ? (
         <Card className="flex flex-col gap-2">
           <CardTitle>Confirmed at most {rupees(ceiling.output.cash_payable_paise)}</CardTitle>

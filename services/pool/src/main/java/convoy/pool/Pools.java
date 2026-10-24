@@ -216,15 +216,28 @@ public class Pools {
         }
         requireJoinable(pre, "commitments");
         int roundSet = (int) pre.get("round_set");
-        Map<String, Object> deposit;
-        try {
-            deposit = clients.payment().post().uri("/internal/deposits")
-                    .header("Idempotency-Key", "deposit:" + c.userId() + ":" + poolId + ":" + roundSet)
-                    .body(Map.of("buyer_id", c.userId(), "pool_id", poolId, "round_set", roundSet, "amount_paise", depositAmountPaise))
-                    .retrieve().body(Map.class);
-        } catch (RestClientException e) {
-            log.warn("deposit creation failed: {}", e.toString());
-            throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "Payments are unavailable right now; nothing was charged. Retry with the same Idempotency-Key.");
+        Map<String, Object> deposit = null;
+        // The deposit key makes the call idempotent at payment, so transient failures are retried (3 attempts).
+        for (int attempt = 1; deposit == null; attempt++) {
+            try {
+                deposit = clients.payment().post().uri("/internal/deposits")
+                        .header("Idempotency-Key", "deposit:" + c.userId() + ":" + poolId + ":" + roundSet)
+                        .body(Map.of("buyer_id", c.userId(), "pool_id", poolId, "round_set", roundSet, "amount_paise", depositAmountPaise))
+                        .retrieve().body(Map.class);
+            } catch (HttpClientErrorException e) {
+                log.warn("deposit refused: {}", e.toString());
+                throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "Payments refused the deposit; nothing was charged.");
+            } catch (RestClientException e) {
+                log.warn("deposit creation attempt {} failed: {}", attempt, e.toString());
+                if (attempt == 3) {
+                    throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "Payments are unavailable right now; nothing was charged. Retry with the same Idempotency-Key.");
+                }
+                try {
+                    Thread.sleep(300L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
         UUID paymentId = UUID.fromString((String) deposit.get("payment_id"));
         Map<String, Object> membership = tx.execute(s -> commitLocal(poolId, c.userId(), paymentId, termsVersion));

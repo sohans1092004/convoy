@@ -162,11 +162,9 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
           ) : null}
           <CommandStatus state={commit.state} />
           {me && ['INTERESTED', 'COMMITTED', 'ACCEPTED'].includes(me.state) && ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN', 'FINAL_ROUND', 'DECISION_OPEN'].includes(pool.state) ? (
-            <>
-              <Button variant="link" loading={leave.state.kind === 'loading'} onClick={() => leave.execute()}>Leave this pool{me.state !== 'INTERESTED' ? ' (full ₹999 refund)' : ''}</Button>
-              <CommandStatus state={leave.state} successText="You left the pool. Any deposit is being refunded in full." />
-            </>
+            <Button variant="link" loading={leave.state.kind === 'loading'} onClick={() => leave.execute()}>Leave this pool{me.state !== 'INTERESTED' ? ' (full ₹999 refund)' : ''}</Button>
           ) : null}
+          <CommandStatus state={leave.state} successText="You left the pool. Any deposit is being refunded in full." />
         </Card>
       </div>
       <p className="text-xs text-muted">This page refreshes every 10 seconds. Last update {ist(pool.server_time, true)}.</p>

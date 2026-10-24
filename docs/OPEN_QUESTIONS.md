@@ -182,3 +182,8 @@ Format: question · options · **default chosen** · impact.
 - Added in P1 by AMENDMENT-003, which makes the fee a separate receivable from the dealer. PLAN.md does not state an amount.
 - **Default:** `success_fee_paise` is unset, so no J-FEE entry is posted. When set, J-FEE (Dr 1300 / Cr 4100) is posted when a booking is delivered (PAY-T09).
 - Impact: none for the P1 journey, which ends at the booking voucher. Needs a business decision before any dealer agreement.
+
+### Q-042 — What is the default pool minimum (`min_members`)?
+- Added in P1. PLAN.md requires a minimum before quoting (POOL-T01) but states no number.
+- **Default:** a required setting, `pool.min-members`. The demo profile uses 1 so a single test buyer can run the journey. No production value is set; it is a business decision.
+- Impact: forming deadline outcomes (POOL-T11) and dealer interest; set before any real pilot.

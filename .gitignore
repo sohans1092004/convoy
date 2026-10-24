@@ -11,3 +11,4 @@ test-results/
 .env
 *.log
 .impeccable/
+reports/p1-media/

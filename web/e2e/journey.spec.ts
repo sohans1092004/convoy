@@ -7,9 +7,10 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // dealer quote -> compare -> accept -> confirm -> tier resolves -> booking voucher.
 const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const JAEGER = process.env.JAEGER_URL || 'http://localhost:16686';
-const PLAN: Record<string, { buyer: string; model: string; variant: string }> = {
-  'mobile-360': { buyer: 'buyer2@convoy.test', model: 'Maruti Suzuki Swift', variant: 'LXi MT' },
-  desktop: { buyer: 'buyer3@convoy.test', model: 'Maruti Suzuki Brezza', variant: 'VXI AT' },
+// Separate accounts per project: parallel sign-ins must never read each other's OTP mail.
+const PLAN: Record<string, { buyer: string; dealer: string; model: string; variant: string }> = {
+  'mobile-360': { buyer: 'buyer2@convoy.test', dealer: 'dealer1@convoy.test', model: 'Maruti Suzuki Swift', variant: 'LXi MT' },
+  desktop: { buyer: 'buyer3@convoy.test', dealer: 'dealer2@convoy.test', model: 'Maruti Suzuki Brezza', variant: 'VXI AT' },
 };
 const axeFindings: { page: string; ids: string[] }[] = [];
 
@@ -35,16 +36,17 @@ async function signIn(page: Page, email: string) {
   }, { timeout: 30_000 }).toMatch(/^\d{6}$/);
   await page.getByLabel('6-digit code').fill(code);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith('/sign-in'));
+  await page.waitForURL((u) => !u.pathname.startsWith('/sign-in'), { timeout: 30_000 });
 }
 
 async function dealerQuote(browser: Browser, poolId: string, project: string) {
   const ctx = await browser.newContext({ viewport: project === 'mobile-360' ? { width: 360, height: 780 } : { width: 1280, height: 900 } });
   const page = await ctx.newPage();
-  await signIn(page, 'dealer1@convoy.test');
+  await signIn(page, PLAN[project].dealer);
   await page.goto('/dealer');
-  const card = page.locator('div', { has: page.getByRole('heading', { name: new RegExp(`Pool …${poolId.slice(-6)}`) }) }).last();
-  await expect.poll(async () => { await page.reload(); return card.count(); }, { timeout: 90_000, intervals: [3000] }).toBeGreaterThan(0);
+  const card = page.locator('div', { has: page.getByRole('heading', { name: new RegExp(`Pool …${poolId.slice(-6)}`) }) }).filter({ has: page.getByRole('button') }).last();
+  // Client-rendered pages poll every 10 s themselves: wait for the element instead of reloading (a reload shows the skeleton first).
+  await expect(card.getByRole('button', { name: 'Start a quote' })).toBeVisible({ timeout: 90_000 });
   await axe(page, 'dealer inbox');
   await card.getByRole('button', { name: 'Start a quote' }).click();
   await page.waitForURL(/\/dealer\/quotes\//);
@@ -93,7 +95,7 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await dealerQuote(browser, poolId, info.project.name);
   step('dealer submitted a sealed quote');
 
-  await expect.poll(async () => { await page.reload(); return page.getByRole('link', { name: 'Compare offers' }).count(); }, { timeout: 360_000, intervals: [5000] }).toBe(1);
+  await expect(page.getByRole('link', { name: 'Compare offers' })).toBeVisible({ timeout: 360_000 });
   await page.getByRole('link', { name: 'Compare offers' }).click();
   await expect(page.getByText('Cash payable at your ceiling (the most you can pay)')).toBeVisible();
   await expect(page.getByText(/If the count stays at/)).toBeVisible(); // AMENDMENT-005 projection label
@@ -111,8 +113,8 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await expect(page.getByText(/Confirmed\. Your final price is set/)).toBeVisible();
   step('confirmed at the ceiling');
 
-  await expect.poll(async () => { await page.reload(); return page.getByRole('img', { name: /QR code for booking voucher/ }).count(); }, { timeout: 240_000, intervals: [5000] }).toBe(1);
-  await expect(page.getByText('Final price')).toBeVisible();
+  await expect(page.getByRole('img', { name: /QR code for booking voucher/ })).toBeVisible({ timeout: 240_000 });
+  await expect(page.getByRole('heading', { name: 'Final price', exact: true })).toBeVisible();
   await axe(page, 'order (voucher)');
   step('booked; voucher with QR shown');
 

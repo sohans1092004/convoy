@@ -134,7 +134,10 @@ class OrderIT extends ServiceTest {
         assertThat(send("POST", "/dealer/bookings/" + booking + "/confirm", TestTokens.dealer("order", UUID.randomUUID(), UUID.randomUUID()), null,
                 Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"1\"")).status()).isEqualTo(404);
         assertThat(send("POST", "/dealer/bookings/" + booking + "/confirm", dealer, null, Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"1\"")).status()).isEqualTo(200);
-        assertThat(get("/dealer/bookings", dealer).body()).contains(booking.toString());
+        String bookings = get("/dealer/bookings", dealer).body();
+        assertThat(bookings).contains(booking.toString());
+        // AZ-T2: no buyer identity in dealer booking views (contact details only after consent, later phases).
+        for (UUID b : s.buyers()) assertThat(bookings).doesNotContain(b.toString());
     }
 
     @Test

@@ -248,7 +248,11 @@ class PoolIT extends ServiceTest {
         assertThat(get("/pools/" + pool, TestTokens.dealer("pool", UUID.randomUUID(), UUID.randomUUID())).status()).isEqualTo(404);
         jdbc.update("update pools set state = 'READY_FOR_QUOTES' where id = ?", pool);
         sweeper.openSealedRound(pool);
-        assertThat(get("/pools/" + pool, TestTokens.dealer("pool", UUID.randomUUID(), DEALERSHIP)).status()).isEqualTo(200);
+        Resp seen = get("/pools/" + pool, TestTokens.dealer("pool", UUID.randomUUID(), DEALERSHIP));
+        assertThat(seen.status()).isEqualTo(200);
+        // AZ-T1: no buyer identity reaches an invited dealer (no member list, no membership, no buyer ids).
+        assertThat(seen.body()).doesNotContain("my_membership");
+        for (UUID b : jdbc.queryForList("select buyer_id from memberships", UUID.class)) assertThat(seen.body()).doesNotContain(b.toString());
         // AZ-T4 / AZ-E039: a buyer sees only their own membership.
         UUID a = UUID.randomUUID();
         UUID pool2 = freshPool();

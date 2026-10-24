@@ -24,6 +24,7 @@ export const Buttons: Story = {
       <Button variant="link">Link</Button>
       <Button loading>Loading</Button>
       <Button disabled>Disabled</Button>
+      <Button asChild><a href="#offers">As link (asChild)</a></Button>
     </div>
   ),
 };

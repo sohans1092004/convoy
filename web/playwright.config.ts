@@ -13,6 +13,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.WEB_URL || 'http://localhost:3000',
     actionTimeout: 30_000,
+    navigationTimeout: 30_000,
     trace: 'retain-on-failure',
     video: process.env.RECORD_VIDEO ? 'on' : 'retain-on-failure',
     screenshot: 'only-on-failure',
