@@ -46,7 +46,7 @@ transitions:
     effects: ["UPDATE pool.memberships SET state='COMMITTED', version=version+1", "UPDATE pool.pools SET committed_count=committed_count+1, version=version+1", "evaluate POOL-T01 in the same transaction", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(MemberCommitted)"]
     emits: [MemberCommitted]
     idempotent_repeat: INBOX_DEDUPE
-    late_arrival: "Guard false (pool closed / deadline passed / buyer left) -> MEM-T06 instead."
+    late_arrival: "Guard false: pool closed or commit deadline passed -> MEM-T06; membership already LEFT/RELEASED -> no-op here, payment refunds via PAY-T10."
     crash_points: INBOX_CONSUMER
     timeout: "Not applicable; payment-side sweeper handles missing webhooks."
     detected_by: "pool inbox consumer"
@@ -76,14 +76,14 @@ transitions:
     detected_by: "pool API"
     notes: "Leaving below the minimum after READY_FOR_QUOTES does not move the pool back to FORMING (Q-008)."
   - id: MEM-T06
-    from: [COMMIT_PENDING, INTERESTED, LEFT, RELEASED]
+    from: [COMMIT_PENDING, INTERESTED]
     to: RELEASED
-    trigger: {kind: event, by: system, via: "PaymentCaptured whose MEM-T03 guard is false"}
-    guard: "NOT (MEM-T03 guard)"
-    effects: ["UPDATE pool.memberships SET state='RELEASED' (no-op if already LEFT/RELEASED)", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(MemberReleased{reason: LATE_CAPTURE, payment_id})"]
+    trigger: {kind: event, by: system, via: "PaymentCaptured whose MEM-T03 guard is false (pool closed or commit deadline passed)"}
+    guard: "NOT (MEM-T03 guard) AND event.payment_id = memberships.current_payment_id"
+    effects: ["UPDATE pool.memberships SET state='RELEASED', release_reason='LATE_CAPTURE'", "INSERT pool.inbox(event_id)", "INSERT pool.outbox(MemberReleased{reason: LATE_CAPTURE, payment_id})"]
     emits: [MemberReleased]
     idempotent_repeat: INBOX_DEDUPE
-    late_arrival: "This transition is the late-arrival handler."
+    late_arrival: "This transition is the late-arrival handler. If the membership is already LEFT or RELEASED, pool records the inbox row and does nothing: payment already set refund_on_capture when it consumed MemberLeft / PoolClosed and refunds through PAY-T10 (LATE_CAPTURE)."
     crash_points: INBOX_CONSUMER
     timeout: "Not applicable."
     detected_by: "pool inbox consumer"

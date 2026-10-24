@@ -109,8 +109,6 @@ stateDiagram-v2
     ACCEPTED --> LEFT : MEM-T05 actor
     COMMIT_PENDING --> RELEASED : MEM-T06 event
     INTERESTED --> RELEASED : MEM-T06 event
-    LEFT --> RELEASED : MEM-T06 event
-    RELEASED --> RELEASED : MEM-T06 event
     COMMITTED --> ACCEPTED : MEM-T07 actor
     ACCEPTED --> ACCEPTED : MEM-T08 actor
     ACCEPTED --> COMMITTED : MEM-T09 actor
@@ -130,7 +128,7 @@ Terminal states: `HANDED_TO_ORDER`, `LEFT`, `RELEASED`
 | MEM-T03 | COMMIT_PENDING, INTERESTED | COMMITTED | event: system | event.payment_id = memberships.current_payment_id AND pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND now_db() < (forming_deadline if FORMING, rounds[1].deadline if QUOTE_OPEN, no limit if READY_FOR_QUOTES) | MemberCommitted |
 | MEM-T04 | COMMIT_PENDING | INTERESTED | event: system | event.payment_id = memberships.current_payment_id | - |
 | MEM-T05 | INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED | LEFT | actor: buyer | pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN, FINAL_ROUND, DECISION_OPEN) AND (pool.state <> 'DECISION_OPEN' OR now_db() < decision_deadline) | MemberLeft |
-| MEM-T06 | COMMIT_PENDING, INTERESTED, LEFT, RELEASED | RELEASED | event: system | NOT (MEM-T03 guard) | MemberReleased |
+| MEM-T06 | COMMIT_PENDING, INTERESTED | RELEASED | event: system | NOT (MEM-T03 guard) AND event.payment_id = memberships.current_payment_id | MemberReleased |
 | MEM-T07 | COMMITTED | ACCEPTED | actor: buyer | pool.state = 'DECISION_OPEN' AND now_db() < decision_deadline AND quote is FINAL in this pool (replicated from QuoteFinalised) AND variant is covered by the quote | AcceptanceChanged |
 | MEM-T08 | ACCEPTED | ACCEPTED | actor: buyer | as MEM-T07 | AcceptanceChanged |
 | MEM-T09 | ACCEPTED | COMMITTED | actor: buyer | pool.state = 'DECISION_OPEN' AND now_db() < decision_deadline | AcceptanceChanged |
@@ -148,15 +146,15 @@ Terminal states: `HANDED_TO_ORDER`, `LEFT`, `RELEASED`
 | * | stale If-Match | `version-conflict` |
 | * | any (from, to) pair not listed in transitions | `invalid-transition` |
 
-<details><summary>All 32 invalid (from → to) state pairs → 409 invalid-transition</summary>
+<details><summary>All 34 invalid (from → to) state pairs → 409 invalid-transition</summary>
 
 - `INTERESTED` ↛ INTERESTED, ACCEPTED, HANDED_TO_ORDER
 - `COMMIT_PENDING` ↛ COMMIT_PENDING, ACCEPTED, HANDED_TO_ORDER
 - `COMMITTED` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, HANDED_TO_ORDER
 - `ACCEPTED` ↛ INTERESTED, COMMIT_PENDING, RELEASED
 - `HANDED_TO_ORDER` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
-- `LEFT` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT
-- `RELEASED` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT
+- `LEFT` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
+- `RELEASED` ↛ INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED
 
 </details>
 

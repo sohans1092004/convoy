@@ -727,6 +727,11 @@
    },
    {
     "error": "invalid-transition",
+    "from": "LEFT",
+    "to": "RELEASED"
+   },
+   {
+    "error": "invalid-transition",
     "from": "RELEASED",
     "to": "INTERESTED"
    },
@@ -754,6 +759,11 @@
     "error": "invalid-transition",
     "from": "RELEASED",
     "to": "LEFT"
+   },
+   {
+    "error": "invalid-transition",
+    "from": "RELEASED",
+    "to": "RELEASED"
    }
   ],
   "owner": "pool",
@@ -861,24 +871,6 @@
      "MemberReleased"
     ],
     "from": "INTERESTED",
-    "id": "MEM-T06",
-    "to": "RELEASED",
-    "trigger": "event"
-   },
-   {
-    "emits": [
-     "MemberReleased"
-    ],
-    "from": "LEFT",
-    "id": "MEM-T06",
-    "to": "RELEASED",
-    "trigger": "event"
-   },
-   {
-    "emits": [
-     "MemberReleased"
-    ],
-    "from": "RELEASED",
     "id": "MEM-T06",
     "to": "RELEASED",
     "trigger": "event"
