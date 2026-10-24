@@ -1,0 +1,4996 @@
+{
+ "cases": [
+  {
+   "description": "MH petrol < Rs 10 lakh, zero discount, registration + insurance estimated (Swift LXi price)",
+   "expected": {
+    "cash_payable_paise": 67457500,
+    "estimated_net_cost_paise": 67457500,
+    "lines": [
+     {
+      "amount_paise": 58390000,
+      "code": "EX_SHOWROOM",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 6422900,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1109400,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 391200,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 58390000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P001",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "CATALOGUE_ESTIMATE",
+     "ex_showroom_paise": 58390000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "f01d722acc54d49906acd8a293ed9fcd437c8d2511ffb33557ad3c60dfb1a175"
+  },
+  {
+   "description": "MH petrol with discount, dealer-confirmed registration and insurance",
+   "expected": {
+    "cash_payable_paise": 84295500,
+    "estimated_net_cost_paise": 84295500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -2500000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 67500000,
+    "warnings": []
+   },
+   "id": "P002",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 2500000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "ffffaf35261984fef225514171ad7ff2a3e979f29b25176ab11e1ac95d0f4ddd"
+  },
+  {
+   "description": "TCS just below threshold: vehicle price Rs 9,99,999",
+   "expected": {
+    "cash_payable_paise": 116795400,
+    "estimated_net_cost_paise": 116795400,
+    "lines": [
+     {
+      "amount_paise": 104999900,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -5000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 99999900,
+    "warnings": []
+   },
+   "id": "P003",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 5000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 104999900,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "bcd563c14d9df3c943496b735242b352d8dfe9531090fb43715a603b3997127b"
+  },
+  {
+   "description": "TCS at threshold: vehicle price exactly Rs 10,00,000.00 (not exceeding)",
+   "expected": {
+    "cash_payable_paise": 116795500,
+    "estimated_net_cost_paise": 116795500,
+    "lines": [
+     {
+      "amount_paise": 100000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 100000000,
+    "warnings": []
+   },
+   "id": "P004",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 100000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "7e903351443114ca5730dc0a0b5f1af916f4af573ec574a8ed970ca4003c6024"
+  },
+  {
+   "description": "TCS just above threshold: Rs 10,00,000.01",
+   "expected": {
+    "cash_payable_paise": 117795501,
+    "estimated_net_cost_paise": 116795501,
+    "lines": [
+     {
+      "amount_paise": 100000001,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1000000,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1000000,
+    "vehicle_price_paise": 100000001,
+    "warnings": [
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P005",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 100000001,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "f40f0573fcb9ef579022bc3f496f2389116dddab7e071ca2f43d362c5353bcf0"
+  },
+  {
+   "description": "TCS one rupee above threshold: Rs 10,00,001",
+   "expected": {
+    "cash_payable_paise": 117795600,
+    "estimated_net_cost_paise": 116795600,
+    "lines": [
+     {
+      "amount_paise": 100000100,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1000000,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1000000,
+    "vehicle_price_paise": 100000100,
+    "warnings": [
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P006",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 100000100,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "fe2862d6a728658afdb3aff9c1b813afcf24ab4b57356cd0c5f0a7ffdef76f44"
+  },
+  {
+   "description": "TCS rounding half up: 1% of Rs 10,00,050 = Rs 10,000.50 -> Rs 10,001",
+   "expected": {
+    "cash_payable_paise": 117800600,
+    "estimated_net_cost_paise": 116800500,
+    "lines": [
+     {
+      "amount_paise": 105005000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -5000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1000100,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1000100,
+    "vehicle_price_paise": 100005000,
+    "warnings": [
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P007",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 5000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 105005000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "1a5b175fa1dcd7f3a4ead93338532d2900a92ad9bb43ed456ec985f22c727176"
+  },
+  {
+   "description": "TCS rounding down: 1% of Rs 10,00,049 = Rs 10,000.49 -> Rs 10,000",
+   "expected": {
+    "cash_payable_paise": 117800400,
+    "estimated_net_cost_paise": 116800400,
+    "lines": [
+     {
+      "amount_paise": 100004900,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1000000,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1000000,
+    "vehicle_price_paise": 100004900,
+    "warnings": [
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P008",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 100004900,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a3d869eaca34d30c0dc4c7458df6ccdf56b57082c61837e6b8fbcb9bb237d7dd"
+  },
+  {
+   "description": "MH petrol > Rs 20 lakh: 13% road tax + TCS, estimated insurance (>1500 cc)",
+   "expected": {
+    "cash_payable_paise": 293587300,
+    "estimated_net_cost_paise": 291087300,
+    "lines": [
+     {
+      "amount_paise": 250000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 32500000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 4750000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2459600,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1297700,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2500000,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 2500000,
+    "vehicle_price_paise": 250000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P009",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1998,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 250000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "68b2b717cd54012fee5f2fb9ae1957282f7d703045a8632765ae9761b30e121d"
+  },
+  {
+   "description": "MH diesel Rs 10-20 lakh slab (14%)",
+   "expected": {
+    "cash_payable_paise": 148216300,
+    "estimated_net_cost_paise": 146963500,
+    "lines": [
+     {
+      "amount_paise": 125280000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 17539200,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2380300,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 620000,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1252800,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1252800,
+    "vehicle_price_paise": 125280000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P010",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1493,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 125280000,
+     "fuel": "DIESEL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "2d25449febcba0d3e0a34cb4e1981d821923f36a340a54d0c350d960a3c767a3"
+  },
+  {
+   "description": "MH CNG: estimate computed but labelled UNVERIFIED (conflicting sources)",
+   "expected": {
+    "cash_payable_paise": 84832900,
+    "estimated_net_cost_paise": 84832900,
+    "lines": [
+     {
+      "amount_paise": 75740000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 6059200,
+      "code": "ROAD_TAX",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1439100,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 450600,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 75740000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P011",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 75740000,
+     "fuel": "CNG",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "6f7b6c7e023346be3697eff906e51d2feeeb69859f6c6068c42fbcf917695349"
+  },
+  {
+   "description": "MH EV with dealer insurance: 0% road tax",
+   "expected": {
+    "cash_payable_paise": 154056800,
+    "estimated_net_cost_paise": 152572000,
+    "lines": [
+     {
+      "amount_paise": 148480000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2500000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 900000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 612000,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1484800,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1484800,
+    "vehicle_price_paise": 148480000,
+    "warnings": [
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P012",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 612000,
+     "od_paise": 2500000,
+     "tp_paise": 900000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": null,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 148480000,
+     "fuel": "EV",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "5bdfb2eb22e5edada091e1f6767a4b22e73109d12b5b6dff70f0731561a0c6f1"
+  },
+  {
+   "description": "MH EV without insurance figure: engine refuses (EV TP unverified)",
+   "expected": {
+    "errors": [
+     "INSURANCE_ESTIMATE_UNAVAILABLE"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P013",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": null,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 148480000,
+     "fuel": "EV",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "82d3b08861082347bb9168851ea8dc15fc92a2a1bac085bafcb7d9d0465514d9"
+  },
+  {
+   "description": "MH hybrid without dealer registration: rule unverified -> error",
+   "expected": {
+    "errors": [
+     "REGISTRATION_ESTIMATE_UNAVAILABLE"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P014",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1462,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 89000000,
+     "fuel": "HYBRID",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "0aeadd3222b815d2e61d41b6a694428a5159f235b83608f9cebe413815a0b3f0"
+  },
+  {
+   "description": "MH hybrid with dealer-confirmed registration",
+   "expected": {
+    "cash_payable_paise": 102050900,
+    "estimated_net_cost_paise": 102050900,
+    "lines": [
+     {
+      "amount_paise": 89000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9800000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1691000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 495900,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 89000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED"
+    ]
+   },
+   "id": "P015",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 9800000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1462,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 89000000,
+     "fuel": "HYBRID",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "61e2bc25960acd5a30940da5521e82321d3c111cabcfcd6d405c45cd07974713"
+  },
+  {
+   "description": "DL petrol <= Rs 6 lakh (4%)",
+   "expected": {
+    "cash_payable_paise": 63370200,
+    "estimated_net_cost_paise": 63370200,
+    "lines": [
+     {
+      "amount_paise": 58390000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2335600,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1109400,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 391200,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 58390000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P016",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "DL",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 58390000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a39863c0d66ff4a46e9420bd7927599606ef658bd50863d127220fbdd5ded019"
+  },
+  {
+   "description": "DL petrol exactly Rs 6,00,000 (inclusive upper bound -> 4%)",
+   "expected": {
+    "cash_payable_paise": 65080700,
+    "estimated_net_cost_paise": 65080700,
+    "lines": [
+     {
+      "amount_paise": 60000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2400000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1140000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 396700,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 60000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P017",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "DL",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 60000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "536a6071a4ef324569dc5d895294dbe79ca827da062acae5b82b668ffbbd679f"
+  },
+  {
+   "description": "DL petrol Rs 6,00,001 (7%)",
+   "expected": {
+    "cash_payable_paise": 66880800,
+    "estimated_net_cost_paise": 66880800,
+    "lines": [
+     {
+      "amount_paise": 60000100,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 4200000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1140000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 396700,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 60000100,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P018",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "DL",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 60000100,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "7fe4786404f595fb22df6488f720405dd447d6343ba8dd166173e5138750cd99"
+  },
+  {
+   "description": "DL diesel > Rs 10 lakh (12.5%) + TCS",
+   "expected": {
+    "cash_payable_paise": 171846700,
+    "estimated_net_cost_paise": 170373500,
+    "lines": [
+     {
+      "amount_paise": 147320000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 18415000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2799100,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 695400,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1473200,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1473200,
+    "vehicle_price_paise": 147320000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P019",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "DL",
+    "vehicle": {
+     "engine_cc": 1493,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 147320000,
+     "fuel": "DIESEL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "5fceb1378c6428f2affffb8c28c84e438780c555bdfcc53fc0d5f3c2b781701c"
+  },
+  {
+   "description": "DL CNG: rule unverified -> error",
+   "expected": {
+    "errors": [
+     "REGISTRATION_ESTIMATE_UNAVAILABLE"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P020",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "DL",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 81810000,
+     "fuel": "CNG",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "e9740e7445219ec56bde606ffec20a0ca937cc88ec3f83cc21ff6d49fa90c82b"
+  },
+  {
+   "description": "KA petrol <= Rs 5 lakh (13%) + 11% cess + Rs 1,000 cess, <= 1000 cc",
+   "expected": {
+    "cash_payable_paise": 59168800,
+    "estimated_net_cost_paise": 59168800,
+    "lines": [
+     {
+      "amount_paise": 49900000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 6487000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 813600,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 948100,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 652100,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 288000,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 49900000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P021",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": 998,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 49900000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a2fe6c08afb828194c309af65db068cb2a3f11e4e50a7f6aa7df7ae9faed9503"
+  },
+  {
+   "description": "KA exactly Rs 10,00,000 (inclusive -> 14%), no TCS",
+   "expected": {
+    "cash_payable_paise": 119217500,
+    "estimated_net_cost_paise": 119217500,
+    "lines": [
+     {
+      "amount_paise": 100000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 14000000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1640000,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1900000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 533500,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 100000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P022",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 100000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a75e55e09b02c5e56f0023362f68189bcd575cea91047755b533b238aaa4aad1"
+  },
+  {
+   "description": "KA Rs 10,00,001 (17%) and TCS",
+   "expected": {
+    "cash_payable_paise": 123547600,
+    "estimated_net_cost_paise": 122547600,
+    "lines": [
+     {
+      "amount_paise": 100000100,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 17000000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1970000,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1900000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 533500,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1000000,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1000000,
+    "vehicle_price_paise": 100000100,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P023",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 100000100,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "067f928e3b9f9e8391583f1212c289f005325d8732996371f6c34165c756974a"
+  },
+  {
+   "description": "KA > Rs 20 lakh (18%)",
+   "expected": {
+    "cash_payable_paise": 267213100,
+    "estimated_net_cost_paise": 265056200,
+    "lines": [
+     {
+      "amount_paise": 215690000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 38824200,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 4370700,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 4098100,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 929200,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2156900,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 2156900,
+    "vehicle_price_paise": 215690000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P024",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": 1497,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 215690000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "2909b392979e5f35ff1591d23aa8f57dd07f96553adcbe108991862d41a660cf"
+  },
+  {
+   "description": "KA EV Rs 14,84,800 -> 8% slab (Rs 10-25 lakh), dealer insurance",
+   "expected": {
+    "cash_payable_paise": 167341800,
+    "estimated_net_cost_paise": 165857000,
+    "lines": [
+     {
+      "amount_paise": 148480000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 11878400,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1406600,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2500000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 900000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 612000,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1484800,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1484800,
+    "vehicle_price_paise": 148480000,
+    "warnings": [
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P025",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 612000,
+     "od_paise": 2500000,
+     "tp_paise": 900000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": null,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 148480000,
+     "fuel": "EV",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "079ef0f1642d687cf20446436e05a331eeeacaa6cc289a61a79ce52eb1ae37cc"
+  },
+  {
+   "description": "Dealer-required accessory included and flagged",
+   "expected": {
+    "cash_payable_paise": 86995500,
+    "estimated_net_cost_paise": 86995500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": [
+     "REQUIRED_ACCESSORY:MUDFLAPS"
+    ]
+   },
+   "id": "P026",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "db8a27b19436d07dc897f9a100573036bb2a28521bdc75f3072bf3f8bed3c2ad"
+  },
+  {
+   "description": "Optional accessory not selected: listed, excluded from cash payable",
+   "expected": {
+    "cash_payable_paise": 86795500,
+    "estimated_net_cost_paise": 86795500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": []
+   },
+   "id": "P027",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": false
+     }
+    ],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a28858b9e8980e6c8e704f4a52a7350d2e4332b004659b23f6682c328d31b6e8"
+  },
+  {
+   "description": "Optional accessory selected: included",
+   "expected": {
+    "cash_payable_paise": 87995500,
+    "estimated_net_cost_paise": 87995500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": []
+   },
+   "id": "P028",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "686bd132e8273d6f4d96a39f57b99f72cd1832ffff81d0c7509e1df9239d8666"
+  },
+  {
+   "description": "RANKING mode: optional items excluded even if selected; required kept",
+   "expected": {
+    "cash_payable_paise": 90775500,
+    "estimated_net_cost_paise": 90775500,
+    "lines": [
+     {
+      "amount_paise": 80000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -2000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9500000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 461500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 400000,
+      "code": "INSURANCE_ADDON:ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 78000000,
+    "warnings": [
+     "REQUIRED_ACCESSORY:MUDFLAPS"
+    ]
+   },
+   "id": "P029",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 2000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": true
+    },
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 461500,
+     "od_paise": 1500000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [
+     {
+      "amount_paise": 400000,
+      "code": "ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Zero depreciation",
+      "selected": true
+     }
+    ],
+    "mode": "RANKING",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 9500000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "dd85524c371935a7dd819cc5036bd8bed84e5a0b439acd9ac896126e3de60d69"
+  },
+  {
+   "description": "Same configuration in BUYER_CONFIG mode (optional selected items included)",
+   "expected": {
+    "cash_payable_paise": 93875500,
+    "estimated_net_cost_paise": 93875500,
+    "lines": [
+     {
+      "amount_paise": 80000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -2000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9500000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 461500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 400000,
+      "code": "INSURANCE_ADDON:ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 78000000,
+    "warnings": [
+     "REQUIRED_ACCESSORY:MUDFLAPS"
+    ]
+   },
+   "id": "P030",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     }
+    ],
+    "discount": {
+     "amount_paise": 2000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": true
+    },
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 461500,
+     "od_paise": 1500000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [
+     {
+      "amount_paise": 400000,
+      "code": "ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Zero depreciation",
+      "selected": true
+     }
+    ],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 9500000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "995199201aa8bbdc13ccd5d1fd6ddbf5d0f899d1e78f6b099149a82ca0f62054"
+  },
+  {
+   "description": "Extended warranty listed but not selected",
+   "expected": {
+    "cash_payable_paise": 86795500,
+    "estimated_net_cost_paise": 86795500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": []
+   },
+   "id": "P031",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": false
+    },
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "6eeb2e8eef14e8f610b30f885bf950b161c96eb794f01bf95ee1a4fc415db0a2"
+  },
+  {
+   "description": "Questionable HANDLING charge flagged and included",
+   "expected": {
+    "cash_payable_paise": 87295500,
+    "estimated_net_cost_paise": 87295500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 500000,
+      "code": "CHARGE:HANDLING",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "QUESTIONABLE"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": [
+     "QUESTIONABLE_CHARGE:HANDLING"
+    ]
+   },
+   "id": "P032",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [
+     {
+      "amount_paise": 500000,
+      "code": "HANDLING",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Handling charges"
+     }
+    ],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "12e0a4d4d4aec2eefa030d204553c26a577674109c59823ebeedc06aa5b47cc5"
+  },
+  {
+   "description": "FASTag fee itemised",
+   "expected": {
+    "cash_payable_paise": 86845500,
+    "estimated_net_cost_paise": 86845500,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": []
+   },
+   "id": "P033",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "f1374fa77de04d393ac96682569e67cdbe2341d10c24550916bd306988a5dd06"
+  },
+  {
+   "description": "Quote missing ex-showroom -> error",
+   "expected": {
+    "errors": [
+     "EX_SHOWROOM_MISSING"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P034",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": null,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "8a64e763bae5542b7d45a28287ebb558ce22388ec6aaff8789ff5601c32fd6ba"
+  },
+  {
+   "description": "Missing insurance and engine cc -> error",
+   "expected": {
+    "errors": [
+     "ENGINE_CC_MISSING"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P035",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": null,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "901c2f2fe58ba99b32e9b421e9dec573487b06391c3b14d68cb583371f57a0ad"
+  },
+  {
+   "description": "Missing insurance component filled by catalogue estimate (warning)",
+   "expected": {
+    "cash_payable_paise": 80824900,
+    "estimated_net_cost_paise": 80824900,
+    "lines": [
+     {
+      "amount_paise": 70000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 8000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1330000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 430900,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 70000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED"
+    ]
+   },
+   "id": "P036",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 8000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "c6026ac7aebcfe924ea8e65214c226eb4ac1f5206c36281d4a17030706dd0aa6"
+  },
+  {
+   "description": "Largest discount allowed: exactly 25% of ex-showroom",
+   "expected": {
+    "cash_payable_paise": 69271500,
+    "estimated_net_cost_paise": 69271500,
+    "lines": [
+     {
+      "amount_paise": 80000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -20000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 6600000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 407500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 60000000,
+    "warnings": []
+   },
+   "id": "P037",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 20000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 407500,
+     "od_paise": 1200000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 6600000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "4b3954682505bf70ad7917477cbc42fbd3d5866a631993ae7c6f23e401d54c21"
+  },
+  {
+   "description": "Discount 1 paise above the 25% limit -> error",
+   "expected": {
+    "errors": [
+     "DISCOUNT_EXCEEDS_LIMIT"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P038",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 20000001,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "0cef564f0849d95cd40fe3eb63157b2e2462d6c0b524e7e67d0244aebbfd034b"
+  },
+  {
+   "description": "Negative discount -> error",
+   "expected": {
+    "errors": [
+     "NEGATIVE_OR_INVALID_AMOUNT:DISCOUNT"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P039",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": -1,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "6e95145090afa69ce25d4b005f1937b3ab5e32d99cd943d32e9958226ee743fb"
+  },
+  {
+   "description": "Unsupported discount base -> error",
+   "expected": {
+    "errors": [
+     "DISCOUNT_BASE_UNSUPPORTED"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P040",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 100000,
+     "base": "ACCESSORIES",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 80000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "a1b2bff200c6778b956f3c5da9af02424c0f2c978c3502c154cfc80434b14c05"
+  },
+  {
+   "description": "Unknown state -> error",
+   "expected": {
+    "errors": [
+     "UNKNOWN_STATE"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P041",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "TN",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "693f08d1eb7304933eddd8f8d57c0bb18e45194d0440f057ce35ff0039c42f9a"
+  },
+  {
+   "description": "Road-tax rounding half up: 11% of Rs 5,00,050 = Rs 55,005.50 -> Rs 55,006",
+   "expected": {
+    "cash_payable_paise": 55585800,
+    "estimated_net_cost_paise": 55585800,
+    "lines": [
+     {
+      "amount_paise": 50005000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 5500600,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 100,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 100,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 50005000,
+    "warnings": [
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P042",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 0,
+     "od_paise": 100,
+     "tp_paise": 100
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 50005000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "133471e09c6fe67e4ee16f11cc9d9d8d6d9f7c9425c87015b957590a99388be0"
+  },
+  {
+   "description": "Road-tax rounding down: 11% of Rs 5,00,040 = Rs 55,004.40 -> Rs 55,004",
+   "expected": {
+    "cash_payable_paise": 55584600,
+    "estimated_net_cost_paise": 55584600,
+    "lines": [
+     {
+      "amount_paise": 50004000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 5500400,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 100,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 100,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 50004000,
+    "warnings": [
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P043",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 0,
+     "od_paise": 100,
+     "tp_paise": 100
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 50004000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "eb5ae461b432d3e355724e1b09c9fa9f222c5edb9e4afd921bdbf370b9a99b4c"
+  },
+  {
+   "description": "TP band boundary: exactly 1000 cc -> lowest band",
+   "expected": {
+    "cash_payable_paise": 69114700,
+    "estimated_net_cost_paise": 69114700,
+    "lines": [
+     {
+      "amount_paise": 60000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 7000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1140000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 652100,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 322600,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 60000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED"
+    ]
+   },
+   "id": "P044",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 7000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1000,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 60000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "2a10e8ab1a90e93958def9dcac6ae74f53de88bf44e8341bc8a45a2379212dcf"
+  },
+  {
+   "description": "TP band boundary: 1001 cc -> 1000-1500 band",
+   "expected": {
+    "cash_payable_paise": 69600700,
+    "estimated_net_cost_paise": 69600700,
+    "lines": [
+     {
+      "amount_paise": 60000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 7000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1140000,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 396700,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 60000000,
+    "warnings": [
+     "INSURANCE_ESTIMATED"
+    ]
+   },
+   "id": "P045",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 7000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1001,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 60000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "d1fb6818d2c94144b6c5bf2758fa2e245ae5a7269bb25e8d4b4903fd6cf909b1"
+  },
+  {
+   "description": "Ruleset version mismatch -> error",
+   "expected": {
+    "errors": [
+     "RULESET_VERSION_MISMATCH"
+    ],
+    "status": "INVALID"
+   },
+   "id": "P046",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2025.01.01-old",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 70000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "29cf27b37243ed6998c362d8ed4abca01c86d9b4bb0c4e1d671298225b7607db"
+  },
+  {
+   "description": "UNVERIFIED ex-showroom weakens computed lines (road tax, TCS)",
+   "expected": {
+    "cash_payable_paise": 141239300,
+    "estimated_net_cost_paise": 140025300,
+    "lines": [
+     {
+      "amount_paise": 121400000,
+      "code": "EX_SHOWROOM",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 14568000,
+      "code": "ROAD_TAX",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2306600,
+      "code": "INSURANCE_OD",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 606700,
+      "code": "INSURANCE_GST",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1214000,
+      "code": "TCS",
+      "evidence": "UNVERIFIED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1214000,
+    "vehicle_price_paise": 121400000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P047",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": null,
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1451,
+     "ex_showroom_evidence": "UNVERIFIED",
+     "ex_showroom_paise": 121400000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "f21d3946dde2d5c2cc2836c55f85751d3ceb867ccfec9d8988eda676a77e6c40"
+  },
+  {
+   "description": "MH one-time tax cap Rs 30 lakh applied",
+   "expected": {
+    "cash_payable_paise": 2886982300,
+    "estimated_net_cost_paise": 2861982300,
+    "lines": [
+     {
+      "amount_paise": 2500000000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 300000000,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 50000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2459600,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 9442700,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 25000000,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 25000000,
+    "vehicle_price_paise": 2500000000,
+    "warnings": [
+     "REGISTRATION_ESTIMATED",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P048",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 9442700,
+     "od_paise": 50000000,
+     "tp_paise": 2459600
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 2998,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 2500000000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "27c9fad515fe7b19e857d5a05d0dabdb846b40f17a37918c6a0115b05194a223"
+  },
+  {
+   "description": "KA cess rounding on an odd tax amount",
+   "expected": {
+    "cash_payable_paise": 90044600,
+    "estimated_net_cost_paise": 90044600,
+    "lines": [
+     {
+      "amount_paise": 77777700,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 10888900,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1297800,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 100,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 100,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 0,
+    "vehicle_price_paise": 77777700,
+    "warnings": [
+     "REGISTRATION_ESTIMATED"
+    ]
+   },
+   "id": "P049",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 0,
+     "od_paise": 100,
+     "tp_paise": 100
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 77777700,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "afa884be7501daa255b1d0721c7a653cbd0fa042fae49713577592ec038a5b55"
+  },
+  {
+   "description": "Full configuration: discount, estimates, required+optional accessories, warranty, add-on, fees, questionable charge, TCS",
+   "expected": {
+    "cash_payable_paise": 177516400,
+    "estimated_net_cost_paise": 176106700,
+    "lines": [
+     {
+      "amount_paise": 144970000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": -4000000,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 23964900,
+      "code": "ROAD_TAX",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2736100,
+      "code": "ROAD_TAX_CESS",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 60000,
+      "code": "REGISTRATION_FEE",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 20000,
+      "code": "SMART_CARD_FEE",
+      "evidence": "UNVERIFIED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 2754400,
+      "code": "INSURANCE_OD",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 687300,
+      "code": "INSURANCE_GST",
+      "evidence": "CATALOGUE_ESTIMATE",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 400000,
+      "code": "INSURANCE_ADDON:ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 50000,
+      "code": "FEE:FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 200000,
+      "code": "ACCESSORY:MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "DEALER_REQUIRED"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "ACCESSORY:SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": false
+     },
+     {
+      "amount_paise": 1500000,
+      "code": "EXTENDED_WARRANTY",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "OPTIONAL"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 500000,
+      "code": "CHARGE:HANDLING",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "QUESTIONABLE"
+      ],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1409700,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1409700,
+    "vehicle_price_paise": 140970000,
+    "warnings": [
+     "INSURANCE_ESTIMATED",
+     "QUESTIONABLE_CHARGE:HANDLING",
+     "REGISTRATION_ESTIMATED",
+     "REQUIRED_ACCESSORY:MUDFLAPS",
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P050",
+   "input": {
+    "accessories": [
+     {
+      "amount_paise": 200000,
+      "code": "MUDFLAPS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Mud flaps",
+      "required": true,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": true
+     },
+     {
+      "amount_paise": 1200000,
+      "code": "SEAT_COVERS",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Seat covers",
+      "required": false,
+      "selected": false
+     }
+    ],
+    "discount": {
+     "amount_paise": 4000000,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": {
+     "amount_paise": 1500000,
+     "evidence": "DEALER_CONFIRMED",
+     "selected": true
+    },
+    "fees": [
+     {
+      "amount_paise": 50000,
+      "basis": "Issuer fee + security deposit as charged by dealer",
+      "code": "FASTAG",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "FASTag"
+     }
+    ],
+    "insurance": null,
+    "insurance_addons": [
+     {
+      "amount_paise": 400000,
+      "code": "ZERO_DEP",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Zero depreciation",
+      "selected": true
+     }
+    ],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [
+     {
+      "amount_paise": 500000,
+      "code": "HANDLING",
+      "evidence": "DEALER_CONFIRMED",
+      "label": "Handling charges"
+     }
+    ],
+    "registration": null,
+    "ruleset_version": "2026.10.24-p0",
+    "state": "KA",
+    "vehicle": {
+     "engine_cc": 1497,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 144970000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "3c08a29bff4d11e55bb203ca36b89a4c1475ce7cee0ee4f7529d1faf7ad80e9c"
+  },
+  {
+   "description": "Zero discount stated explicitly with dealer figures (Creta E MT price)",
+   "expected": {
+    "cash_payable_paise": 126956200,
+    "estimated_net_cost_paise": 125865500,
+    "lines": [
+     {
+      "amount_paise": 109070000,
+      "code": "EX_SHOWROOM",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 0,
+      "code": "DISCOUNT",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 12000000,
+      "code": "REGISTRATION",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 3000000,
+      "code": "INSURANCE_OD",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1064000,
+      "code": "INSURANCE_TP",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 731500,
+      "code": "INSURANCE_GST",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [],
+      "in_cash_payable": true
+     },
+     {
+      "amount_paise": 1090700,
+      "code": "TCS",
+      "evidence": "DEALER_CONFIRMED",
+      "flags": [
+       "CREDITABLE"
+      ],
+      "in_cash_payable": true
+     }
+    ],
+    "status": "OK",
+    "tcs_paise": 1090700,
+    "vehicle_price_paise": 109070000,
+    "warnings": [
+     "TCS_APPLIES"
+    ]
+   },
+   "id": "P051",
+   "input": {
+    "accessories": [],
+    "discount": {
+     "amount_paise": 0,
+     "base": "EX_SHOWROOM",
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "extended_warranty": null,
+    "fees": [],
+    "insurance": {
+     "evidence": "DEALER_CONFIRMED",
+     "gst_paise": 731500,
+     "od_paise": 3000000,
+     "tp_paise": 1064000
+    },
+    "insurance_addons": [],
+    "mode": "BUYER_CONFIG",
+    "other_charges": [],
+    "registration": {
+     "amount_paise": 12000000,
+     "evidence": "DEALER_CONFIRMED"
+    },
+    "ruleset_version": "2026.10.24-p0",
+    "state": "MH",
+    "vehicle": {
+     "engine_cc": 1197,
+     "ex_showroom_evidence": "DEALER_CONFIRMED",
+     "ex_showroom_paise": 109070000,
+     "fuel": "PETROL",
+     "variant_id": "test-variant"
+    }
+   },
+   "snapshot_sha256": "8e4e80729ed664c518a6e57206fcc70c5193d397e21a489fbe79e550c2212fb1"
+  }
+ ],
+ "note": "Synthetic inputs. expected = price_ref.compute(input); snapshot_sha256 = sha256(canonical({inputs, ruleset_version, output})).",
+ "ruleset_version": "2026.10.24-p0"
+}

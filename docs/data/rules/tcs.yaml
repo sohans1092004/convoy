@@ -1,0 +1,29 @@
+# TCS on sale of a motor vehicle - re-verified in P0 (access date 2026-10-24).
+ruleset_version: "2026.10.24-p0"
+rule: TCS_MOTOR_VEHICLE
+status: VERIFIED
+evidence_note: "Statutory text read from a third-party copy of the Act (eztax.in); the official incometaxindia.gov.in page returned HTTP 403 to automated fetch, so the official page is listed but its text was not read directly. Commencement date confirmed from the CBDT press release title and multiple reports."
+act: "Income-tax Act, 2025 (Act No. 30 of 2025)"
+provision: "Section 394(1), Table, Sl. No. 6 (formerly section 206C(1F) of the Income-tax Act, 1961)"
+statutory_text: "Sale consideration exceeding ten lakh rupees in case of - (a) motor vehicle; or (b) any other goods, as may be notified by the Central Government. Person responsible: Seller. Rate: 1%."
+effective_from: "2026-04-01"
+prior_law: "Sales before 2026-04-01: section 206C(1F) of the 1961 Act, same 1% and 'exceeding ten lakh rupees' wording (CBDT Circular 22/2016 Q&A)."
+threshold_paise: 100000000          # Rs 10,00,000
+comparison: STRICTLY_GREATER        # 'exceeding': Rs 10,00,000.00 -> no TCS; Rs 10,00,000.01 -> TCS
+compared_amount: "Sale consideration of the vehicle = ex-showroom price (GST-inclusive invoice value of the vehicle) minus the dealer discount on the vehicle. Excludes registration/RTO, insurance, accessories, warranty, fees (ASSUMPTION Q-001)."
+per: "Per vehicle sale (one buyer, one vehicle per booking in Convoy)"
+rate_bp: 100                        # 1.00 %
+applies_to: FULL_CONSIDERATION      # 1% of the whole consideration, not of the excess over Rs 10 lakh
+rounding: "Round half up to the nearest whole rupee (ASSUMPTION Q-002; the Act does not fix TCS rounding at collection)."
+pan_not_furnished: "UNVERIFIED: a higher rate applies when the buyer's PAN is not furnished; rate not verified in P0. The engine assumes PAN furnished and the UI says so."
+creditable: "Generally creditable against the buyer's income-tax liability (PLAN §2.4 framing). Shown as 'estimated net cost' only, with an explanation; not tax advice."
+open_points:
+  - "Whether GST is included in 'sale consideration' for the threshold has no post-GST CBDT clarification found (EY alert, Apr 2025). Pre-GST CBDT FAQ treated the limit as inclusive of VAT. Convoy uses the GST-inclusive vehicle price (Q-001)."
+sources:
+  - {title: "Income-tax Act, 2025 - Section 394 (official, HTTP 403 to fetch)", url: "https://www.incometaxindia.gov.in/w/section-394-6", accessed: "2026-10-24", used_for: "provision reference"}
+  - {title: "eztax.in - Income-tax Act 2025 Section 394 table Sl. No. 6", url: "https://eztax.in/income-tax-act-2025/section-394", accessed: "2026-10-24", used_for: "statutory text: 'Sale consideration exceeding ten lakh rupees', Seller, 1%"}
+  - {title: "CBDT - Income-tax Act, 2025 comes into force from 1st April 2026", url: "https://www.incometaxindia.gov.in/w/income-tax-act-2025-comes-into-force-from-1st-april-2026", accessed: "2026-10-24", used_for: "effective date"}
+  - {title: "TDSMAN - TCS on sale of motor vehicles, Section 394(1) (206C(1F))", url: "https://blog.tdsman.com/2026/10/tcs-on-sale-of-motor-vehicles-and-luxury-goods-section-3941-206c1f/", accessed: "2026-10-24", used_for: "secondary confirmation: 1%, per-transaction threshold, effective 2026-04-01"}
+  - {title: "taxguru - CBDT Q&A on TCS on sale of motor vehicle (Circular 22/2016)", url: "https://taxguru.in/income-tax/7-tcs-sale-motor-vehicle.html", accessed: "2026-10-24", used_for: "retail-sale scope; 1% on full consideration under the old Act"}
+  - {title: "EY alert - CBDT notifies ten luxury goods for TCS at 1%", url: "https://www.ey.com/content/dam/ey-unified-site/ey-com/en-in/alerts-hub/2025/04/cbdt-notifies-ten-luxury-goods-for-income-tax-collection-at-source-at-the-rate-of-1pc.pdf", accessed: "2026-10-24", used_for: "GST-inclusion question unresolved"}
+  - {title: "PLAN.md rate chart reference (studycafe)", url: "https://studycafe.in/tcs-rate-chart-as-per-income-tax-act-2025-for-tax-year-2026-27-419612.html", accessed: "not re-read in P0", used_for: "original PLAN citation"}

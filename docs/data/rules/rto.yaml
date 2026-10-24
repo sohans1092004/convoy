@@ -1,0 +1,71 @@
+# Registration / road-tax ESTIMATE rules for private (non-transport) cars owned by individuals.
+# Label shown to users: "Estimate - verify with dealer". Rates in basis points (1100 = 11.00 %), money in paise.
+# Evidence levels: SECONDARY = third-party page summarising the rule (no official text read);
+# CONFLICTING = sources disagree; UNVERIFIED = not found -> engine refuses to estimate (dealer must enter).
+ruleset_version: "2026.10.24-p0"
+label: ESTIMATE
+slab_semantics: "A slab applies when base <= upto_paise (inclusive upper bound); upto_paise null = no upper bound. Base = vehicle price (ex-showroom minus discount) (ASSUMPTION Q-015)."
+rounding: "Each computed amount rounded half up to the whole rupee (Q-018)."
+common:
+  registration_fee_paise: 60000     # Rs 600, LMV non-transport certificate of registration
+  registration_fee_evidence: SECONDARY
+  registration_fee_source: {title: "AP Transport fee table (mirrors CMVR rule 81 schedule) - LMV non-transport Rs 600", url: "https://aptransport.org/html/fees-registration.html", accessed: "2026-10-24"}
+  smart_card_fee_paise: 20000       # Rs 200
+  smart_card_fee_evidence: CONFLICTING
+  smart_card_fee_note: "CMVR rule 81 note: Rs 200 extra for smart-card RC (Himachal copy) vs laminated-card reading (MoRTH 2023 circular). Amount agrees (Rs 200); applicability wording conflicts."
+  smart_card_fee_sources:
+    - {title: "HP copy of CMVR rule 81", url: "https://himachal.gov.in/WriteReadData/l892s/3_l892s/rule81_cmvr-74305708.pdf", accessed: "2026-10-24"}
+    - {title: "MoRTH circular 18-07-2023 quoting rule 81 note 2", url: "https://morth.nic.in/sites/default/files/circulars_document/2-RT-11036-219-2021-MVL dated 18-07-2023001.pdf", accessed: "2026-10-24"}
+  excluded: "Number-plate (HSRP) charges, hypothecation endorsement, fancy numbers, Delhi MCD parking charge (amount UNVERIFIED), green cess: not estimated; dealer must itemise them as fees."
+states:
+  MH:
+    name: Maharashtra
+    cities: [Mumbai, Pune]
+    effective_from: "2025-07-01"
+    evidence: SECONDARY
+    max_tax_paise: 300000000        # one-time tax cap Rs 30 lakh (raised from Rs 20 lakh)
+    slabs:
+      PETROL: [{upto_paise: 100000000, rate_bp: 1100}, {upto_paise: 200000000, rate_bp: 1200}, {upto_paise: null, rate_bp: 1300}]
+      DIESEL: [{upto_paise: 100000000, rate_bp: 1300}, {upto_paise: 200000000, rate_bp: 1400}, {upto_paise: null, rate_bp: 1500}]
+      CNG: [{upto_paise: 100000000, rate_bp: 800}, {upto_paise: 200000000, rate_bp: 900}, {upto_paise: null, rate_bp: 1000}]
+      EV: [{upto_paise: null, rate_bp: 0}]
+    fuel_evidence: {PETROL: SECONDARY, DIESEL: SECONDARY, CNG: CONFLICTING, EV: SECONDARY, HYBRID: UNVERIFIED}
+    notes: "CNG: one source gives 8/9/10 %, another only says '+1 percentage point'; the earlier 7/8/9 % base is itself unverified, so CNG is CONFLICTING (engine estimates but labels UNVERIFIED). HYBRID (strong/mild petrol hybrids such as Smart Hybrid) not found -> engine refuses to estimate. Company-owned vehicles pay a flat 20 % (out of scope: individuals only). Slab boundary at exactly Rs 10/20 lakh is not stated by sources (ASSUMPTION inclusive upper)."
+    sources:
+      - {title: "The Week (PTI) - Revised one-time tax slabs, Maharashtra, from 1 July 2025", url: "https://www.theweek.in/wire-updates/business/2025/07/01/bom2-mh-vehicles-revised-tax.html", accessed: "2026-10-24"}
+      - {title: "Angel One - Maharashtra Budget: CNG, LPG cars costlier", url: "https://www.angelone.in/news/market-updates/maharashtra-budget-cng-lpg-cars-costlier-high-end-evs-6-percent-tax-april-1", accessed: "2026-10-24"}
+      - {title: "Maharashtra Motor Vehicles Tax (Amendment) Bill 24 of 2025 (PRS)", url: "https://prsindia.org/files/bills_acts/bills_states/maharashtra/2025/Bill24of2025MH.pdf", accessed: "2026-10-24"}
+  DL:
+    name: Delhi
+    cities: [Delhi]
+    effective_from: UNVERIFIED
+    evidence: SECONDARY
+    max_tax_paise: null
+    slabs:
+      PETROL: [{upto_paise: 60000000, rate_bp: 400}, {upto_paise: 100000000, rate_bp: 700}, {upto_paise: null, rate_bp: 1000}]
+      DIESEL: [{upto_paise: 60000000, rate_bp: 500}, {upto_paise: 100000000, rate_bp: 875}, {upto_paise: null, rate_bp: 1250}]
+    fuel_evidence: {PETROL: SECONDARY, DIESEL: SECONDARY, CNG: UNVERIFIED, EV: UNVERIFIED, HYBRID: UNVERIFIED}
+    notes: "Diesel = petrol x 1.25 (matches a source describing a 25 % diesel surcharge). One 2026 calculator splits the lowest band at Rs 4/6 lakh instead - minority view, recorded not used. EV exemption scope disputed across sources -> UNVERIFIED. MCD parking charge not estimated."
+    sources:
+      - {title: "ICICI Lombard - Road tax in Delhi for new cars", url: "https://www.icicilombard.com/blogs/car-insurance/mb/road-tax-in-delhi-for-new-cars", accessed: "2026-10-24"}
+      - {title: "SBI General - Delhi road tax", url: "https://www.sbigeneral.in/blog/motor-insurance/rto/delhi-road-tax", accessed: "2026-10-24"}
+      - {title: "Paisabazaar - Road tax Delhi (25 % diesel surcharge)", url: "https://www.paisabazaar.com/tax/road-tax-delhi/", accessed: "2026-10-24"}
+  KA:
+    name: Karnataka
+    cities: [Bengaluru]
+    effective_from: "2026-04-01"
+    evidence: SECONDARY
+    max_tax_paise: null
+    cess_on_tax_bp: 1100            # 11 % of the computed tax
+    fixed_cess_paise: 100000        # Rs 1,000 per private car at registration
+    slabs:
+      PETROL: [{upto_paise: 50000000, rate_bp: 1300}, {upto_paise: 100000000, rate_bp: 1400}, {upto_paise: 200000000, rate_bp: 1700}, {upto_paise: null, rate_bp: 1800}]
+      DIESEL: [{upto_paise: 50000000, rate_bp: 1300}, {upto_paise: 100000000, rate_bp: 1400}, {upto_paise: 200000000, rate_bp: 1700}, {upto_paise: null, rate_bp: 1800}]
+      CNG: [{upto_paise: 50000000, rate_bp: 1300}, {upto_paise: 100000000, rate_bp: 1400}, {upto_paise: 200000000, rate_bp: 1700}, {upto_paise: null, rate_bp: 1800}]
+      HYBRID: [{upto_paise: 50000000, rate_bp: 1300}, {upto_paise: 100000000, rate_bp: 1400}, {upto_paise: 200000000, rate_bp: 1700}, {upto_paise: null, rate_bp: 1800}]
+      EV: [{upto_paise: 100000000, rate_bp: 500}, {upto_paise: 250000000, rate_bp: 800}, {upto_paise: null, rate_bp: 1000}]
+    fuel_evidence: {PETROL: SECONDARY, DIESEL: SECONDARY, CNG: SECONDARY, HYBRID: SECONDARY, EV: SECONDARY}
+    notes: "Source table is fuel-agnostic for ICE cars (cost-based, floor area <= 5 sq m). The source's own text puts exactly Rs 10 lakh in the 14 % slab while its table puts it at 17 % - Convoy uses inclusive upper bounds (Rs 10 lakh -> 14 %), consistent with 'above Rs 10 lakh up to Rs 20 lakh' wording. EV slabs effective 2026-04-01 per the same source. Rs 1,000 cess corroborated by Karnataka Bill 50 of 2024 summary."
+    sources:
+      - {title: "Spinny - Road tax in Karnataka (updated 2026)", url: "https://www.spinny.com/blog/road-tax-in-karnataka-applicability-calculation-payment-more/", accessed: "2026-10-24"}
+      - {title: "Karnataka Motor Vehicles Taxation (Amendment) Bill 50 of 2024 (PRS) - Rs 1,000 cess", url: "https://prsindia.org/files/bills_acts/bills_states/karnataka/2024/Bill50of2024KA.pdf", accessed: "2026-10-24"}
