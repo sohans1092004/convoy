@@ -21,7 +21,31 @@ declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) 
 const STATE_TEXT: Record<string, string> = {
   FORMING: 'Gathering buyers', READY_FOR_QUOTES: 'Enough buyers: inviting dealers', QUOTE_OPEN: 'Dealers are quoting (sealed)',
   FINAL_ROUND: 'Best-and-final round', DECISION_OPEN: 'Offers are in: decide', CONFIRMATION: 'Confirm your price', BOOKING: 'Bookings issued',
+  EXPIRED: 'Closed: not enough buyers', NO_QUOTES: 'Closed: no offers', CANCELLED: 'Closed',
 };
+
+/** Why the pool ended (or why the buyer's late payment was not used) and what happened to the deposit (scope A). */
+function ClosedCard({ pool, me }: { pool: Schemas['pool']['Pool']; me: Membership | undefined }) {
+  const t = useTranslations('closed');
+  const [payment, setPayment] = React.useState<Schemas['payment']['PaymentView'] | null>(null);
+  const paymentId = me?.current_payment_id;
+  React.useEffect(() => {
+    if (!paymentId) return;
+    call(api.GET('/me/payments/{id}', { params: { path: { id: paymentId } } })).then((r) => setPayment(r.data)).catch(() => {});
+  }, [paymentId, pool.version]);
+  const reason = me?.release_reason === 'LATE_CAPTURE' ? 'LATE_CAPTURE' : pool.end_reason ?? '';
+  const amount = rupees(pool.deposit_amount_paise);
+  const money = !paymentId ? t('noDeposit') : !payment ? null
+    : payment.state === 'REFUNDED' ? t('refunded', { amount }) : payment.state === 'VOIDED_UNPAID' ? t('voided') : t('refundPending', { amount });
+  return (
+    <Card emphasis className="flex flex-col gap-2">
+      <CardTitle>{t('title')}</CardTitle>
+      {reason && t.has(reason) ? <CardText>{t(reason, { min: pool.min_members, deadline: ist(pool.forming_deadline), brand: pool.brand, city: pool.city })}</CardText> : null}
+      {money ? <p role="status" className="text-sm font-semibold">{money}</p> : null}
+      <Button asChild variant="secondary" className="self-start"><Link href={`/models/${pool.model_slug}`}>{t('again')}</Link></Button>
+    </Card>
+  );
+}
 
 function loadScript(src: string) {
   return new Promise<void>((resolve, reject) => {
@@ -117,6 +141,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
             </div>
             {deadline ? <Countdown deadline={deadline} label={pool.state === 'FORMING' ? 'Forming closes' : pool.state === 'QUOTE_OPEN' ? 'Sealed round closes' : pool.state === 'DECISION_OPEN' ? 'Decide by' : 'Confirm by'} /> : null}
           </Card>
+          {['EXPIRED', 'NO_QUOTES', 'CANCELLED'].includes(pool.state) || me?.release_reason === 'LATE_CAPTURE' ? <ClosedCard pool={pool} me={me ?? undefined} /> : null}
           {pool.state === 'DECISION_OPEN' && me && ['COMMITTED', 'ACCEPTED'].includes(me.state) ? (
             <Card emphasis><CardTitle>Offers are in</CardTitle><CardText className="mb-3">Compare the dealers&apos; itemised offers and accept one. Accepting is not binding.</CardText>
               <Button asChild><Link href={`/pools/${pool.id}/compare`}>Compare offers</Link></Button></Card>

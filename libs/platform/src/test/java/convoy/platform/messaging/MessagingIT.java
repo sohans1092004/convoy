@@ -91,7 +91,7 @@ class MessagingIT {
     }
 
     static void await(BooleanSupplier cond, String what) throws InterruptedException {
-        long until = System.currentTimeMillis() + 20_000;
+        long until = System.currentTimeMillis() + 60_000; // LocalStack FIFO-to-standard delivery is slow on CI runners
         while (!cond.getAsBoolean()) {
             if (System.currentTimeMillis() > until) throw new AssertionError("timed out waiting for " + what);
             Thread.sleep(100);

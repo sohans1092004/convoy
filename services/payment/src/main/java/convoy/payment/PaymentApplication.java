@@ -40,7 +40,7 @@ public class PaymentApplication {
     /** Razorpay TEST mode settings (env only) and the configured deposit (ruleset default 99900 paise). */
     @ConfigurationProperties(prefix = "payment")
     public record PaymentSettings(String razorpayBaseUrl, String razorpayKeyId, String razorpayKeySecret, String razorpayWebhookSecret, long depositAmountPaise,
-                                  long successFeePaise) {}
+                                  long successFeePaise, java.util.List<java.time.Duration> refundRetrySchedule, java.time.Duration voidUnpaidAfter) {}
 
     @Bean
     static RazorpayClient razorpayClient(PaymentSettings s) {
@@ -54,6 +54,9 @@ public class PaymentApplication {
                 .on(DepositHoldRequested.class, (e, p) ->
                         payments.hold(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), UUID.fromString(p.bookingId())))
                 .on(DepositRefundRequested.class, (e, p) ->
+                        payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
+                .on(convoy.contracts.events.PoolClosed.class, (e, p) -> payments.poolClosed(UUID.fromString(p.poolId()), p.endReason()))
+                .on(convoy.contracts.events.MemberReleased.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
                 .on(MemberLeft.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
@@ -122,4 +125,29 @@ public class PaymentApplication {
 
     @Scheduled(fixedDelay = 2_000, initialDelay = 5_000)
     void refunds() { payments.refundWorker(); }
+
+    @Scheduled(fixedDelay = 300_000, initialDelay = 60_000)
+    void voidUnpaid() { payments.voidStaleUnpaid(); }
+
+    /** E114: the admin refunds queue (failed or out of automatic attempts). */
+    @GetMapping("/admin/refunds")
+    public Api.RefundQueue adminRefunds() {
+        Caller.current().require("platform_admin");
+        return convoy.platform.web.Dto.as(Map.of("refunds", payments.adminQueue()), Api.RefundQueue.class);
+    }
+
+    /** E115: retry a queued refund now. */
+    @PostMapping("/admin/refunds/{id}/retry")
+    @Idempotent
+    public Api.RefundAttempt adminRetry(@PathVariable UUID id) {
+        Caller.current().require("platform_admin");
+        return convoy.platform.web.Dto.as(payments.adminRetry(id), Api.RefundAttempt.class);
+    }
+
+    /** E116/E117: manual resolution needs evidence and a second, different admin (AMENDMENT-001); not built yet. */
+    @PostMapping({"/admin/refunds/{id}/resolve-manually", "/admin/refunds/{id}/approve"})
+    public void manualResolution(@PathVariable UUID id) {
+        Caller.current().require("platform_admin");
+        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "Manual refund resolution with second-admin approval (E116/E117, AMENDMENT-001) is specified but not built yet.");
+    }
 }

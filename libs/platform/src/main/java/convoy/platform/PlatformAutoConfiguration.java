@@ -70,6 +70,15 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 .setPropertyNamingStrategy(com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE));
     }
 
+    /**
+     * Platform migrations (db/platform, V0_x) and each service's own (db/migration, V1+) are independent tracks; a new platform
+     * migration sorts below the service's applied versions, so it must be allowed to apply out of order.
+     */
+    @Bean
+    org.springframework.boot.autoconfigure.flyway.FlywayConfigurationCustomizer platformMigrationsOutOfOrder() {
+        return c -> c.outOfOrder(true);
+    }
+
     /** Every subscription must be listed in event-catalogue.yaml (checked at startup, messaging on or off). */
     @Bean
     org.springframework.beans.factory.SmartInitializingSingleton subscriptionsMatchCatalogue(ConvoyProperties p, ObjectProvider<Subscriptions> subs) {

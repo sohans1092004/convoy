@@ -57,7 +57,8 @@ public class PoolApplication {
     Subscriptions subscriptions(Pools pools) {
         return new Subscriptions()
                 .on(PaymentCaptured.class, (e, p) -> pools.paymentCaptured(e, p))
-                .on(PaymentFailed.class, (e, p) -> pools.paymentFailed(p))
+                .on(PaymentFailed.class, (e, p) -> pools.paymentFailed(p.paymentId()))
+                .on(convoy.contracts.events.PaymentVoided.class, (e, p) -> pools.paymentFailed(p.paymentId()))
                 .on(BookingsIssued.class, (e, p) -> pools.bookingsIssued(e, p));
     }
 }

@@ -7,7 +7,8 @@
     "bookings": "Bookings",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "testMode": "TEST MODE: no real money"
+    "testMode": "TEST MODE: no real money",
+    "saved": "My cars"
   },
   "home": {
     "title": "Buy the same car together, with prices you can check",
@@ -34,5 +35,18 @@
     "title": "Confirm at most {ceiling} (cash payable) — TEST MODE",
     "body": "You will never pay more than {ceiling}. If fewer buyers confirm than the dealer's minimum, this offer can't go ahead and your ₹999 test deposit is refunded (or, if the pool tries once more, you choose to keep your place). You can cancel after confirming and still get your ₹999 back.",
     "drop": "If {nextMin}+ buyers confirm by {deadline} the price drops to {nextPrice}."
+  },
+  "closed": {
+    "title": "This pool has closed",
+    "MINIMUM_NOT_REACHED": "Fewer than {min} buyers committed before the forming deadline ({deadline}), so dealers were not invited.",
+    "NO_ELIGIBLE_DEALER": "No verified {brand} dealer in {city} could take part before the waiting period ended.",
+    "NO_VALID_QUOTES": "No dealer sent a valid quote before the sealed round closed.",
+    "ALL_WITHDRAWN": "Every dealer withdrew before the best-and-final round closed.",
+    "LATE_CAPTURE": "Your payment reached us after this pool stopped accepting commitments, so it was not used.",
+    "refundPending": "Your {amount} test deposit is being refunded in full, automatically.",
+    "refunded": "Your {amount} test deposit has been refunded in full.",
+    "voided": "No money was taken: your deposit was never completed and has been cancelled.",
+    "noDeposit": "You had no deposit in this pool, so there is nothing to refund.",
+    "again": "Start or join another pool for this car"
   }
 }

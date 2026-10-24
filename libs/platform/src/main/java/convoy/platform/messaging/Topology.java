@@ -63,18 +63,36 @@ public class Topology {
         Map<QueueAttributeName, String> attrs = new HashMap<>();
         if (fifo) attrs.put(QueueAttributeName.FIFO_QUEUE, "true");
         attrs.put(QueueAttributeName.VISIBILITY_TIMEOUT, "30");
-        attrs.put(QueueAttributeName.REDRIVE_POLICY, write(Map.of("deadLetterTargetArn", dlqArn, "maxReceiveCount", "5")));
-        String url = sqs.createQueue(b -> b.queueName(base + suffix).attributes(attrs)).queueUrl();
-        String arn = sqs.getQueueAttributes(b -> b.queueUrl(url).attributeNames(QueueAttributeName.QUEUE_ARN))
+        // Fixed key order: an existing queue is compared attribute by attribute on every start.
+        attrs.put(QueueAttributeName.REDRIVE_POLICY, "{\"deadLetterTargetArn\":\"" + dlqArn + "\",\"maxReceiveCount\":\"5\"}");
+        String url;
+        try {
+            url = sqs.createQueue(b -> b.queueName(base + suffix).attributes(attrs)).queueUrl();
+        } catch (software.amazon.awssdk.services.sqs.model.QueueNameExistsException e) {
+            // Created by an earlier version with other attributes: converge instead of failing to start.
+            url = sqs.getQueueUrl(b -> b.queueName(base + suffix)).queueUrl();
+            Map<QueueAttributeName, String> mutable = new HashMap<>(attrs);
+            mutable.remove(QueueAttributeName.FIFO_QUEUE);
+            String u = url;
+            sqs.setQueueAttributes(b -> b.queueUrl(u).attributes(mutable));
+        }
+        String queueUrl = url;
+        String arn = sqs.getQueueAttributes(b -> b.queueUrl(queueUrl).attributeNames(QueueAttributeName.QUEUE_ARN))
                 .attributes().get(QueueAttributeName.QUEUE_ARN);
         Map<String, Object> policy = Map.of("Version", "2012-10-17", "Statement", List.of(Map.of(
                 "Effect", "Allow", "Principal", Map.of("Service", "sns.amazonaws.com"), "Action", "sqs:SendMessage",
                 "Resource", arn, "Condition", Map.of("ArnEquals", Map.of("aws:SourceArn", topicArn)))));
-        sqs.setQueueAttributes(b -> b.queueUrl(url).attributes(Map.of(QueueAttributeName.POLICY, write(policy))));
-        sns.subscribe(b -> b.topicArn(topicArn).protocol("sqs").endpoint(arn).returnSubscriptionArn(true).attributes(Map.of(
-                "RawMessageDelivery", "true",
-                "FilterPolicy", write(Map.of("event_type", List.copyOf(eventTypes))))));
-        return url;
+        sqs.setQueueAttributes(b -> b.queueUrl(queueUrl).attributes(Map.of(QueueAttributeName.POLICY, write(policy))));
+        String filter = write(Map.of("event_type", eventTypes.stream().sorted().toList()));
+        try {
+            sns.subscribe(b -> b.topicArn(topicArn).protocol("sqs").endpoint(arn).returnSubscriptionArn(true).attributes(Map.of(
+                    "RawMessageDelivery", "true", "FilterPolicy", filter)));
+        } catch (software.amazon.awssdk.services.sns.model.InvalidParameterException e) {
+            // Already subscribed with an older filter (the service now consumes more event types): update it in place.
+            sns.listSubscriptionsByTopicPaginator(b -> b.topicArn(topicArn)).subscriptions().stream().filter(s -> arn.equals(s.endpoint())).forEach(s ->
+                    sns.setSubscriptionAttributes(b -> b.subscriptionArn(s.subscriptionArn()).attributeName("FilterPolicy").attributeValue(filter)));
+        }
+        return queueUrl;
     }
 
     private String write(Object o) {

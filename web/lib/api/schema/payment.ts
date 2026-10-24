@@ -48,6 +48,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/refunds/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRetry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refunds/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["manualResolution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refunds/{id}/resolve-manually": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["manualResolution_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/payments/{id}": {
         parameters: {
             query?: never;
@@ -56,6 +104,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminRefunds"];
         put?: never;
         post?: never;
         delete?: never;
@@ -95,6 +159,33 @@ export interface components {
             round_set: number;
             /** Format: int64 */
             amount_paise: number;
+        };
+        RefundAttempt: {
+            id: string;
+            state: string;
+            /** Format: int32 */
+            attempts: number;
+            failure_reason: string | null;
+            razorpay_refund_id: string | null;
+        };
+        QueuedRefund: {
+            id: string;
+            payment_id: string;
+            buyer_id: string;
+            pool_id: string;
+            kind: string;
+            reason_code: string;
+            /** Format: int64 */
+            amount_paise: number;
+            state: string;
+            /** Format: int32 */
+            attempts: number;
+            failure_reason: string | null;
+            next_attempt_at: string;
+            created_at: string;
+        };
+        RefundQueue: {
+            refunds: components["schemas"]["QueuedRefund"][];
         };
     };
     responses: never;
@@ -178,6 +269,68 @@ export interface operations {
             };
         };
     };
+    adminRetry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RefundAttempt"];
+                };
+            };
+        };
+    };
+    manualResolution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    manualResolution_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     mine: {
         parameters: {
             query?: never;
@@ -196,6 +349,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PaymentView"];
+                };
+            };
+        };
+    };
+    adminRefunds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RefundQueue"];
                 };
             };
         };
