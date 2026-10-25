@@ -16,6 +16,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/staff-invites/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/sessions/validate": {
         parameters: {
             query?: never;
@@ -58,6 +74,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dealerships/{id}/staff/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["invite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -242,6 +274,10 @@ export interface components {
             granted: boolean;
             history: components["schemas"]["ConsentEntry"][];
         };
+        StaffMembership: {
+            dealership_id: string;
+            role: string;
+        };
         ValidateBody: {
             session_id: string;
         };
@@ -274,6 +310,16 @@ export interface components {
             /** Format: int64 */
             expires_in: number;
             scope: string[];
+        };
+        Invite: {
+            /** Format: email */
+            email: string;
+            role: string;
+        };
+        StaffInvite: {
+            invite_id: string;
+            role: string;
+            expires_at: string;
         };
         Register: {
             challenge_id: string;
@@ -399,6 +445,28 @@ export interface operations {
             };
         };
     };
+    accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StaffMembership"];
+                };
+            };
+        };
+    };
     validate: {
         parameters: {
             query?: never;
@@ -467,6 +535,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ServiceToken"];
+                };
+            };
+        };
+    };
+    invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Invite"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StaffInvite"];
                 };
             };
         };

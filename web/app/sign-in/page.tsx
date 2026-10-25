@@ -19,6 +19,7 @@ function SignInForm() {
   const verify = useCommand(async () => call(api.POST('/auth/otp/verify', { body: { email, code } })));
   const passkey = useCommand(signInWithPasskey);
   const [canPasskey, setCanPasskey] = React.useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- feature detection must run after hydration (no window on the server)
   React.useEffect(() => setCanPasskey(passkeysSupported()), []);
   const done = (roles: string[]) => {
     router.push(next ?? (roles.some((x) => x.startsWith('dealer')) ? '/dealer' : '/'));

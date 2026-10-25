@@ -38,6 +38,7 @@ public final class SubscriptionKinds {
         Map.entry("realtime:pool", "FULL"),
         Map.entry("audit:dealership", "FULL"),
         Map.entry("notification:dealership", "PARTIAL"),
+        Map.entry("identity:dealership", "PARTIAL"),
         Map.entry("quote:dealership", "PARTIAL"),
         Map.entry("audit:quote", "FULL"),
         Map.entry("dealer:quote", "PARTIAL"),

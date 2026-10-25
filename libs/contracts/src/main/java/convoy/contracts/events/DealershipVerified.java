@@ -4,12 +4,13 @@ package convoy.contracts.events;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-/** Owner: dealer. Consumers: notification, audit. FIFO: False. */
+/** Owner: dealer. Consumers: identity, notification, audit. FIFO: False. */
 public record DealershipVerified(
         @JsonProperty("dealership_id") String dealershipId,
-        @JsonProperty("brand_ids") List<String> brandIds,
+        @JsonProperty("brands") List<String> brands,
         @JsonProperty("city") String city,
-        @JsonProperty("verified_by") String verifiedBy) implements EventPayload {
+        @JsonProperty("verified_by") String verifiedBy,
+        @JsonProperty("registered_by") String registeredBy) implements EventPayload {
     public static final String TYPE = "DealershipVerified";
     public static final String PRODUCER = "dealer";
     public static final String AGGREGATE = "dealership";

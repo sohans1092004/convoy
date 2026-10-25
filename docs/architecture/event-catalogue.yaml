@@ -43,7 +43,7 @@ events:
   - {name: PoolBookingStarted, owner: pool, consumers: [realtime, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid, bookings_count: int}}
   - {name: PoolCompleted, owner: pool, consumers: [realtime, notification, audit], aggregate: pool, fifo: true, payload: {pool_id: uuid}}
   # ---------------- dealer
-  - {name: DealershipVerified, owner: dealer, consumers: [notification, audit], aggregate: dealership, fifo: false, payload: {dealership_id: uuid, brand_ids: "uuid[]", city: string, verified_by: uuid}}
+  - {name: DealershipVerified, owner: dealer, consumers: [identity, notification, audit], aggregate: dealership, fifo: false, payload: {dealership_id: uuid, brands: "string[]", city: string, verified_by: uuid, registered_by: uuid}}
   - {name: DealershipSuspended, owner: dealer, consumers: [quote, notification, audit], aggregate: dealership, fifo: false, payload: {dealership_id: uuid, reason: string}}
   - {name: ReviewPosted, owner: dealer, consumers: [notification, audit], aggregate: dealership, fifo: false, payload: {dealership_id: uuid, review_id: uuid, booking_id: uuid, rating: int}}
   - {name: ReliabilityScoreChanged, owner: dealer, consumers: [audit], aggregate: dealership, fifo: false, payload: {dealership_id: uuid, score: int, cause: string}}
@@ -127,6 +127,7 @@ subscriptions:
   - {consumer: realtime, aggregate: pool, kind: FULL}
   - {consumer: audit, aggregate: dealership, kind: FULL}
   - {consumer: notification, aggregate: dealership, kind: PARTIAL}
+  - {consumer: identity, aggregate: dealership, kind: PARTIAL}
   - {consumer: quote, aggregate: dealership, kind: PARTIAL}
   - {consumer: audit, aggregate: quote, kind: FULL}
   - {consumer: dealer, aggregate: quote, kind: PARTIAL}

@@ -121,7 +121,7 @@ test.describe('discover states', () => {
 test.describe('join states', () => {
   const est = 'GET /api/catalog/variants/[^/]+/price-estimate';
   // Engine output of pricing vector P050 (spec-tools/vectors), a verified case: the same fixture as the Storybook stories.
-  const estimate = async (_page: Page) => ({
+  const estimate = async () => ({
     variant: { id: '96a9e043-f401-5b03-b82a-52e617913ce5', code: 'swift-lxi-mt', name: 'LXi MT' }, city: 'Pune', city_confirmed: false,
     source: { url: 'https://www.marutisuzuki.com/arena/swift/price', accessed_on: '2026-10-24' },
     snapshot: { inputs: {}, ruleset_version: '2026.10.24-p0', output: P050, sha256: 'a'.repeat(64), computed_at: '2026-10-24T06:00:00Z' },
@@ -145,7 +145,7 @@ test.describe('join states', () => {
     await expect(page.getByLabel('City')).toHaveValue('Delhi');
   });
   test('stale', async ({ page }) => {
-    const e = await estimate(page);
+    const e = await estimate();
     // Pune loaded, Delhi looked at, back to Pune: refreshing Pune's estimate fails, so the cached one is shown as stale.
     await mock(page, { [`${est}\\?city=Delhi`]: [ok({ ...e, city: 'Delhi' })], [est]: [ok(e), problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] });
     await page.goto('/models/maruti-swift');
@@ -156,19 +156,19 @@ test.describe('join states', () => {
     await expect(page.getByText(/could not be refreshed/)).toBeVisible();
   });
   test('pending', async ({ page }) => {
-    await mock(page, { [est]: [ok(await estimate(page))], 'POST /api/pools': ['hang'] });
+    await mock(page, { [est]: [ok(await estimate())], 'POST /api/pools': ['hang'] });
     await page.goto('/models/maruti-swift');
     await page.getByRole('button', { name: /Join or start a pool/ }).click();
     await expect(page.getByRole('button', { name: /Join or start a pool/ })).toHaveAttribute('aria-busy', 'true');
   });
   test('conflict', async ({ page }) => {
-    await mock(page, { [est]: [ok(await estimate(page))], 'POST /api/pools': [problem(409, 'ACTIVE_COMMITMENT_EXISTS', 'You already hold a commitment for this model in another pool.')] });
+    await mock(page, { [est]: [ok(await estimate())], 'POST /api/pools': [problem(409, 'ACTIVE_COMMITMENT_EXISTS', 'You already hold a commitment for this model in another pool.')] });
     await page.goto('/models/maruti-swift');
     await page.getByRole('button', { name: /Join or start a pool/ }).click();
     await expect(page.getByText(/already hold a commitment/)).toBeVisible();
   });
   test('offline', async ({ page, context }) => {
-    await mock(page, { [est]: [ok(await estimate(page))] });
+    await mock(page, { [est]: [ok(await estimate())] });
     await page.goto('/models/maruti-swift');
     await expect(page.getByText('Estimated cash payable')).toBeVisible();
     await context.setOffline(true);
@@ -177,7 +177,7 @@ test.describe('join states', () => {
     await context.setOffline(false);
   });
   test('success', async ({ page }) => {
-    await mock(page, { [est]: [ok(await estimate(page))], 'POST /api/pools': [ok({ created: false, pool: pool() })], 'GET /api/pools/p1$': ['hang'] });
+    await mock(page, { [est]: [ok(await estimate())], 'POST /api/pools': [ok({ created: false, pool: pool() })], 'GET /api/pools/p1$': ['hang'] });
     await page.goto('/models/maruti-swift');
     await page.getByRole('button', { name: /Join or start a pool/ }).click();
     await page.waitForURL(/\/pools\/p1$/);

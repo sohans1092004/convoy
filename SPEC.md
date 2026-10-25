@@ -122,6 +122,11 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Rule (Q-044): revoking a staff member ends all their sessions at once: identity deletes them and emits `SessionRevoked` (reason STAFF_REVOKED) per session plus `StaffRevoked`. The gateway and realtime evict on the event; the 25 s session cache remains the fallback guarantee.
 - Source: the owner's Phase 2.5 instructions (2026-10-25). Files: OPEN_QUESTIONS.md, membership state machine, transitions vectors, problem-types.yaml, auth-contract.md. Phase: P2.5.
 
+### Contract additions in P3 (owner's P3.A instructions, 2026-10-25)
+- Dealership status `PENDING` renamed `PENDING_VERIFICATION`; new `REJECTED` (admin rejects with a reason). Every registration and decision is audited (`dealer.dealership_audit`).
+- `DealershipVerified` payload: `brand_ids: uuid[]` became `brands: string[]` (dealerships store brand names, as pools do) and gained `registered_by`; identity now consumes it and makes the registrant the dealership's admin.
+- E153 `GET /admin/dealerships` (platform_admin): the verification queue. E010/E011 staff invites built (token hashed, one use, bound to the invited email, expiry `identity.invite-hours` = 72).
+
 ### Contract additions in P1 (no business-rule change)
 Interface additions made while building the walking skeleton. None changes a rule above; each is reflected in the linked spec file and validated by `validate_spec.py`.
 

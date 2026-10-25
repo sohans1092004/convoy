@@ -9,5 +9,10 @@ public final class Api {
 
     public record Eligibility(String brand, String city, List<String> dealershipIds, int count) {}
 
+    public record Registration(String id, String tradeName, String legalName, String gstin, String city, String stateCode, List<String> brands,
+                               String status, @Nullable String rejectionReason, long version, String createdAt) {}
+
+    public record Queue(List<Registration> dealerships) {}
+
     public record Dealership(String id, String tradeName, String city, String stateCode, List<String> brands, String status, boolean synthetic, @Nullable String verifiedAt) {}
 }

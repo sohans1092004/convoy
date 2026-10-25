@@ -42,6 +42,8 @@ identity:
   otp-minutes: 10
   session-days: 30
   seed-users-file: ${SEED_USERS_FILE:}
+  invite-hours: 72
+  web-url: ${WEB_URL:http://localhost:3000}
   passkeys:
     rp-id: ${PASSKEY_RP_ID:localhost}
     rp-name: Convoy

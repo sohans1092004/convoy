@@ -24,15 +24,23 @@ public class IdentityApplication {
      * @param clients       service clients: id -> {secret, scopes: {audience: [scope]}}
      * @param seedUsersFile optional JSON file of local test users (local profile only)
      * @param passkeys      WebAuthn relying party: id (the web app's host), the origins the browser reports, challenge lifetime
+     * @param inviteHours   staff invite lifetime (P3.A)
+     * @param webUrl        the web app's base URL, for links in emails
      */
     @ConfigurationProperties(prefix = "identity")
     public record IdentitySettings(String dataKey, String mailFrom, int otpMinutes, int sessionDays,
-                                   Map<String, Client> clients, String seedUsersFile, Passkeys passkeys) {
+                                   Map<String, Client> clients, String seedUsersFile, Passkeys passkeys, int inviteHours, String webUrl) {
         public record Passkeys(String rpId, String rpName, List<String> origins, int challengeMinutes) {}
         public record Client(String secret, Map<String, List<String>> scopes) {}
     }
 
     @Bean Crypto crypto(IdentitySettings s) { return new Crypto(s.dataKey()); }
+
+    /** What identity consumes: a verified dealership makes its registrant the admin (P3.A). */
+    @Bean
+    static convoy.platform.messaging.Subscriptions subscriptions(@org.springframework.context.annotation.Lazy InviteController invites) {
+        return new convoy.platform.messaging.Subscriptions().on(convoy.contracts.events.DealershipVerified.class, (e, p) -> invites.dealershipVerified(p));
+    }
 
     @Bean SigningKeys signingKeys(JdbcTemplate jdbc, Crypto crypto) { return new SigningKeys(jdbc, crypto); }
 

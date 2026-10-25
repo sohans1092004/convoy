@@ -15,7 +15,6 @@ import { useOnline } from '@/lib/use-online';
 import { type LiveStatus, useLiveSnapshot } from '@/lib/use-live-snapshot';
 
 type Membership = Schemas['pool']['Membership'];
-type Deposit = Schemas['pool']['Deposit'];
 
 declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => { open(): void; on(e: string, f: (x: unknown) => void): void } } }
 
@@ -239,6 +238,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
           <CommandStatus state={leave.state} successText={tp('left')} />
         </Card>
       </div>
+      {/* eslint-disable-next-line react-hooks/purity -- footer timestamp fallback before the first load; display only */}
       <p className="text-xs text-muted">{tp(snap.status === 'live' && online ? 'footerLive' : 'footerPolling', { time: ist(new Date(snap.updatedAt || Date.now()).toISOString(), true) })}</p>
     </div>
   );

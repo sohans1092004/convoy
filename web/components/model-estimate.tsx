@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { Breakdown, type EngineOutput } from '@/components/breakdown';
+import { Breakdown } from '@/components/breakdown';
 import { CommandStatus } from '@/components/command-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';

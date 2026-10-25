@@ -20,6 +20,8 @@ public final class ApiOutline {
 
     /** Phases whose endpoints are built (and so must deny as specified). */
     static final java.util.Set<String> BUILT = java.util.Set.of("P1", "P2");
+    /** Later-phase endpoints already built (P3 grows this list as each subtask lands; then P3 joins BUILT). */
+    static final java.util.Set<String> BUILT_IDS = java.util.Set.of("E010", "E011", "E050", "E052", "E053", "E153");
 
     public static List<Endpoint> p1(String service) {
         Path doc = Path.of(System.getProperty("convoy.repoRoot", "../.."), "docs", "architecture", "api-outline.md");
@@ -28,7 +30,7 @@ public final class ApiOutline {
                     .map(c -> new Endpoint(c.get(1), c.get(2), c.get(3), c.get(4),
                             Arrays.stream(c.get(5).split(",")).map(String::trim).collect(Collectors.toSet()), c.get(6).equals("yes"), c.get(7).equals("yes"),
                             c.get(9), Arrays.stream(c.get(10).split(",")).map(String::trim).toList()))
-                    .filter(e -> e.service().equals(service) && BUILT.contains(e.phase())).toList();
+                    .filter(e -> e.service().equals(service) && (BUILT.contains(e.phase()) || BUILT_IDS.contains(e.id()))).toList();
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

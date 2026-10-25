@@ -2,7 +2,7 @@
 import { useTranslations } from 'next-intl';
 import QRCode from 'qrcode';
 import * as React from 'react';
-import { Breakdown, type EngineOutput } from '@/components/breakdown';
+import { Breakdown } from '@/components/breakdown';
 import { CommandStatus } from '@/components/command-status';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,7 @@ import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
-type Snap = Schemas['order']['Snapshot'];
 /** snapshots: "ceiling" once the order exists, "final" once bookings are issued. */
-type Order = Omit<Schemas['order']['Order'], 'snapshots'> & { snapshots: { ceiling?: Snap; final?: Snap } };
 type Voucher = Schemas['order']['Voucher'];
 
 function VoucherCard({ orderId }: { orderId: string }) {

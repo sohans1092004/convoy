@@ -34,6 +34,10 @@ public final class Api {
 
     public record PasskeyRegistered(String credentialId, String createdAt) {}
 
+    public record StaffInvite(String inviteId, String role, String expiresAt) {}
+
+    public record StaffMembership(String dealershipId, String role) {}
+
     public record SessionCheck(List<String> invalid) {}
 
     public record ServiceToken(String accessToken, String tokenType, long expiresIn, List<String> scope) {}

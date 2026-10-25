@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import * as React from 'react';
-import { Breakdown, type EngineOutput } from '@/components/breakdown';
+import { Breakdown } from '@/components/breakdown';
 import { CommandStatus } from '@/components/command-status';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,6 @@ import { rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
-type Tier = Schemas['quote']['TierView'];
-type OfferVariant = Schemas['quote']['OfferVariant'];
 type Offer = Schemas['quote']['Offer'];
 
 function useDealerName(id: string) {

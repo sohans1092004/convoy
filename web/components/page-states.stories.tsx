@@ -1,3 +1,4 @@
+/* eslint-disable react/display-name -- story factories return anonymous components on purpose */
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { Discover } from './discover';

@@ -71,6 +71,7 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
       insMode: 'estimate', od: '', tp: '', gst: '', binding: true, units: '5', colour: 'White', delivery: inDays(14),
     })));
   }, [quoteId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the dealer quote once on mount; setState happens after the fetch resolves
   React.useEffect(() => { load().catch(() => {}); }, [load]);
 
   const save = useCommand(async () => {
