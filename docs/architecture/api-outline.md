@@ -41,6 +41,9 @@ Conventions (apply to every row, not repeated):
 | E028 | catalog | POST | /admin/catalog/rulesets | platform_admin | yes | no | validation-failed | P5 | AZ-E028-A, AZ-E028-D |
 | E030 | pool | GET | /me/pool-suggestions | buyer | no | no | - | P2 | AZ-E030-A, AZ-E030-D |
 | E031 | pool | PUT | /me/preferences | buyer | no | no | validation-failed | P2 | AZ-E031-A, AZ-E031-D |
+| E043 | pool | GET | /me/preferences | buyer | no | no | - | P2 | AZ-E043-A, AZ-E043-D |
+| E044 | pool | GET | /internal/pools/{id}/access | service:realtime | no | no | - | P2 | AZ-E044-A, AZ-E044-D |
+| E045 | pool | GET | /internal/pools/{id}/version | service:realtime | no | no | not-found | P2 | AZ-E045-A, AZ-E045-D |
 | E032 | pool | POST | /pools | buyer | yes | no | active-commitment-exists | P1 | AZ-E032-A, AZ-E032-D |
 | E033 | pool | GET | /pools/{id} | buyer, dealer_staff, dealer_admin, platform_admin | no | no | not-found | P1 | AZ-E033-A, AZ-E033-D, AZ-E033-X, AZ-T1 |
 | E034 | pool | POST | /pools/{id}/members | buyer | yes | no | already-member, invalid-transition, deadline-passed | P1 | AZ-E034-A, AZ-E034-D, AZ-INT-01 |
@@ -103,8 +106,8 @@ Conventions (apply to every row, not repeated):
 | E111 | payment | POST | /payments/{id}/checkout-callback | buyer | no | no | webhook-signature-invalid, not-found | P1 | AZ-E111-A, AZ-E111-D, AZ-E111-X |
 | E112 | payment | GET | /me/payments/{id} | buyer | no | no | not-found | P1 | AZ-E112-A, AZ-E112-D, AZ-E112-X, AZ-T4 |
 | E113 | payment | POST | /webhooks/razorpay | razorpay | no | no | webhook-signature-invalid | P1 | AZ-E113-A, AZ-E113-D, AZ-INT-06 |
-| E114 | payment | GET | /admin/refunds | platform_admin | no | no | - | P4 | AZ-E114-A, AZ-E114-D, AZ-T7 |
-| E115 | payment | POST | /admin/refunds/{id}/retry | platform_admin | yes | no | invalid-transition | P4 | AZ-E115-A, AZ-E115-D |
+| E114 | payment | GET | /admin/refunds | platform_admin | no | no | - | P2 | AZ-E114-A, AZ-E114-D, AZ-T7 |
+| E115 | payment | POST | /admin/refunds/{id}/retry | platform_admin | yes | no | invalid-transition | P2 | AZ-E115-A, AZ-E115-D |
 | E116 | payment | POST | /admin/refunds/{id}/resolve-manually | platform_admin | yes | no | invalid-transition, second-approval-required | P4 | AZ-E116-A, AZ-E116-D, AZ-INT-08 |
 | E117 | payment | POST | /admin/refunds/{id}/approve | platform_admin | yes | no | forbidden, second-approval-required | P4 | AZ-E117-A, AZ-E117-D, AZ-INT-08 |
 | E118 | payment | GET | /admin/reconciliation/runs | platform_admin | no | no | - | P4 | AZ-E118-A, AZ-E118-D |
@@ -125,3 +128,4 @@ Conventions (apply to every row, not repeated):
 - **Webhook (E113)**: raw-body HMAC check before parsing; returns 200 for duplicates; 400 `webhook-signature-invalid` otherwise. Not behind the session gateway filter, but behind WAF (full) / Caddy (lite) with a body-size limit (64 KB).
 - **Price preview (E074)** runs the Java engine on a draft without persisting; the quote builder normally runs the TypeScript engine locally and calls E074 on submit-review to cross-check (mismatch → blocking error and alarm).
 - Pagination: cursor-based (`?cursor=&limit=`, limit ≤ 100) on all list endpoints.
+- **E030** takes the saved model slugs as repeated `?model=` (from catalog E024), so pool needs no call to catalog. **E043-E045** were added in P2 (SPEC §6, contract additions in P2).

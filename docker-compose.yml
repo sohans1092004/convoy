@@ -38,6 +38,7 @@ services:
       DB_PASSWORD_QUOTE: ${DB_PASSWORD_QUOTE}
       DB_PASSWORD_ORDER: ${DB_PASSWORD_ORDER}
       DB_PASSWORD_PAYMENT: ${DB_PASSWORD_PAYMENT}
+      DB_PASSWORD_REALTIME: ${DB_PASSWORD_REALTIME}
       TZ: UTC
     volumes:
       - ./deploy/local/postgres:/docker-entrypoint-initdb.d:ro
@@ -98,6 +99,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD_IDENTITY}
       IDENTITY_DATA_KEY: ${IDENTITY_DATA_KEY}
       CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
+      CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME}
       CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
@@ -155,6 +157,34 @@ services:
       DEMO_DECISION_SECONDS: ${DEMO_DECISION_SECONDS}
       DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS}
       POOL_MIN_MEMBERS: ${POOL_MIN_MEMBERS:-1} # demo value (AMENDMENT-007); production default is 5
+
+  # Realtime (wave 2): two instances share one SQS queue (competing consumers) and fan out through Redis Pub/Sub.
+  realtime-1: &realtime
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: realtime } }
+    image: convoy-realtime
+    depends_on:
+      postgres: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    mem_limit: 360m
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: realtime
+      REALTIME_INSTANCE: realtime-1
+      DB_PASSWORD: ${DB_PASSWORD_REALTIME}
+      CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME}
+      REDIS_HOST: redis
+
+  realtime-2:
+    <<: *realtime
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: realtime
+      REALTIME_INSTANCE: realtime-2
+      DB_PASSWORD: ${DB_PASSWORD_REALTIME}
+      CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME}
+      REDIS_HOST: redis
 
   quote:
     <<: *service

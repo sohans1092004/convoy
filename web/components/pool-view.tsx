@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
-import { useSnapshot } from '@/lib/use-snapshot';
+import { type LiveStatus, useLiveSnapshot } from '@/lib/use-live-snapshot';
 
 type Membership = Schemas['pool']['Membership'];
 type Deposit = Schemas['pool']['Deposit'];
@@ -47,6 +47,18 @@ function ClosedCard({ pool, me }: { pool: Schemas['pool']['Pool']; me: Membershi
   );
 }
 
+const LIVE_TEXT: Record<LiveStatus, string> = { live: 'Live', reconnecting: 'Reconnecting…', delayed: 'Updates delayed — refreshing every 10 s' };
+
+/** Live / reconnecting / delayed, announced politely when it changes. */
+export function LiveIndicator({ status }: { status: LiveStatus }) {
+  return (
+    <span role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-sm text-muted">
+      <span aria-hidden className={`size-2 rounded-full ${status === 'live' ? 'bg-success-fg' : status === 'reconnecting' ? 'bg-warning-fg' : 'bg-danger'}`} />
+      {LIVE_TEXT[status]}
+    </span>
+  );
+}
+
 function loadScript(src: string) {
   return new Promise<void>((resolve, reject) => {
     if (window.Razorpay) return resolve();
@@ -60,7 +72,7 @@ function loadScript(src: string) {
 
 export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl: string }) {
   const t = useTranslations('precommit');
-  const snap = useSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
+  const snap = useLiveSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), `/api/stream/pools/${poolId}`, [poolId]);
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
@@ -124,6 +136,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
       <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-2xl font-extrabold">{pool.brand} {pool.model_slug.split('-').slice(1).join(' ')} pool, {pool.city}</h1>
         <Badge tone="info">{STATE_TEXT[pool.state] ?? pool.state}</Badge>
+        <LiveIndicator status={snap.status} />
       </div>
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">

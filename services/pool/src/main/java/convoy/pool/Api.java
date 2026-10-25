@@ -33,4 +33,8 @@ public final class Api {
 
     /** E030: one result per requested saved model. */
     public record Suggestions(List<Matching.Result> results, String serverTime) {}
+
+    public record StreamAccess(boolean allowed) {}
+
+    public record PoolVersion(long version) {}
 }

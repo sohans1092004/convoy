@@ -2,7 +2,12 @@ server:
   port: 8080
   shutdown: graceful
 spring:
+  cloud.discovery.client.simple.instances.realtime:
+    - uri: ${REALTIME_1_URL:http://realtime-1:8080}
+    - uri: ${REALTIME_2_URL:http://realtime-2:8080}
   application.name: gateway
+  # Fail fast on a dead upstream (a stopped container leaves DNS): the stream route's retry then picks the other instance.
+  cloud.gateway.server.webflux.httpclient.connect-timeout: 1000
   data.redis:
     host: ${REDIS_HOST:localhost}
     port: 6379
@@ -26,6 +31,7 @@ gateway:
     quote: ${QUOTE_URL:http://quote:8080}
     order: ${ORDER_URL:http://order:8080}
     payment: ${PAYMENT_URL:http://payment:8080}
+    realtime: ${REALTIME_URL:lb://realtime}
   limits:
     otp: { max: "${RATE_OTP_MAX:10}", window: 10m }
     join: { max: "${RATE_JOIN_MAX:20}", window: 1m }

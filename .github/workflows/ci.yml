@@ -38,7 +38,7 @@ jobs:
         env:
           CHANGES: ${{ steps.filter.outputs.changes }}
         run: |
-          all='[":libs:price-engine",":libs:platform",":services:identity",":services:gateway",":services:catalog",":services:dealer",":services:pool",":services:quote",":services:order",":services:payment"]'
+          all='[":libs:price-engine",":libs:platform",":services:identity",":services:gateway",":services:catalog",":services:dealer",":services:pool",":services:quote",":services:order",":services:payment",":services:realtime"]'
           if echo "$CHANGES" | grep -q shared || [ "${{ github.event_name }}" = push ]; then echo "modules=$all" >> "$GITHUB_OUTPUT"; exit 0; fi
           mods=$(echo "$CHANGES" | python3 -c 'import json,sys; print(json.dumps([":services:"+m for m in json.load(sys.stdin) if m!="shared"]))')
           echo "modules=$mods" >> "$GITHUB_OUTPUT"
@@ -81,6 +81,8 @@ jobs:
         run: pnpm --filter @convoy/price-engine test && pnpm --filter @convoy/price-engine typecheck
       - name: Razorpay fake contract
         run: pnpm --filter @convoy/razorpay-fake test
+      - name: Web unit tests
+        run: pnpm --filter web test
       - name: Web typecheck, build, Storybook
         run: |
           pnpm --filter @convoy/web typecheck

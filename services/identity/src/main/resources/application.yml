@@ -47,3 +47,6 @@ identity:
     pool:
       secret: "${CLIENT_SECRET_POOL}"
       scopes: { payment: [deposits:create], quote: [rounds:summary], dealer: [eligibility:read], order: [resolution:read], catalog: [models:read] }
+    realtime:
+      secret: "${CLIENT_SECRET_REALTIME}"
+      scopes: { pool: [pools:access] }

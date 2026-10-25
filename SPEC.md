@@ -135,6 +135,8 @@ Interface additions made while building the walking skeleton. None changes a rul
 |---|---|---|
 | `subscriptions:` section: one kind per (consumer, aggregate), FULL or PARTIAL | P2 step 0.4: every consumer ignores stale versions; only FULL subscriptions (they receive every event type of the aggregate) treat a version gap as real (park, retry, owner snapshot after 5 min). Generated into `SubscriptionKinds`; services cannot pick their own ordering, and a subscription missing from the catalogue fails at startup. | event-catalogue.yaml, validate_spec.py |
 | realtime ← `MemberReleased`; `MemberReleased` carries `interested_count`, `committed_count` | realtime must see every pool event to be a FULL subscriber (its clients apply deltas only when `version == local + 1`), and a release changes the counts it shows. | event-catalogue.yaml |
+| E043 `GET /me/preferences`; E044/E045 pool internal access and version for realtime (`pools:access`); E030 takes `?model=` | The preferences form needs to read what it saved; realtime must authorise a pool stream and resync after a gap without holding pool data; suggestions are for the buyer's saved models (catalog) without a pool -> catalog call. | api-outline.md, auth-contract.md §5 |
+| Heartbeat is a named SSE event; 20 s client watchdog; graceful close on shutdown | `EventSource` cannot read SSE comments; a killed instance leaves silent streams. E121/E122 answer 501 in P2 (they need quote/order/payment events). | realtime-recovery.md §2 |
 | Every endpoint answers with a declared record (OpenAPI required/nullable per field) | P2 step 0.2: the web client is generated, never hand-written; CI fails if it drifts. | services/*/Api.java, web/lib/api |
 
 ### PLAN.md edits log

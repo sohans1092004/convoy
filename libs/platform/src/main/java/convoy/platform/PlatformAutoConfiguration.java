@@ -113,6 +113,8 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 if (handler instanceof org.springframework.web.method.HandlerMethod hm) {
                     convoy.platform.security.RequiresScope s = hm.getMethodAnnotation(convoy.platform.security.RequiresScope.class);
                     if (s != null) convoy.platform.security.Caller.current().requireScope(s.value());
+                    convoy.platform.security.RequiresRole r = hm.getMethodAnnotation(convoy.platform.security.RequiresRole.class);
+                    if (r != null) convoy.platform.security.Caller.current().require(r.value());
                 }
                 return true;
             }

@@ -85,12 +85,28 @@ public class PoolController {
         return ResponseEntity.ok().eTag("\"" + m.get("version") + "\"").body(convoy.platform.web.Dto.as(m, Api.Membership.class));
     }
 
+    // ------------------------------------------------------------------ internal, for realtime (scope pools:access)
+
+    /** May this buyer / dealership watch the pool's stream? Members (not LEFT) and staff of invited dealerships (E120 authz). */
+    @GetMapping("/internal/pools/{id}/access")
+    @convoy.platform.security.RequiresScope("pools:access")
+    public Api.StreamAccess access(@PathVariable UUID id, @RequestParam(name = "buyer_id", required = false) UUID buyer,
+                                   @RequestParam(name = "dealership_id", required = false) UUID dealership) {
+        return new Api.StreamAccess(pools.mayWatch(id, buyer, dealership));
+    }
+
+    /** The pool's current aggregate version, for realtime's gap snapshot fallback (it never needs the content). */
+    @GetMapping("/internal/pools/{id}/version")
+    @convoy.platform.security.RequiresScope("pools:access")
+    public Api.PoolVersion version(@PathVariable UUID id) { return new Api.PoolVersion(pools.version(id)); }
+
     // ------------------------------------------------------------------ preferences and matching (E030, E031)
 
     @GetMapping("/me/preferences")
     public Api.Preferences preferences() { return pools.preferences(Pools.buyer().userId()); }
 
     @PutMapping("/me/preferences")
+    @convoy.platform.security.RequiresRole("buyer")
     public Api.Preferences savePreferences(@Valid @RequestBody Api.Preferences b) { return pools.savePreferences(Pools.buyer().userId(), b); }
 
     /** Suggestions for the buyer's saved cars; the web passes the saved model slugs (catalog E024) as repeated ?model=. */
@@ -100,6 +116,7 @@ public class PoolController {
     }
 
     @PutMapping("/pools/{id}/members/me/reround-choice")
+    @convoy.platform.security.RequiresRole("buyer")
     public void reroundChoice(@PathVariable UUID id) {
         throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "The re-round choice (E042, AMENDMENT-002) is specified but not built in Phase 1.");
     }

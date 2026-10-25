@@ -53,6 +53,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     try {
       upstream = await fetch(`${GATEWAY}/api/${route}${req.nextUrl.search}`, {
         method: req.method, headers, body: mutating ? await req.arrayBuffer() : undefined, cache: 'no-store', redirect: 'manual',
+        signal: route.startsWith('stream/') ? req.signal : undefined, // the browser leaving closes the upstream SSE connection
       });
     } catch {
       return problem(503, 'dependency-unavailable', 'DEPENDENCY_UNAVAILABLE', 'A required downstream dependency is unavailable', 'Convoy is unreachable right now. Try again shortly.');
@@ -62,6 +63,12 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     for (const h of FORWARD_RES) {
       const v = upstream.headers.get(h);
       if (v) out.set(h, v);
+    }
+    // SSE (realtime E120): stream through unbuffered; never read the whole body.
+    if (route.startsWith('stream/') && upstream.ok && upstream.body) {
+      out.set('cache-control', 'no-cache, no-transform');
+      out.set('x-accel-buffering', 'no');
+      return new Response(upstream.body, { status: upstream.status, headers: out });
     }
     let body: BodyInit | null = upstream.status === 204 ? null : await upstream.arrayBuffer();
 

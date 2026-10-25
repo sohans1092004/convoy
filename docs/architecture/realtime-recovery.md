@@ -16,7 +16,8 @@ id: pool:3f1c…:42
 data: {"aggregate":"pool","id":"3f1c…","version":42,"server_time":"2026-11-20T12:29:41.120Z","delta":{"committed_count":17,"interested_count":31}}
 ```
 - Every message carries the **aggregate type, id and version**. Deltas are hints; the snapshot is the truth.
-- Heartbeat comment every **15 s**: `: hb 2026-11-20T12:29:45.000Z` (also used for clock offset, deadline-rule.md §3).
+- Heartbeat every **15 s** as a named event (`event: heartbeat`, data `{server_time, aggregate, id, version}`; P2: a browser `EventSource` cannot read SSE comments). Used for clock offset (deadline-rule.md §3) and to spot a missed delta: `version` is the latest this task knows; with Redis down the task asks the owner for it each heartbeat.
+- Clients treat 20 s without any event as a dead stream and reconnect (a killed task does not close its TCP connections). A task that stops gracefully closes every stream with `event: closed` first.
 - Client rule: apply a delta only if `version == local.version + 1`; if `version <= local.version` ignore; if a gap is detected → fetch snapshot.
 
 ## 3. Backpressure

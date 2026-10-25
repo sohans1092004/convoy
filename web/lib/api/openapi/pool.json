@@ -396,6 +396,86 @@
           }
         }
       }
+    },
+    "/internal/pools/{id}/version": {
+      "get": {
+        "tags": [
+          "pool-controller"
+        ],
+        "operationId": "version",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolVersion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/pools/{id}/access": {
+      "get": {
+        "tags": [
+          "pool-controller"
+        ],
+        "operationId": "access",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "buyer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dealership_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamAccess"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -897,6 +977,27 @@
         "required": [
           "results",
           "server_time"
+        ]
+      },
+      "PoolVersion": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "StreamAccess": {
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "allowed"
         ]
       }
     }

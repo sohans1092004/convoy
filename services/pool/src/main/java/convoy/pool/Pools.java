@@ -426,6 +426,20 @@ public class Pools {
         outbox.append(poolId, v, new PoolBookingStarted(poolId.toString(), e.bookingsCount()));
     }
 
+    // ------------------------------------------------------------------ realtime authorisation (internal)
+
+    boolean mayWatch(UUID poolId, UUID buyer, UUID dealership) {
+        if (buyer != null && jdbc.queryForObject("select count(*) from memberships where pool_id = ? and buyer_id = ? and state <> 'LEFT'",
+                Integer.class, poolId, buyer) > 0) return true;
+        return dealership != null && jdbc.queryForObject("select count(*) from round_invitations i join rounds r on r.id = i.round_id where r.pool_id = ? "
+                + "and i.dealership_id = ?", Integer.class, poolId, dealership) > 0;
+    }
+
+    long version(UUID poolId) {
+        return jdbc.queryForList("select version from pools where id = ?", Long.class, poolId).stream().findFirst()
+                .orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "No such pool."));
+    }
+
     // ------------------------------------------------------------------ preferences and matching (E030, E031)
 
     private static final java.util.regex.Pattern CODE = java.util.regex.Pattern.compile("[A-Z][A-Z0-9_]{0,19}");

@@ -2,7 +2,7 @@
 # One database, one schema + one login role per service, no cross-schema grants (services.md).
 # Passwords come from the environment (.env); nothing secret is committed.
 set -eu
-for svc in identity catalog pool dealer quote order payment; do
+for svc in identity catalog pool dealer quote order payment realtime; do
   var="DB_PASSWORD_$(echo "$svc" | tr '[:lower:]' '[:upper:]')"
   pw=$(printenv "$var")
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<SQL
