@@ -136,7 +136,9 @@ public final class QuotePricing {
             Map<String, Object> vi = new LinkedHashMap<>();
             vi.put("variant_id", vid);
             vi.put("input", input(f, line, stateCode, rv, 0L, "BUYER_CONFIG"));
-            vi.put("stock", stock);
+            Map<String, Object> claim = new LinkedHashMap<>(stock);
+            claim.put("evidence", "DEALER_CONFIRMED"); // a stock claim is the dealer's own statement
+            vi.put("stock", claim);
             variantInputs.add(vi);
         }
         return new Priced(snapshots, CanonicalJson.sha256(snapshots), variantInputs);

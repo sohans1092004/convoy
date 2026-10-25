@@ -86,9 +86,19 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
     setQuote(r.data);
   });
 
-  // Revision (QUO-T03) and withdrawal (QUO-T05) are specified but still answer 501; the attempt explains that honestly.
-  const revise = useCommand(async () => call(api.POST('/dealer/quotes/{id}/revisions', { params: { path: { id: quoteId } } })));
-  const withdraw = useCommand(async () => call(api.POST('/dealer/quotes/{id}/withdraw', { params: { path: { id: quoteId } } })));
+  // Revision (QUO-T03): the form as it stands becomes a new immutable version. Withdrawal (QUO-T05): until the round deadline.
+  const revise = useCommand(async (key: string) => {
+    const r = await call(api.POST('/dealer/quotes/{id}/revisions', { params: { path: { id: quoteId } }, body: toDraft(lines, tiers, minF, maxUnits),
+      headers: { 'Idempotency-Key': key, 'If-Match': `"${quote!.version}"` } }));
+    setQuote(r.data);
+    return r;
+  });
+  const withdraw = useCommand(async (key: string) => {
+    const r = await call(api.POST('/dealer/quotes/{id}/withdraw', { params: { path: { id: quoteId } }, body: { reason: 'Withdrawn by the dealer' },
+      headers: { 'Idempotency-Key': key, 'If-Match': `"${quote!.version}"` } }));
+    setQuote(r.data);
+    return r;
+  });
 
   if (!quote || !request) return <Skeleton className="h-96" label="Loading the quote" />;
   const editable = quote.state === 'DRAFT';

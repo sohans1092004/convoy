@@ -42,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class Quotes {
     private static final Logger log = LoggerFactory.getLogger(Quotes.class);
-    public static final TransitionTable QUOTE = TransitionTable.load("quote", Set.of("QUO-T01", "QUO-T02", "QUO-T04", "QUO-T08", "QUO-T09"));
+    public static final TransitionTable QUOTE = TransitionTable.load("quote", Set.of("QUO-T01", "QUO-T02", "QUO-T03", "QUO-T04", "QUO-T05", "QUO-T06", "QUO-T08", "QUO-T09"));
     private final JdbcTemplate jdbc;
     private final Outbox outbox;
     private final ObjectMapper json;
@@ -225,6 +225,7 @@ public class Quotes {
         Map<String, Object> draft = read(q.get("draft").toString());
         Map<String, Map<String, Object>> facts = new HashMap<>();
         for (Map<String, Object> f : readList(read("{\"v\":" + round.get("variants") + "}").get("v"))) facts.put((String) f.get("id"), f);
+        checkContent(draft, (Timestamp) round.get("db_now"));
         QuotePricing.Priced priced = QuotePricing.price(draft, facts, (String) round.get("state_code"), rules);
         Map<String, Object> inputs = new LinkedHashMap<>();
         inputs.put("draft", draft);
@@ -242,6 +243,142 @@ public class Quotes {
         jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'SUBMIT', ?::jsonb)", id, c.userId(), write(Map.of("snapshot_sha256", priced.sha256())));
         outbox.append(id, ((Number) ok.get(0).get("version")).longValue(), new QuoteSubmitted(id.toString(), q.get("pool_id").toString(), d.toString(), 1L,
                 priced.sha256(), ((Timestamp) ok.get(0).get("submitted_at")).toInstant()));
+        return dealerView(id, d);
+    }
+
+    // ------------------------------------------------------------------ P3.B: QUO-T03 revise, QUO-T05 withdraw, QUO-T06 cancel
+
+    /** The quote's current round (the latest of its round set), with this DB's clock. */
+    Map<String, Object> currentRound(Map<String, Object> q) {
+        return jdbc.queryForMap("select *, clock_timestamp() as db_now from rounds_replica where pool_id = ? and round_set = ? order by round_no desc limit 1",
+                q.get("pool_id"), q.get("round_set"));
+    }
+
+    /** Validity date and stock claims (content rules not covered by the price engine). */
+    @SuppressWarnings("unchecked")
+    static void checkContent(Map<String, Object> draft, Timestamp dbNow) {
+        java.time.LocalDate today = dbNow.toInstant().atZone(java.time.ZoneId.of("Asia/Kolkata")).toLocalDate();
+        java.time.LocalDate validUntil;
+        try {
+            validUntil = java.time.LocalDate.parse(String.valueOf(draft.get("valid_until")));
+        } catch (RuntimeException e) {
+            throw ApiProblem.of(ProblemType.QUOTE_INVALID, "Give the date until which this quote is valid.").with("errors", List.of("VALIDITY_MISSING"));
+        }
+        if (validUntil.isBefore(today)) throw ApiProblem.of(ProblemType.QUOTE_INVALID, "The validity date is in the past.").with("errors", List.of("VALIDITY_IN_PAST"));
+        for (Map<String, Object> line : readList(draft.get("variants"))) {
+            Map<String, Object> stock = line.get("stock") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
+            Long units = QuotePricing.lng(stock.get("units"));
+            boolean hasColour = stock.get("colours") instanceof List<?> l && !l.isEmpty();
+            if (units != null && units > 0 && !hasColour) {
+                throw ApiProblem.of(ProblemType.QUOTE_INVALID, "Name the colour(s) of the stock you hold.").with("errors", List.of("STOCK_COLOUR_MISSING")).with("variant_id", line.get("variant_id"));
+            }
+            Object date = stock.get("delivery_date");
+            if (date != null) {
+                try {
+                    java.time.LocalDate.parse(String.valueOf(date));
+                } catch (RuntimeException e) {
+                    throw ApiProblem.of(ProblemType.QUOTE_INVALID, "The availability date is not a date.").with("errors", List.of("STOCK_DATE_INVALID")).with("variant_id", line.get("variant_id"));
+                }
+            }
+        }
+    }
+
+    /** Changed leaves between two drafts, for the audit trail: [{path, from, to}]. */
+    static List<Map<String, Object>> diff(Object before, Object after, String path) {
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        if (before instanceof Map<?, ?> a && after instanceof Map<?, ?> b) {
+            java.util.Set<String> keys = new java.util.TreeSet<>();
+            a.keySet().forEach(k -> keys.add(String.valueOf(k)));
+            b.keySet().forEach(k -> keys.add(String.valueOf(k)));
+            for (String k : keys) out.addAll(diff(a.get(k), b.get(k), path.isEmpty() ? k : path + "." + k));
+        } else if (before instanceof List<?> a && after instanceof List<?> b) {
+            for (int i = 0; i < Math.max(a.size(), b.size()); i++) out.addAll(diff(i < a.size() ? a.get(i) : null, i < b.size() ? b.get(i) : null, path + "[" + i + "]"));
+        } else if (!java.util.Objects.equals(before, after)) {
+            Map<String, Object> d = new LinkedHashMap<>();
+            d.put("path", path);
+            d.put("from", before);
+            d.put("to", after);
+            out.add(d);
+        }
+        return out;
+    }
+
+    /** QUO-T03: a new immutable version n+1 with fresh price snapshots; the diff goes to the audit trail. */
+    @Transactional
+    public Map<String, Object> revise(UUID id, Map<String, Object> draft, long ifMatch) {
+        Caller c = Caller.current();
+        UUID d = dealership(c);
+        Map<String, Object> q = own(id, d, true);
+        if ((long) q.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "The quote changed; reload it.").with("current_version", q.get("version"));
+        QUOTE.check((String) q.get("state"), "REVISED");
+        Map<String, Object> round = currentRound(q);
+        if (!"OPEN".equals(round.get("state")) || !((Timestamp) round.get("db_now")).before((Timestamp) round.get("deadline"))) {
+            throw deadlinePassed(round, "The round has closed; this quote can no longer be revised.");
+        }
+        checkContent(draft, (Timestamp) round.get("db_now"));
+        Map<String, Map<String, Object>> facts = new HashMap<>();
+        for (Map<String, Object> f : readList(read("{\"v\":" + round.get("variants") + "}").get("v"))) facts.put((String) f.get("id"), f);
+        QuotePricing.Priced priced = QuotePricing.price(draft, facts, (String) round.get("state_code"), rules);
+        int n = ((Number) q.get("current_version")).intValue() + 1;
+        Map<String, Object> previous = read(jdbc.queryForObject("select inputs::text from quote_versions where quote_id = ? and version_no = ?", String.class, id, n - 1));
+        Map<String, Object> inputs = new LinkedHashMap<>();
+        inputs.put("draft", draft);
+        inputs.put("variant_inputs", priced.variantInputs());
+        jdbc.update("insert into quote_versions(quote_id, version_no, inputs, snapshots, snapshot_sha256, ruleset_version, committed_by) values (?, ?, ?::jsonb, ?::jsonb, ?, ?, ?)",
+                id, n, CanonicalJson.write(inputs), CanonicalJson.write(priced.snapshots()), priced.sha256(), rulesetVersion(), c.userId());
+        // Deadline check is the last statement before commit, on this DB's clock (deadline-rule.md section 1).
+        List<Map<String, Object>> ok = jdbc.queryForList("update quotes set state = 'REVISED', current_version = ?, draft = ?::jsonb, version = version + 1 "
+                + "where id = ? and version = ? and clock_timestamp() < ? returning version", n, write(draft), id, ifMatch, round.get("deadline"));
+        if (ok.isEmpty()) {
+            round.put("db_now", jdbc.queryForMap("select clock_timestamp() as db_now").get("db_now"));
+            throw deadlinePassed(round, "The round closed before your revision reached our database. Nothing was saved.");
+        }
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("version_no", n);
+        detail.put("snapshot_sha256", priced.sha256());
+        detail.put("diff", diff(previous.get("draft"), draft, ""));
+        jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'REVISE', ?::jsonb)", id, c.userId(), write(detail));
+        Timestamp at = jdbc.queryForObject("select committed_at from quote_versions where quote_id = ? and version_no = ?", Timestamp.class, id, n);
+        outbox.append(id, ((Number) ok.get(0).get("version")).longValue(), new convoy.contracts.events.QuoteRevised(id.toString(), q.get("pool_id").toString(), d.toString(),
+                (long) n, priced.sha256(), at.toInstant()));
+        return dealerView(id, d);
+    }
+
+    /** QUO-T05: withdraw (DRAFT, SUBMITTED, REVISED) until the current round's deadline. After FINAL only QUO-T06 applies. */
+    @Transactional
+    public Map<String, Object> withdraw(UUID id, String reason, long ifMatch) {
+        Caller c = Caller.current();
+        UUID d = dealership(c);
+        Map<String, Object> q = own(id, d, true);
+        if ((long) q.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "The quote changed; reload it.").with("current_version", q.get("version"));
+        String state = (String) q.get("state");
+        if ("FINAL".equals(state)) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "This quote is final: an admin can cancel it, which counts as a dealer cancellation.");
+        QUOTE.check(state, "WITHDRAWN");
+        Map<String, Object> round = currentRound(q);
+        List<Map<String, Object>> ok = jdbc.queryForList("update quotes set state = 'WITHDRAWN', withdraw_reason = ?, version = version + 1 "
+                + "where id = ? and version = ? and clock_timestamp() < ? returning version", reason, id, ifMatch, round.get("deadline"));
+        if (ok.isEmpty()) {
+            round.put("db_now", jdbc.queryForMap("select clock_timestamp() as db_now").get("db_now"));
+            throw deadlinePassed(round, "The round has closed; the quote will become final and can then only be cancelled by an admin.");
+        }
+        jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'WITHDRAW', ?::jsonb)", id, c.userId(), write(Map.of("reason", reason)));
+        outbox.append(id, ((Number) ok.get(0).get("version")).longValue(), new convoy.contracts.events.QuoteWithdrawn(id.toString(), q.get("pool_id").toString(), d.toString(), false, reason));
+        return dealerView(id, d);
+    }
+
+    /** QUO-T06: dealer_admin cancels a FINAL quote at any time; a dealer cancellation per cancellation-rules.md (order acts on QuoteWithdrawn{after_final}). */
+    @Transactional
+    public Map<String, Object> cancel(UUID id, String reason, long ifMatch) {
+        Caller c = Caller.current();
+        UUID d = dealership(c);
+        Map<String, Object> q = own(id, d, true);
+        if ((long) q.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "The quote changed; reload it.").with("current_version", q.get("version"));
+        if (!"FINAL".equals(q.get("state"))) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Only a final quote is cancelled; before that, withdraw it.");
+        QUOTE.check("FINAL", "WITHDRAWN");
+        long v = jdbc.queryForObject("update quotes set state = 'WITHDRAWN', withdraw_reason = ?, after_final = true, version = version + 1 where id = ? returning version",
+                Long.class, reason, id);
+        jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'CANCEL', ?::jsonb)", id, c.userId(), write(Map.of("reason", reason, "after_final", true)));
+        outbox.append(id, v, new convoy.contracts.events.QuoteWithdrawn(id.toString(), q.get("pool_id").toString(), d.toString(), true, reason));
         return dealerView(id, d);
     }
 

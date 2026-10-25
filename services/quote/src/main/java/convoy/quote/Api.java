@@ -20,7 +20,9 @@ public final class Api {
 
     public record Insurance(@Nullable Long odPaise, @Nullable Long tpPaise, @Nullable Long gstPaise, @Nullable Boolean binding, @Nullable DeclaredCover declaredCover) {}
 
-    public record Stock(Long units, @Nullable List<String> colours, @Nullable String deliveryDate) {}
+    /** A stock claim; evidence is DEALER_CONFIRMED on submitted versions (the dealer's own statement). */
+    public record Stock(Long units, @Nullable List<String> colours, @Nullable String deliveryDate,
+                        @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String evidence) {}
 
     public record DraftLine(@Nullable String variantId, @Nullable Long exShowroomPaise, @Nullable Long registrationPaise, @Nullable Insurance insurance, @Nullable List<Item> insuranceAddons,
                             @Nullable List<Item> fees, @Nullable List<Item> accessories, @Nullable Item extendedWarranty, @Nullable List<Item> otherCharges, @Nullable Stock stock) {}
