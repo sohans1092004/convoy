@@ -12,6 +12,11 @@ public interface RazorpayClient {
 
     record Refund(String id, String paymentId, long amount, String receipt, String status) {}
 
+    record RemotePayment(String id, String orderId, long amount, String status) {}
+
+    /** Payments attempted on an order (reconciliation, deposit-contract.md §4). */
+    List<RemotePayment> orderPayments(String orderId);
+
     Order createOrder(long amountPaise, String receipt, Map<String, String> notes);
 
     Refund createRefund(String razorpayPaymentId, long amountPaise, String receipt);

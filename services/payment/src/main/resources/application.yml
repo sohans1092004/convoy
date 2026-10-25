@@ -46,3 +46,7 @@ payment:
   refund-retry-schedule: ${REFUND_RETRY_SCHEDULE:1m,5m,30m,2h,12h}
   # PAY-T05: unpaid deposits are voided after this (a later capture is refunded, PAY-T10).
   void-unpaid-after: ${VOID_UNPAID_AFTER:24h}
+  # deposit-contract.md §1.6: no payment.captured 15 min after PENDING is a STUCK_WEBHOOK (reconciliation).
+  stuck-webhook-after: ${STUCK_WEBHOOK_AFTER:15m}
+  # deposit-contract.md §4: nightly at 02:00 IST.
+  reconciliation-cron: "${RECONCILIATION_CRON:0 30 20 * * *}"

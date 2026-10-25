@@ -56,6 +56,14 @@ public class HttpRazorpayClient implements RazorpayClient {
         return ((List<Map<String, Object>>) r.get("items")).stream().map(HttpRazorpayClient::refund).toList();
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<RemotePayment> orderPayments(String orderId) {
+        Map<String, Object> r = call(() -> http.get().uri("/v1/orders/{id}/payments", orderId).retrieve().body(Map.class));
+        return ((List<Map<String, Object>>) r.get("items")).stream().map(p -> new RemotePayment((String) p.get("id"), (String) p.get("order_id"),
+                ((Number) p.get("amount")).longValue(), (String) p.get("status"))).toList();
+    }
+
     private static Refund refund(Map<String, Object> r) {
         return new Refund((String) r.get("id"), (String) r.get("payment_id"), ((Number) r.get("amount")).longValue(), (String) r.get("receipt"), (String) r.get("status"));
     }
