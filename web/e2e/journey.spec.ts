@@ -1,7 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { DEALERS, runDealer, type SimResult } from '../../tools/simulator/dealer-sim.mjs';
+// The simulator lives outside web/ (not in the web image's build context): loaded at run time, only in THREE_DEALERS mode.
+const SIMULATOR = '../../tools/simulator/dealer-sim.mjs';
+type SimResult = { dealer: string; error?: unknown; log: { step: string; status: number }[]; ranks?: ({ when: string; quote_id: string; ranks: { rank: number; of_n: number }[] } & Record<string, unknown>)[] };
 
 // THREE_DEALERS=1 (nightly): two simulated dealers (aggressive, mispriced add-on) quote next to the Playwright-driven one.
 const THREE = process.env.THREE_DEALERS === '1';
@@ -123,9 +125,11 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await page.getByRole('button', { name: 'Pay (test)' }).click();
   await expect(page.getByText('You are committed.')).toBeVisible({ timeout: 90_000 });
   step('committed (webhook captured the test deposit)');
-  const sims: Promise<SimResult[]> | null = THREE
-    ? Promise.all(['aggressive', 'misprices_addon'].map((st) => runDealer(DEALERS.find((d) => d.strategy === st)!, poolId, { seed: 11 })))
-    : null;
+  let sims: Promise<SimResult[]> | null = null;
+  if (THREE) {
+    const { DEALERS, runDealer } = await import(SIMULATOR);
+    sims = Promise.all(['aggressive', 'misprices_addon'].map((st) => runDealer(DEALERS.find((d: { strategy: string }) => d.strategy === st), poolId, { seed: 11 }) as Promise<SimResult>));
+  }
 
   await page.goto('/orders');
   const ordersBefore = await page.getByRole('link', { name: /^Order / }).evaluateAll((as) => as.map((a) => a.getAttribute('href')));
@@ -142,10 +146,10 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
     step(`simulators: ${JSON.stringify([aggressive, mispriced].map((r) => ({ dealer: r.dealer, log: r.log, error: r.error ?? null })))}`);
     await expect(page.getByRole('button', { name: 'Accept this offer (not binding)' })).toHaveCount(3); // the buyer compares 3 offers
     await expect(page.getByRole('note').filter({ hasText: 'dealer-required add-on' })).toBeVisible(); // the mispriced add-on is flagged
-    expect(mispriced.log.map((l) => l.step)).toEqual(['submit']);
+    expect(mispriced.log.map((l: { step: string }) => l.step)).toEqual(['submit']);
     // The aggressive dealer's final-round revision changes the ranks; dealers only ever see their own rank and of_n.
     const [atOpen, afterRevision] = aggressive.ranks!;
-    expect(aggressive.log.find((l) => l.step === 'revise')?.status).toBe(200);
+    expect(aggressive.log.find((l: { step: string; status: number }) => l.step === 'revise')?.status).toBe(200);
     expect(afterRevision.ranks[0].rank).toBeLessThan(atOpen.ranks[0].rank);
     for (const r of aggressive.ranks!) {
       expect(Object.keys(r).sort()).toEqual(['quote_id', 'ranks', 'when']);
