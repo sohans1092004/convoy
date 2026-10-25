@@ -71,8 +71,10 @@ class RealtimeIT extends ServiceTest {
         final java.util.concurrent.CompletableFuture<HttpResponse<java.util.stream.Stream<String>>> response;
         volatile int status;
 
-        Client(UUID pool, String token) {
-            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/realtime/pools/" + pool + "/stream"))
+        Client(UUID pool, String token) { this("/realtime/pools/" + pool + "/stream", token); }
+
+        Client(String path, String token) {
+            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                     .header("Authorization", "Bearer " + token).header("Accept", "text/event-stream").GET().build();
             response = http.sendAsync(req, HttpResponse.BodyHandlers.ofLines());
             response.thenAccept(r -> {
@@ -122,6 +124,44 @@ class RealtimeIT extends ServiceTest {
             fillers.forEach(hub::remove);
         }
         assertThat(hub.connections()).isLessThan(settings.maxConnections()); // capacity back: streams are accepted again
+    }
+
+    @Test
+    void theBuyerStreamCarriesOnlyTheQuoteCountAndTheComparisonSignalToMembers() throws Exception {
+        // E122 (P3.E): members of the pool only; never any quote content before (or after) the round closes.
+        UUID pool = UUID.randomUUID();
+        Client member = new Client("/realtime/me/stream?pool_id=" + pool, TestTokens.buyer("realtime", MEMBER));
+        member.await("ready", j -> j.path("quote_count").asLong() == 0);
+        hub.quoteCount(pool.toString(), 1, java.time.Instant.now());
+        JsonNode count = member.await("quotes.changed", j -> j.at("/delta/quote_count").asLong() == 1);
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        count.path("delta").fieldNames().forEachRemaining(keys::add);
+        assertThat(keys).containsExactlyInAnyOrder("pool_id", "quote_count"); // no price, dealer, tier or line item
+        assertThat(count.toString()).doesNotContain("paise").doesNotContain("dealership").doesNotContain("cash");
+        hub.comparisonReady(pool.toString(), 1L, java.time.Instant.now());
+        member.await("quotes.changed", j -> j.at("/delta/comparison_ready").asBoolean());
+        // Not a member: 404 (no existence leak); dealers cannot open a buyer stream; no token: 401.
+        assertThat(get("/realtime/me/stream?pool_id=" + pool, TestTokens.buyer("realtime", STRANGER)).status()).isEqualTo(404);
+        assertThat(get("/realtime/me/stream?pool_id=" + pool, TestTokens.dealer("realtime", UUID.randomUUID(), INVITED)).status()).isEqualTo(403);
+        assertThat(get("/realtime/me/stream?pool_id=" + pool, null).status()).isEqualTo(401);
+    }
+
+    @Test
+    void theDealerStreamCarriesOnlyTheCallersOwnDealershipsRankAndRounds() throws Exception {
+        // E121 (P3.C): per-resource authorisation is the token's own dealership; nothing of another dealership leaks.
+        UUID mine = UUID.randomUUID(), rival = UUID.randomUUID();
+        Client me = new Client("/realtime/dealer/stream", TestTokens.dealer("realtime", UUID.randomUUID(), mine));
+        Client them = new Client("/realtime/dealer/stream", TestTokens.dealer("realtime", UUID.randomUUID(), rival));
+        me.await("ready", j -> j.path("id").asText().equals(mine.toString()));
+        them.await("ready", j -> j.path("id").asText().equals(rival.toString()));
+        hub.publish("dealer", mine.toString(), System.currentTimeMillis(), "RankChanged", java.time.Instant.now(),
+                Map.of("quote_id", UUID.randomUUID().toString(), "variant_id", UUID.randomUUID().toString(), "rank", 2, "of_n", 4));
+        me.await("dealer.changed", j -> j.at("/delta/rank").asInt() == 2 && j.at("/delta/of_n").asInt() == 4);
+        Thread.sleep(500);
+        assertThat(them.events.stream().map(e -> e[0]).toList()).doesNotContain("dealer.changed");
+        // Buyers and admins cannot open it; no token: 401.
+        assertThat(get("/realtime/dealer/stream", TestTokens.buyer("realtime", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/realtime/dealer/stream", null).status()).isEqualTo(401);
     }
 
     @Test

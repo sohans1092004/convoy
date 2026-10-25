@@ -54,6 +54,7 @@ export function Mocked({ routes, offline = false, stream = 'down', children }: {
     const RealES = window.EventSource;
     FakeEventSource.mode = stream;
     window.EventSource = FakeEventSource as unknown as typeof EventSource;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Storybook-only mock installer: render the story after the fetch mock is in place
     setReady(true);
     return () => {
       window.fetch = realFetch;

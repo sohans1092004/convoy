@@ -57,6 +57,11 @@ public class GatewayApplication {
         return b.routes()
                 .route("webhook", r -> r.path("/webhooks/razorpay").uri(u.get("payment")))
                 // E120 pool stream (SSE), balanced across the realtime instances.
+                // E122: a buyer's quote-count stream for one pool (?pool_id=), same instance retry as the pool stream.
+                .route("stream-me", r -> r.path("/api/stream/me").filters(f -> f.rewritePath("/api/stream/me", "/realtime/me/stream")
+                                .retry(c -> c.setRetries(2).setMethods(org.springframework.http.HttpMethod.GET).setSeries()
+                                        .setExceptions(java.net.ConnectException.class, java.io.IOException.class)))
+                        .metadata(AUDIENCE, "realtime").uri(u.get("realtime")))
                 .route("stream-pool", r -> r.path("/api/stream/pools/*").filters(f -> f.rewritePath("/api/stream/pools/(?<id>[^/]+)", "/realtime/pools/${id}/stream")
                                 // A refused connect (instance down) is retried; the load balancer then picks the other instance.
                                 .retry(c -> c.setRetries(2).setMethods(org.springframework.http.HttpMethod.GET).setSeries()

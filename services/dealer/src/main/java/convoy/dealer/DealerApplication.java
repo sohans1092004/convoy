@@ -38,7 +38,7 @@ public class DealerApplication {
     @GetMapping("/dealerships/{id}")
     public Api.Dealership profile(@PathVariable UUID id) throws java.sql.SQLException {
         List<Map<String, Object>> rows = jdbc.queryForList("select id, trade_name, city, state_code, brands, status, synthetic, verified_at "
-                + "from dealerships where id = ? and status <> 'PENDING'", id);
+                + "from dealerships where id = ? and status in ('VERIFIED', 'SUSPENDED')", id); // not public until approved (P3.A)
         if (rows.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such dealership.");
         Map<String, Object> r = new java.util.LinkedHashMap<>(rows.get(0));
         r.put("brands", List.of((String[]) ((java.sql.Array) r.get("brands")).getArray()));

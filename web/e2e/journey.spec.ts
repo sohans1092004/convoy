@@ -1,5 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+// The simulator lives outside web/ (not in the web image's build context): loaded at run time, only in THREE_DEALERS mode.
+const SIMULATOR = '../../tools/simulator/dealer-sim.mjs';
+type SimResult = { dealer: string; error?: unknown; log: { step: string; status: number }[]; ranks?: ({ when: string; quote_id: string; ranks: { rank: number; of_n: number }[] } & Record<string, unknown>)[] };
+
+// THREE_DEALERS=1 (nightly): two simulated dealers (aggressive, mispriced add-on) quote next to the Playwright-driven one.
+const THREE = process.env.THREE_DEALERS === '1';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // The P1 journey through real services and events:
@@ -39,9 +46,35 @@ async function signIn(page: Page, email: string) {
   await page.waitForURL((u) => !u.pathname.startsWith('/sign-in'), { timeout: 30_000 });
 }
 
+// Failure capture (P3): every non-2xx /api response any journey page saw, and on failure the last 2 minutes of
+// gateway, identity and web logs, written to reports/p3/failures/ (git-ignored).
+const apiFailures: { at: string; status: number; method: string; url: string; body: string }[] = [];
+function watch(page: Page) {
+  page.on('response', async (r) => {
+    if (!r.url().includes('/api/') || r.status() < 400) return;
+    let body = '';
+    try { body = (await r.text()).slice(0, 2000); } catch { /* streamed or gone */ }
+    apiFailures.push({ at: new Date().toISOString(), status: r.status(), method: r.request().method(), url: r.url(), body });
+  });
+}
+
+test.afterEach(async ({}, info) => {
+  if (info.status === info.expectedStatus) return;
+  const dir = new URL('../../reports/p3/failures/', import.meta.url);
+  mkdirSync(dir, { recursive: true });
+  const stamp = `${new Date().toISOString().replace(/[:.]/g, '-')}-${info.project.name}`;
+  let logs = '';
+  try {
+    logs = execFileSync('docker', ['compose', 'logs', '--no-color', '--since', '2m', 'gateway', 'identity', 'web'], { cwd: new URL('../..', import.meta.url), maxBuffer: 64 * 1024 * 1024 }).toString();
+  } catch (e) { logs = `could not read docker logs: ${e}`; }
+  writeFileSync(new URL(`${stamp}-logs.txt`, dir), logs);
+  writeFileSync(new URL(`${stamp}-api-failures.json`, dir), JSON.stringify({ test: info.title, error: info.error?.message ?? null, responses: apiFailures }, null, 2));
+});
+
 async function dealerQuote(browser: Browser, poolId: string, project: string) {
   const ctx = await browser.newContext({ viewport: project === 'mobile-360' ? { width: 360, height: 780 } : { width: 1280, height: 900 } });
   const page = await ctx.newPage();
+  watch(page);
   await signIn(page, PLAN[project].dealer);
   await page.goto('/dealer');
   const card = page.locator('div', { has: page.getByRole('heading', { name: new RegExp(`Pool …${poolId.slice(-6)}`) }) }).filter({ has: page.getByRole('button') }).last();
@@ -59,6 +92,7 @@ async function dealerQuote(browser: Browser, poolId: string, project: string) {
 }
 
 test('buyer journey from sign-in to booking voucher', async ({ page, browser }, info) => {
+  watch(page);
   const plan = PLAN[info.project.name];
   const t0 = Date.now();
   const step = (s: string) => console.log(`[${info.project.name}] ${((Date.now() - t0) / 1000).toFixed(1)}s ${s}`);
@@ -70,7 +104,7 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await page.getByRole('link', { name: plan.model }).click();
   await page.getByRole('radio', { name: new RegExp(plan.variant, 'i') }).check({ timeout: 20_000 });
   await expect(page.getByText('Estimated cash payable')).toBeVisible();
-  await expect(page.getByText('Catalogue estimate').first()).toBeVisible(); // evidence label on the price
+  await expect(page.getByText('Catalogue estimate').filter({ visible: true }).first()).toBeVisible(); // evidence label on the price
   await axe(page, 'model + estimate');
   step('on-road estimate shown');
 
@@ -91,6 +125,11 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await page.getByRole('button', { name: 'Pay (test)' }).click();
   await expect(page.getByText('You are committed.')).toBeVisible({ timeout: 90_000 });
   step('committed (webhook captured the test deposit)');
+  let sims: Promise<SimResult[]> | null = null;
+  if (THREE) {
+    const { DEALERS, runDealer } = await import(SIMULATOR);
+    sims = Promise.all(['aggressive', 'misprices_addon'].map((st) => runDealer(DEALERS.find((d: { strategy: string }) => d.strategy === st), poolId, { seed: 11 }) as Promise<SimResult>));
+  }
 
   await page.goto('/orders');
   const ordersBefore = await page.getByRole('link', { name: /^Order / }).evaluateAll((as) => as.map((a) => a.getAttribute('href')));
@@ -100,10 +139,28 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
 
   await expect(page.getByRole('link', { name: 'Compare offers' })).toBeVisible({ timeout: 360_000 });
   await page.getByRole('link', { name: 'Compare offers' }).click();
-  await expect(page.getByText('Cash payable at your ceiling (the most you can pay)')).toBeVisible();
-  await expect(page.getByText(/If the count stays at/)).toBeVisible(); // AMENDMENT-005 projection label
+  await expect(page.getByText('Cash payable at your ceiling (the most you can pay)').first()).toBeVisible();
+  await expect(page.getByText(/If the count stays at/).first()).toBeVisible(); // AMENDMENT-005 projection label
+  if (sims) {
+    const [aggressive, mispriced] = await sims;
+    step(`simulators: ${JSON.stringify([aggressive, mispriced].map((r) => ({ dealer: r.dealer, log: r.log, error: r.error ?? null })))}`);
+    await expect(page.getByRole('button', { name: 'Accept this offer (not binding)' })).toHaveCount(3); // the buyer compares 3 offers
+    await expect(page.getByRole('note').filter({ hasText: 'dealer-required add-on' })).toBeVisible(); // the mispriced add-on is flagged
+    expect(mispriced.log.map((l: { step: string }) => l.step)).toEqual(['submit']);
+    // The aggressive dealer's final-round revision changes the ranks; dealers only ever see their own rank and of_n.
+    const [atOpen, afterRevision] = aggressive.ranks!;
+    expect(aggressive.log.find((l: { step: string; status: number }) => l.step === 'revise')?.status).toBe(200);
+    expect(afterRevision.ranks[0].rank).toBeLessThan(atOpen.ranks[0].rank);
+    for (const r of aggressive.ranks!) {
+      expect(Object.keys(r).sort()).toEqual(['quote_id', 'ranks', 'when']);
+      for (const x of r.ranks) expect(Object.keys(x).sort()).toEqual(['computed_at', 'of_n', 'rank', 'rule_version', 'variant_id']);
+    }
+    step(`aggressive dealer: rank ${atOpen.ranks[0].rank} of ${atOpen.ranks[0].of_n} at the final-round open, ${afterRevision.ranks[0].rank} after its revision`);
+  }
   await axe(page, 'compare');
-  await page.getByRole('button', { name: 'Accept this offer (not binding)' }).click();
+  // Accept the human dealer's offer (the one built in the quote builder above).
+  await page.getByRole('heading', { name: /Convoy Test Motors/ }).locator('xpath=ancestor::*[.//button[contains(., "Accept this offer")]][1]')
+    .getByRole('button', { name: 'Accept this offer (not binding)' }).click();
   await expect(page.getByText('Accepted. You can change your mind')).toBeVisible();
   step('accepted');
 
@@ -126,6 +183,11 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await expect(page.getByRole('img', { name: /QR code for booking voucher/ })).toBeVisible({ timeout: 240_000 });
   await expect(page.getByRole('heading', { name: 'Final price', exact: true })).toBeVisible();
   await axe(page, 'order (voucher)');
+  // The buyer's final price never exceeds the ceiling they confirmed.
+  const rupeesOf = (t: string) => Number((t.match(/₹([\d,]+)/)?.[1] ?? 'NaN').replace(/,/g, ''));
+  const finalPrice = rupeesOf(await page.getByRole('heading', { name: 'Final price', exact: true }).locator('xpath=following-sibling::*[1]').innerText());
+  const ceiling = rupeesOf(await page.getByText(/Your ceiling was ₹/).innerText());
+  expect(finalPrice).toBeLessThanOrEqual(ceiling);
   step('booked; voucher with QR shown');
   // Honest UI (P2 step 0.7): cancellation is a stated rule whose path still answers 501.
   await page.getByRole('button', { name: 'Cancel my booking' }).click();

@@ -61,6 +61,7 @@ Conventions (apply to every row, not repeated):
 | E051 | dealer | POST | /dealerships/{id}/documents | dealer_admin | yes | no | - | P3 | AZ-E051-A, AZ-E051-D, AZ-E051-X |
 | E052 | dealer | GET | /dealerships/{id} | anonymous | no | no | not-found | P3 | AZ-E052-A |
 | E053 | dealer | POST | /admin/dealerships/{id}/verify | platform_admin | yes | yes | invalid-transition, version-conflict | P3 | AZ-E053-A, AZ-E053-D |
+| E153 | dealer | GET | /admin/dealerships | platform_admin | no | no | - | P3 | AZ-E153-A, AZ-E153-D |
 | E054 | dealer | POST | /admin/dealerships/{id}/suspend | platform_admin | yes | yes | version-conflict | P3 | AZ-E054-A, AZ-E054-D |
 | E055 | dealer | GET | /internal/eligibility | service:pool | no | no | - | P1 | AZ-E055-A, AZ-E055-D |
 | E056 | dealer | POST | /bookings/{bookingId}/review | buyer | yes | no | review-not-eligible | P4 | AZ-E056-A, AZ-E056-D, AZ-E056-X, AZ-INT-07 |

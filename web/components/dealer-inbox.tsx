@@ -17,6 +17,7 @@ export type Request = Schemas['quote']['Request'];
 function RequestCard({ r }: { r: Request }) {
   const router = useRouter();
   const start = useCommand(async (key: string) => call(api.POST('/dealer/pools/{poolId}/quotes', { params: { path: { poolId: r.pool_id } }, headers: { 'Idempotency-Key': key } })));
+  // eslint-disable-next-line react-hooks/purity -- a display hint only; the server enforces the deadline (DB clock)
   const open = r.state === 'OPEN' && Date.parse(r.deadline) > Date.now();
   return (
     <Card className="flex flex-col gap-2">

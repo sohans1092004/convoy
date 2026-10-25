@@ -116,12 +116,13 @@ export interface DealershipSuspended {
   reason: string;
 }
 
-/** Owner: dealer. Consumers: notification, audit. FIFO: False. */
+/** Owner: dealer. Consumers: identity, notification, audit. FIFO: False. */
 export interface DealershipVerified {
   dealership_id: string;
-  brand_ids: string[];
+  brands: string[];
   city: string;
   verified_by: string;
+  registered_by: string;
 }
 
 /** Owner: pool. Consumers: realtime, notification, audit. FIFO: True. */

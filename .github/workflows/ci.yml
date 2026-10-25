@@ -86,8 +86,10 @@ jobs:
         run: pnpm --filter @convoy/razorpay-fake test
       - name: Web unit tests
         run: pnpm --filter web test
-      - name: Web typecheck
-        run: pnpm --filter @convoy/web typecheck
+      - name: Web typecheck and lint (ESLint, zero warnings)
+        run: |
+          pnpm --filter @convoy/web typecheck
+          pnpm --filter @convoy/web lint
       # Build, Storybook, visual regression, bundle budgets and Lighthouse run nightly (.github/workflows/nightly.yml).
 
   e2e:

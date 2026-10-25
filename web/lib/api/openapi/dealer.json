@@ -5,6 +5,85 @@
     "version": "v0"
   },
   "paths": {
+    "/dealerships": {
+      "post": {
+        "tags": [
+          "onboarding-controller"
+        ],
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Register"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Registration"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/dealerships/{id}/verify": {
+      "post": {
+        "tags": [
+          "onboarding-controller"
+        ],
+        "operationId": "verify",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Registration"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/eligibility": {
       "get": {
         "tags": [
@@ -73,10 +152,156 @@
           }
         }
       }
+    },
+    "/admin/dealerships": {
+      "get": {
+        "tags": [
+          "onboarding-controller"
+        ],
+        "operationId": "queue",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "PENDING_VERIFICATION"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Queue"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Register": {
+        "properties": {
+          "trade_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "legal_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "gstin": {
+            "type": "string",
+            "minLength": 1
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "brands": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "brands",
+          "city",
+          "gstin",
+          "legal_name",
+          "trade_name"
+        ]
+      },
+      "Registration": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trade_name": {
+            "type": "string"
+          },
+          "legal_name": {
+            "type": "string"
+          },
+          "gstin": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state_code": {
+            "type": "string"
+          },
+          "brands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "brands",
+          "city",
+          "created_at",
+          "gstin",
+          "id",
+          "legal_name",
+          "rejection_reason",
+          "state_code",
+          "status",
+          "trade_name",
+          "version"
+        ]
+      },
+      "Decision": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "decision",
+          "reason"
+        ]
+      },
       "Eligibility": {
         "properties": {
           "brand": {
@@ -145,6 +370,19 @@
           "synthetic",
           "trade_name",
           "verified_at"
+        ]
+      },
+      "Queue": {
+        "properties": {
+          "dealerships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Registration"
+            }
+          }
+        },
+        "required": [
+          "dealerships"
         ]
       }
     }

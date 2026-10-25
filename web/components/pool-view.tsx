@@ -13,9 +13,9 @@ import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useOnline } from '@/lib/use-online';
 import { type LiveStatus, useLiveSnapshot } from '@/lib/use-live-snapshot';
+import { useQuoteCount } from '@/lib/use-quote-count';
 
 type Membership = Schemas['pool']['Membership'];
-type Deposit = Schemas['pool']['Deposit'];
 
 declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => { open(): void; on(e: string, f: (x: unknown) => void): void } } }
 
@@ -80,6 +80,9 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
+  // E122: live quote count while dealers quote (never contents); the closing signal reloads the snapshot (compare link).
+  const quoting = !!pool && ['QUOTE_OPEN', 'FINAL_ROUND'].includes(pool.state) && !!me && me.state !== 'LEFT';
+  const quoteCount = useQuoteCount(poolId, quoting, () => { snap.refresh(); });
 
   // Optimistic join: the count and "interested" show at once and roll back on failure. The version is not bumped, so the
   // stream's delta for this join (absolute counts, version + 1) applies on top without counting the buyer twice.
@@ -125,28 +128,28 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
     try {
       await loadScript(checkoutUrl);
     } catch {
-      commit.setState({ kind: 'error', problem: { status: 0, detail: 'The test checkout could not load. Your place is held; try again.' } });
+      commit.setState({ kind: 'error', problem: { status: 0, detail: tp('checkout.loadFailed') } });
       return;
     }
     const rzp = new window.Razorpay!({
       key: dep.razorpay_key_id, order_id: dep.razorpay_order_id, amount: dep.amount_paise, currency: 'INR', name: 'Convoy (TEST)', description: 'Test deposit',
       handler: async (resp: Record<string, string>) => {
-        commit.setState({ kind: 'pending', message: 'Payment received by Razorpay — confirming (usually under a minute). TEST: no real money.' });
+        commit.setState({ kind: 'pending', message: tp('checkout.received') });
         await call(api.POST('/payments/{id}/checkout-callback', { params: { path: { id: dep.payment_id } }, body: resp as never }));
         const until = Date.now() + 90_000;
         while (Date.now() < until) {
           await new Promise((r) => setTimeout(r, 1500));
           const m = await call(api.GET('/pools/{id}/members/me', { params: { path: { id: poolId } } }));
-          if (m.data.state === 'COMMITTED') { commit.setState({ kind: 'success', message: 'You are committed. Your ₹999 test deposit is held, not paid to anyone.' }); await snap.refresh(); return; }
+          if (m.data.state === 'COMMITTED') { commit.setState({ kind: 'success', message: tp('checkout.committed') }); await snap.refresh(); return; }
         }
-        commit.setState({ kind: 'pending', message: 'Still confirming with Razorpay. You can leave this page; we will show it here once confirmed.' });
+        commit.setState({ kind: 'pending', message: tp('checkout.stillConfirming') });
       },
     });
-    rzp.on('payment.failed', () => commit.setState({ kind: 'error', problem: { status: 402, detail: 'The test payment failed. Nothing was charged; you can try again.' } }));
+    rzp.on('payment.failed', () => commit.setState({ kind: 'error', problem: { status: 402, detail: tp('checkout.failed') } }));
     rzp.open();
   }
 
-  if (snap.loading && !pool) return <Skeleton className="h-96" label="Loading the pool" />;
+  if (snap.loading && !pool) return <Skeleton className="h-96" label={tp('checkout.loading')} />;
   if (!pool) {
     return (
       <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-danger">
@@ -193,6 +196,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
               <CardText className="mt-1">{tp('minimum', { min: pool.min_members, month: pool.purchase_month })}</CardText>
             </div>
             {deadline ? <Countdown deadline={deadline} label={tp(pool.state === 'FORMING' ? 'deadline.forming' : pool.state === 'QUOTE_OPEN' ? 'deadline.sealed' : pool.state === 'DECISION_OPEN' ? 'deadline.decide' : 'deadline.confirm')} /> : null}
+            {quoting && quoteCount !== null ? <p role="status" className="text-sm">{tp('quoteCount', { count: quoteCount })}</p> : null}
           </Card>
           {['EXPIRED', 'NO_QUOTES', 'CANCELLED'].includes(pool.state) || me?.release_reason === 'LATE_CAPTURE' ? <ClosedCard pool={pool} me={me ?? undefined} /> : null}
           {pool.state === 'DECISION_OPEN' && me && ['COMMITTED', 'ACCEPTED'].includes(me.state) ? (
@@ -239,6 +243,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
           <CommandStatus state={leave.state} successText={tp('left')} />
         </Card>
       </div>
+      {/* eslint-disable-next-line react-hooks/purity -- footer timestamp fallback before the first load; display only */}
       <p className="text-xs text-muted">{tp(snap.status === 'live' && online ? 'footerLive' : 'footerPolling', { time: ist(new Date(snap.updatedAt || Date.now()).toISOString(), true) })}</p>
     </div>
   );

@@ -130,6 +130,61 @@ class IdentityIT extends ServiceTest {
         return send("POST", "/auth/otp/verify", anon(), "{\"email\":\"" + email + "\",\"code\":\"" + lastCode(email) + "\"}", Map.of()).body();
     }
 
+    String lastInviteToken(String email) {
+        for (int i = SENT.size() - 1; i >= 0; i--) {
+            if (SENT.get(i).getTo()[0].equals(email)) {
+                Matcher m = Pattern.compile("/staff-invites/([A-Za-z0-9_-]+)").matcher(SENT.get(i).getText());
+                if (m.find()) return m.group(1);
+            }
+        }
+        throw new AssertionError("no invite mail for " + email);
+    }
+
+    @Test
+    void staffInviteWorksOnceForTheInvitedEmailAndExpires() throws Exception {
+        UUID dealership = UUID.randomUUID();
+        String admin = TestTokens.user("identity", UUID.randomUUID(), List.of("dealer_admin"), dealership);
+        String email = "invitee-" + UUID.randomUUID() + "@convoy.test";
+        java.util.function.Supplier<String> idem = () -> UUID.randomUUID().toString();
+        Resp r = send("POST", "/dealerships/" + dealership + "/staff/invites", admin, "{\"email\":\"" + email + "\",\"role\":\"dealer_staff\"}", Map.of("Idempotency-Key", idem.get()));
+        assertThat(r.status()).isEqualTo(201);
+        String token = lastInviteToken(email);
+        assertThat(jdbc.queryForObject("select count(*) from staff_invites where token_hash = ?", Integer.class, Crypto.sha256(token))).isEqualTo(1); // only the hash is stored
+        // Another dealership's admin cannot invite here; a bad role is a validation error.
+        assertThat(send("POST", "/dealerships/" + dealership + "/staff/invites", TestTokens.user("identity", UUID.randomUUID(), List.of("dealer_admin"), UUID.randomUUID()),
+                "{\"email\":\"x@convoy.test\",\"role\":\"dealer_staff\"}", Map.of("Idempotency-Key", idem.get())).status()).isEqualTo(404);
+        assertThat(send("POST", "/dealerships/" + dealership + "/staff/invites", admin, "{\"email\":\"x@convoy.test\",\"role\":\"platform_admin\"}", Map.of("Idempotency-Key", idem.get())).status()).isEqualTo(400);
+        // Someone else signed in cannot use it.
+        UUID stranger = UUID.fromString(JSON.readTree(otpSession("stranger-" + UUID.randomUUID() + "@convoy.test")).at("/user/id").asText());
+        assertThat(send("POST", "/staff-invites/" + token + "/accept", TestTokens.buyer("identity", stranger), null, Map.of("Idempotency-Key", idem.get())).status()).isEqualTo(404);
+        // The invitee accepts once: membership + role; a second use is 404.
+        UUID invitee = UUID.fromString(JSON.readTree(otpSession(email)).at("/user/id").asText());
+        Resp ok = send("POST", "/staff-invites/" + token + "/accept", TestTokens.buyer("identity", invitee), null, Map.of("Idempotency-Key", idem.get()));
+        assertThat(ok.status()).isEqualTo(200);
+        assertThat(users.find(invitee).orElseThrow().dealershipId()).isEqualTo(dealership);
+        assertThat(users.find(invitee).orElseThrow().roles()).contains("dealer_staff");
+        assertThat(send("POST", "/staff-invites/" + token + "/accept", TestTokens.buyer("identity", invitee), null, Map.of("Idempotency-Key", idem.get())).status()).isEqualTo(404);
+        // An expired invite is 404 (the DB clock decides).
+        String email2 = "late-" + UUID.randomUUID() + "@convoy.test";
+        send("POST", "/dealerships/" + dealership + "/staff/invites", admin, "{\"email\":\"" + email2 + "\",\"role\":\"dealer_admin\"}", Map.of("Idempotency-Key", idem.get()));
+        String late = lastInviteToken(email2);
+        jdbc.update("update staff_invites set expires_at = clock_timestamp() - interval '1 second' where token_hash = ?", Crypto.sha256(late));
+        UUID lateUser = UUID.fromString(JSON.readTree(otpSession(email2)).at("/user/id").asText());
+        assertThat(send("POST", "/staff-invites/" + late + "/accept", TestTokens.buyer("identity", lateUser), null, Map.of("Idempotency-Key", idem.get())).status()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'StaffInvited' and payload->>'dealership_id' = ?", Integer.class, dealership.toString())).isEqualTo(2);
+    }
+
+    @Test
+    void aVerifiedDealershipMakesItsRegistrantTheAdmin() throws Exception {
+        UUID registrant = UUID.fromString(JSON.readTree(otpSession("registrant-" + UUID.randomUUID() + "@convoy.test")).at("/user/id").asText());
+        UUID dealership = UUID.randomUUID();
+        invites.dealershipVerified(new convoy.contracts.events.DealershipVerified(dealership.toString(), List.of("Hyundai"), "Pune", UUID.randomUUID().toString(), registrant.toString()));
+        assertThat(users.find(registrant).orElseThrow().dealershipId()).isEqualTo(dealership);
+        assertThat(users.find(registrant).orElseThrow().roles()).contains("dealer_admin");
+    }
+
+    @Autowired InviteController invites;
+
     @Test
     void anEmailCodeSessionNeverCarriesPlatformAdmin() throws Exception {
         // AMENDMENT-008 (Q-043): admin powers need a passkey sign-in.

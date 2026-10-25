@@ -70,6 +70,8 @@ services:
 
   jaeger:
     image: jaegertracing/jaeger:2.22.0
+    command: ["--config", "/etc/jaeger/config.yaml"] # default all-in-one config with max_traces capped
+    volumes: ["./deploy/local/jaeger/config.yaml:/etc/jaeger/config.yaml:ro"]
     ports: ["127.0.0.1:16686:16686"]
     mem_limit: 256m
 

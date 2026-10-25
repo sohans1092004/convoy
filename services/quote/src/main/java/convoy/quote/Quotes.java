@@ -42,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class Quotes {
     private static final Logger log = LoggerFactory.getLogger(Quotes.class);
-    public static final TransitionTable QUOTE = TransitionTable.load("quote", Set.of("QUO-T01", "QUO-T02", "QUO-T04", "QUO-T08", "QUO-T09"));
+    public static final TransitionTable QUOTE = TransitionTable.load("quote", Set.of("QUO-T01", "QUO-T02", "QUO-T03", "QUO-T04", "QUO-T05", "QUO-T06", "QUO-T08", "QUO-T09"));
     private final JdbcTemplate jdbc;
     private final Outbox outbox;
     private final ObjectMapper json;
@@ -64,6 +64,7 @@ public class Quotes {
                         + "values (?, ?, ?, ?, ?, ?, ?::uuid[], ?, ?::jsonb, ?) on conflict (round_id) do nothing",
                 UUID.fromString(e.roundId()), UUID.fromString(e.poolId()), e.roundSet(), e.roundNo(), e.kind(), Timestamp.from(e.deadline()),
                 "{" + String.join(",", e.invitedDealershipIds()) + "}", e.stateCode(), write(e.variants()), e.committedCount());
+        if (e.roundNo() == 2) reveal(UUID.fromString(e.poolId()), e.roundSet().intValue());
     }
 
     /** RoundClosed(SEALED): drafts expire (QUO-T09). RoundClosed(FINAL): live quotes become FINAL (QUO-T04, idempotent). */
@@ -72,12 +73,14 @@ public class Quotes {
         jdbc.update("update rounds_replica set state = 'CLOSED' where round_id = ?", roundId);
         Map<String, Object> r = jdbc.queryForMap("select pool_id, round_set from rounds_replica where round_id = ?", roundId);
         if (e.kind().equals("SEALED")) {
+            rankHidden((UUID) r.get("pool_id"), (int) r.get("round_set")); // computed at close, revealed when the final round opens
             for (UUID q : jdbc.queryForList("select id from quotes where pool_id = ? and round_set = ? and state = 'DRAFT' for update", UUID.class, r.get("pool_id"), r.get("round_set"))) {
                 QUOTE.check("DRAFT", "EXPIRED");
                 jdbc.update("update quotes set state = 'EXPIRED', expire_reason = 'NOT_SUBMITTED', version = version + 1 where id = ?", q);
             }
         } else {
             finalise((UUID) r.get("pool_id"), (int) r.get("round_set"));
+            rank((UUID) r.get("pool_id"), (int) r.get("round_set"));
         }
     }
 
@@ -225,12 +228,14 @@ public class Quotes {
         Map<String, Object> draft = read(q.get("draft").toString());
         Map<String, Map<String, Object>> facts = new HashMap<>();
         for (Map<String, Object> f : readList(read("{\"v\":" + round.get("variants") + "}").get("v"))) facts.put((String) f.get("id"), f);
+        checkContent(draft, (Timestamp) round.get("db_now"));
         QuotePricing.Priced priced = QuotePricing.price(draft, facts, (String) round.get("state_code"), rules);
         Map<String, Object> inputs = new LinkedHashMap<>();
         inputs.put("draft", draft);
         inputs.put("variant_inputs", priced.variantInputs());
-        jdbc.update("insert into quote_versions(quote_id, version_no, inputs, snapshots, snapshot_sha256, ruleset_version, committed_by) values (?, 1, ?::jsonb, ?::jsonb, ?, ?, ?)",
-                id, CanonicalJson.write(inputs), CanonicalJson.write(priced.snapshots()), priced.sha256(), rulesetVersion(), c.userId());
+        jdbc.update("insert into quote_versions(quote_id, version_no, inputs, snapshots, snapshot_sha256, ruleset_version, committed_by, ranking) values (?, 1, ?::jsonb, ?::jsonb, ?, ?, ?, ?::jsonb)",
+                id, CanonicalJson.write(inputs), CanonicalJson.write(priced.snapshots()), priced.sha256(), rulesetVersion(), c.userId(),
+                write(QuotePricing.rankingScores(draft, facts, (String) round.get("state_code"), rules)));
         // Deadline check is the last statement before commit, on this DB's clock (deadline-rule.md §1).
         List<Map<String, Object>> ok = jdbc.queryForList("update quotes set state = 'SUBMITTED', current_version = 1, submitted_at = clock_timestamp(), version = version + 1 "
                 + "where id = ? and version = ? and clock_timestamp() < ? returning submitted_at, version, clock_timestamp() as db_now", id, ifMatch, round.get("deadline"));
@@ -243,6 +248,224 @@ public class Quotes {
         outbox.append(id, ((Number) ok.get(0).get("version")).longValue(), new QuoteSubmitted(id.toString(), q.get("pool_id").toString(), d.toString(), 1L,
                 priced.sha256(), ((Timestamp) ok.get(0).get("submitted_at")).toInstant()));
         return dealerView(id, d);
+    }
+
+    // ------------------------------------------------------------------ P3.B: QUO-T03 revise, QUO-T05 withdraw, QUO-T06 cancel
+
+    /** The quote's current round (the latest of its round set), with this DB's clock. */
+    Map<String, Object> currentRound(Map<String, Object> q) {
+        return jdbc.queryForMap("select *, clock_timestamp() as db_now from rounds_replica where pool_id = ? and round_set = ? order by round_no desc limit 1",
+                q.get("pool_id"), q.get("round_set"));
+    }
+
+    /** Validity date and stock claims (content rules not covered by the price engine). */
+    @SuppressWarnings("unchecked")
+    static void checkContent(Map<String, Object> draft, Timestamp dbNow) {
+        java.time.LocalDate today = dbNow.toInstant().atZone(java.time.ZoneId.of("Asia/Kolkata")).toLocalDate();
+        java.time.LocalDate validUntil;
+        try {
+            validUntil = java.time.LocalDate.parse(String.valueOf(draft.get("valid_until")));
+        } catch (RuntimeException e) {
+            throw ApiProblem.of(ProblemType.QUOTE_INVALID, "Give the date until which this quote is valid.").with("errors", List.of("VALIDITY_MISSING"));
+        }
+        if (validUntil.isBefore(today)) throw ApiProblem.of(ProblemType.QUOTE_INVALID, "The validity date is in the past.").with("errors", List.of("VALIDITY_IN_PAST"));
+        for (Map<String, Object> line : readList(draft.get("variants"))) {
+            Map<String, Object> stock = line.get("stock") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
+            Long units = QuotePricing.lng(stock.get("units"));
+            boolean hasColour = stock.get("colours") instanceof List<?> l && !l.isEmpty();
+            if (units != null && units > 0 && !hasColour) {
+                throw ApiProblem.of(ProblemType.QUOTE_INVALID, "Name the colour(s) of the stock you hold.").with("errors", List.of("STOCK_COLOUR_MISSING")).with("variant_id", line.get("variant_id"));
+            }
+            Object date = stock.get("delivery_date");
+            if (date != null) {
+                try {
+                    java.time.LocalDate.parse(String.valueOf(date));
+                } catch (RuntimeException e) {
+                    throw ApiProblem.of(ProblemType.QUOTE_INVALID, "The availability date is not a date.").with("errors", List.of("STOCK_DATE_INVALID")).with("variant_id", line.get("variant_id"));
+                }
+            }
+        }
+    }
+
+    /** Changed leaves between two drafts, for the audit trail: [{path, from, to}]. */
+    static List<Map<String, Object>> diff(Object before, Object after, String path) {
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        if (before instanceof Map<?, ?> a && after instanceof Map<?, ?> b) {
+            java.util.Set<String> keys = new java.util.TreeSet<>();
+            a.keySet().forEach(k -> keys.add(String.valueOf(k)));
+            b.keySet().forEach(k -> keys.add(String.valueOf(k)));
+            for (String k : keys) out.addAll(diff(a.get(k), b.get(k), path.isEmpty() ? k : path + "." + k));
+        } else if (before instanceof List<?> a && after instanceof List<?> b) {
+            for (int i = 0; i < Math.max(a.size(), b.size()); i++) out.addAll(diff(i < a.size() ? a.get(i) : null, i < b.size() ? b.get(i) : null, path + "[" + i + "]"));
+        } else if (!java.util.Objects.equals(before, after)) {
+            Map<String, Object> d = new LinkedHashMap<>();
+            d.put("path", path);
+            d.put("from", before);
+            d.put("to", after);
+            out.add(d);
+        }
+        return out;
+    }
+
+    /** QUO-T03: a new immutable version n+1 with fresh price snapshots; the diff goes to the audit trail. */
+    @Transactional
+    public Map<String, Object> revise(UUID id, Map<String, Object> draft, long ifMatch) {
+        Caller c = Caller.current();
+        UUID d = dealership(c);
+        Map<String, Object> q = own(id, d, true);
+        if ((long) q.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "The quote changed; reload it.").with("current_version", q.get("version"));
+        QUOTE.check((String) q.get("state"), "REVISED");
+        Map<String, Object> round = currentRound(q);
+        if (!"OPEN".equals(round.get("state")) || !((Timestamp) round.get("db_now")).before((Timestamp) round.get("deadline"))) {
+            throw deadlinePassed(round, "The round has closed; this quote can no longer be revised.");
+        }
+        checkContent(draft, (Timestamp) round.get("db_now"));
+        Map<String, Map<String, Object>> facts = new HashMap<>();
+        for (Map<String, Object> f : readList(read("{\"v\":" + round.get("variants") + "}").get("v"))) facts.put((String) f.get("id"), f);
+        QuotePricing.Priced priced = QuotePricing.price(draft, facts, (String) round.get("state_code"), rules);
+        int n = ((Number) q.get("current_version")).intValue() + 1;
+        Map<String, Object> previous = read(jdbc.queryForObject("select inputs::text from quote_versions where quote_id = ? and version_no = ?", String.class, id, n - 1));
+        Map<String, Object> inputs = new LinkedHashMap<>();
+        inputs.put("draft", draft);
+        inputs.put("variant_inputs", priced.variantInputs());
+        jdbc.update("insert into quote_versions(quote_id, version_no, inputs, snapshots, snapshot_sha256, ruleset_version, committed_by, ranking) values (?, ?, ?::jsonb, ?::jsonb, ?, ?, ?, ?::jsonb)",
+                id, n, CanonicalJson.write(inputs), CanonicalJson.write(priced.snapshots()), priced.sha256(), rulesetVersion(), c.userId(),
+                write(QuotePricing.rankingScores(draft, facts, (String) round.get("state_code"), rules)));
+        // Deadline check is the last statement before commit, on this DB's clock (deadline-rule.md section 1).
+        List<Map<String, Object>> ok = jdbc.queryForList("update quotes set state = 'REVISED', current_version = ?, draft = ?::jsonb, version = version + 1 "
+                + "where id = ? and version = ? and clock_timestamp() < ? returning version", n, write(draft), id, ifMatch, round.get("deadline"));
+        if (ok.isEmpty()) {
+            round.put("db_now", jdbc.queryForMap("select clock_timestamp() as db_now").get("db_now"));
+            throw deadlinePassed(round, "The round closed before your revision reached our database. Nothing was saved.");
+        }
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("version_no", n);
+        detail.put("snapshot_sha256", priced.sha256());
+        detail.put("diff", diff(previous.get("draft"), draft, ""));
+        jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'REVISE', ?::jsonb)", id, c.userId(), write(detail));
+        Timestamp at = jdbc.queryForObject("select committed_at from quote_versions where quote_id = ? and version_no = ?", Timestamp.class, id, n);
+        outbox.append(id, ((Number) ok.get(0).get("version")).longValue(), new convoy.contracts.events.QuoteRevised(id.toString(), q.get("pool_id").toString(), d.toString(),
+                (long) n, priced.sha256(), at.toInstant()));
+        if (((Number) round.get("round_no")).intValue() == 2) rank((UUID) q.get("pool_id"), (int) q.get("round_set")); // ranks change in the final round only
+        return dealerView(id, d);
+    }
+
+    /** QUO-T05: withdraw (DRAFT, SUBMITTED, REVISED) until the current round's deadline. After FINAL only QUO-T06 applies. */
+    @Transactional
+    public Map<String, Object> withdraw(UUID id, String reason, long ifMatch) {
+        Caller c = Caller.current();
+        UUID d = dealership(c);
+        Map<String, Object> q = own(id, d, true);
+        if ((long) q.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "The quote changed; reload it.").with("current_version", q.get("version"));
+        String state = (String) q.get("state");
+        if ("FINAL".equals(state)) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "This quote is final: an admin can cancel it, which counts as a dealer cancellation.");
+        QUOTE.check(state, "WITHDRAWN");
+        Map<String, Object> round = currentRound(q);
+        List<Map<String, Object>> ok = jdbc.queryForList("update quotes set state = 'WITHDRAWN', withdraw_reason = ?, version = version + 1 "
+                + "where id = ? and version = ? and clock_timestamp() < ? returning version", reason, id, ifMatch, round.get("deadline"));
+        if (ok.isEmpty()) {
+            round.put("db_now", jdbc.queryForMap("select clock_timestamp() as db_now").get("db_now"));
+            throw deadlinePassed(round, "The round has closed; the quote will become final and can then only be cancelled by an admin.");
+        }
+        jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'WITHDRAW', ?::jsonb)", id, c.userId(), write(Map.of("reason", reason)));
+        outbox.append(id, ((Number) ok.get(0).get("version")).longValue(), new convoy.contracts.events.QuoteWithdrawn(id.toString(), q.get("pool_id").toString(), d.toString(), false, reason));
+        return dealerView(id, d);
+    }
+
+    /** QUO-T06: dealer_admin cancels a FINAL quote at any time; a dealer cancellation per cancellation-rules.md (order acts on QuoteWithdrawn{after_final}). */
+    @Transactional
+    public Map<String, Object> cancel(UUID id, String reason, long ifMatch) {
+        Caller c = Caller.current();
+        UUID d = dealership(c);
+        Map<String, Object> q = own(id, d, true);
+        if ((long) q.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "The quote changed; reload it.").with("current_version", q.get("version"));
+        if (!"FINAL".equals(q.get("state"))) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Only a final quote is cancelled; before that, withdraw it.");
+        QUOTE.check("FINAL", "WITHDRAWN");
+        long v = jdbc.queryForObject("update quotes set state = 'WITHDRAWN', withdraw_reason = ?, after_final = true, version = version + 1 where id = ? returning version",
+                Long.class, reason, id);
+        jdbc.update("insert into audit_trail(quote_id, actor, action, detail) values (?, ?, 'CANCEL', ?::jsonb)", id, c.userId(), write(Map.of("reason", reason, "after_final", true)));
+        outbox.append(id, v, new convoy.contracts.events.QuoteWithdrawn(id.toString(), q.get("pool_id").toString(), d.toString(), true, reason));
+        return dealerView(id, d);
+    }
+
+    // ------------------------------------------------------------------ P3.C ranking (ranking-rule.md)
+
+    /**
+     * Ranks every live quote of the pool's round set per variant from the scores stored with each current version, appends a
+     * snapshot row per (quote, variant), and emits RankChanged when a dealer's rank or of_n moved. Called when the final round
+     * opens, at each version commit in it, and at finalisation. The sealed round shows no rank.
+     */
+    void rank(UUID poolId, int roundSet) {
+        for (Ranking.Ranked k : ranked(poolId, roundSet)) record(poolId, roundSet, k, true);
+    }
+
+    /** At the sealed close: snapshots stored hidden, no events (nothing is visible during or right after the sealed round). */
+    void rankHidden(UUID poolId, int roundSet) {
+        for (Ranking.Ranked k : ranked(poolId, roundSet)) record(poolId, roundSet, k, false);
+    }
+
+    /**
+     * When the final round opens (inside the same inbox transaction that records the open, so a dealer never sees an open
+     * final round without its rank): reveal the ranks computed at the sealed close, or compute them now if there were none.
+     */
+    void reveal(UUID poolId, int roundSet) {
+        List<Map<String, Object>> hidden = jdbc.queryForList("update rank_snapshots set revealed = true where pool_id = ? and round_set = ? and not revealed "
+                + "returning id, quote_id, dealership_id, variant_id, rank, of_n", poolId, roundSet);
+        if (hidden.isEmpty()) {
+            rank(poolId, roundSet);
+            return;
+        }
+        for (Map<String, Object> h : hidden) {
+            outbox.append((UUID) h.get("quote_id"), (long) h.get("id"), new convoy.contracts.events.RankChanged(h.get("quote_id").toString(), poolId.toString(),
+                    h.get("dealership_id").toString(), h.get("variant_id").toString(), ((Number) h.get("rank")).longValue(), ((Number) h.get("of_n")).longValue(), Ranking.RULE_VERSION));
+        }
+    }
+
+    private List<Ranking.Ranked> ranked(UUID poolId, int roundSet) {
+        List<Ranking.Entry> entries = new java.util.ArrayList<>();
+        for (Map<String, Object> r : jdbc.queryForList("select q.id, q.dealership_id, v.ranking::text as ranking, v.committed_at from quotes q "
+                + "join quote_versions v on v.quote_id = q.id and v.version_no = q.current_version "
+                + "where q.pool_id = ? and q.round_set = ? and q.state in ('SUBMITTED', 'REVISED', 'FINAL')", poolId, roundSet)) {
+            for (Map.Entry<String, Object> v : read((String) r.get("ranking")).entrySet()) {
+                Map<String, Object> sc = QuotePricing.m(v.getValue());
+                Object date = sc.get("delivery_date");
+                entries.add(new Ranking.Entry(r.get("id").toString(), r.get("dealership_id").toString(), v.getKey(), QuotePricing.lng(sc.get("score_paise")),
+                        date == null ? null : java.time.LocalDate.parse(date.toString()), ((Timestamp) r.get("committed_at")).toInstant()));
+            }
+        }
+        return Ranking.rank(entries);
+    }
+
+    /** Appends a snapshot; a revealed one emits RankChanged when the dealer's rank or of_n moved since its last revealed one. */
+    private void record(UUID poolId, int roundSet, Ranking.Ranked k, boolean revealed) {
+        List<Map<String, Object>> last = jdbc.queryForList("select rank, of_n from rank_snapshots where quote_id = ?::uuid and variant_id = ?::uuid and revealed "
+                + "order by id desc limit 1", k.quoteId(), k.variantId());
+        Long id = jdbc.queryForObject("insert into rank_snapshots(pool_id, round_set, variant_id, quote_id, dealership_id, rank, of_n, rule_version, revealed) "
+                + "values (?, ?, ?::uuid, ?::uuid, ?::uuid, ?, ?, ?, ?) returning id", Long.class, poolId, roundSet, k.variantId(), k.quoteId(), k.dealershipId(), k.rank(), k.ofN(),
+                Ranking.RULE_VERSION, revealed);
+        boolean changed = last.isEmpty() || (int) last.get(0).get("rank") != k.rank() || (int) last.get(0).get("of_n") != k.ofN();
+        if (revealed && changed) {
+            outbox.append(UUID.fromString(k.quoteId()), id, new convoy.contracts.events.RankChanged(k.quoteId(), poolId.toString(), k.dealershipId(), k.variantId(),
+                    (long) k.rank(), (long) k.ofN(), Ranking.RULE_VERSION));
+        }
+    }
+
+    /** E068: the caller's own rank per variant, nothing else (AZ-RNK-01..03); empty while only the sealed round has run. */
+    public Map<String, Object> ownRank(UUID id) {
+        UUID d = dealership(Caller.current());
+        own(id, d, false);
+        List<Map<String, Object>> ranks = new java.util.ArrayList<>();
+        for (Map<String, Object> r : jdbc.queryForList("select distinct on (variant_id) variant_id, rank, of_n, rule_version, computed_at from rank_snapshots "
+                + "where quote_id = ? and revealed order by variant_id, id desc", id)) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("variant_id", r.get("variant_id").toString());
+            m.put("rank", r.get("rank"));
+            m.put("of_n", r.get("of_n"));
+            m.put("rule_version", r.get("rule_version"));
+            m.put("computed_at", ((Timestamp) r.get("computed_at")).toInstant().toString());
+            ranks.add(m);
+        }
+        return Map.of("quote_id", id.toString(), "ranks", ranks);
     }
 
     Map<String, Object> own(UUID id, UUID dealershipId, boolean lock) {

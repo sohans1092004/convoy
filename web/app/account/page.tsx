@@ -9,6 +9,7 @@ import { useCommand } from '@/lib/use-command';
 export default function AccountPage() {
   const add = useCommand(registerPasskey);
   const [supported, setSupported] = React.useState(true);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- feature detection must run after hydration (no window on the server)
   React.useEffect(() => setSupported(passkeysSupported()), []);
   return (
     <Card className="mx-auto flex w-full max-w-md flex-col gap-3">

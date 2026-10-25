@@ -121,7 +121,16 @@
     "leaveRefund": "Leave this pool (full ₹999 refund)",
     "left": "You left the pool. Any deposit is being refunded in full.",
     "footerLive": "Live updates on. Last update {time}.",
-    "footerPolling": "Refreshing every 10 seconds. Last update {time}."
+    "footerPolling": "Refreshing every 10 seconds. Last update {time}.",
+    "quoteCount": "{count, plural, =0 {No dealer has quoted yet} one {1 dealer has quoted} other {# dealers have quoted}}. Offers stay sealed until the round closes.",
+    "checkout": {
+      "loadFailed": "The test checkout could not load. Your place is held; try again.",
+      "received": "Payment received by Razorpay — confirming (usually under a minute). TEST: no real money.",
+      "committed": "You are committed. Your ₹999 test deposit is held, not paid to anyone.",
+      "stillConfirming": "Still confirming with Razorpay. You can leave this page; we will show it here once confirmed.",
+      "failed": "The test payment failed. Nothing was charged; you can try again.",
+      "loading": "Loading the pool"
+    }
   },
   "join": {
     "variant": "Variant",
@@ -135,6 +144,110 @@
     "signIn": "Sign in to join a pool",
     "ready": "Pool ready. Opening it…",
     "estimateTitle": "On-road estimate in {city}",
-    "cash": "Estimated cash payable"
+    "cash": "Estimated cash payable",
+    "calculating": "Calculating the on-road estimate",
+    "estimateFailed": "The estimate could not be calculated right now. Your variant and city are kept.",
+    "retry": "Try again",
+    "onlyVerified": "We only estimate when every input is published or verified. Try another city, or join a pool: a dealer's quote gives exact figures."
+  },
+  "errorPage": {
+    "title": "This page could not be loaded right now",
+    "body": "A part of Convoy it depends on is not answering. Nothing was changed.",
+    "retry": "Try again"
+  },
+  "status": {
+    "notBuiltTitle": "Not available in this test build yet",
+    "notBuiltBody": "Nothing was changed: your order, booking and deposit are exactly as they were.",
+    "inputKept": "Your input is kept. You can try again.",
+    "latestState": "The page now shows the latest state."
+  },
+  "breakdown": {
+    "dealerRequired": "(dealer-required)",
+    "askDealer": "(ask the dealer)",
+    "cashPayable": "Cash payable",
+    "netCost": "Estimated net cost (after creditable TCS)",
+    "optional": "Optional (not included above)"
+  },
+  "compare": {
+    "priceOnlyFalls": "Price can only fall",
+    "tierLadder": "Tier ladder",
+    "confirmed": "confirmed",
+    "yourCeiling": "— your ceiling",
+    "voidBelowMin": "(offer void below the minimum)",
+    "yourChoice": "Your choice",
+    "finalOffer": "Final offer",
+    "sealedOffer": "Sealed offer v{version}",
+    "lastUpdated": "Last updated {time} (version {version})",
+    "ceilingTitle": "Cash payable at your ceiling (the most you can pay)",
+    "ceilingLabel": "Cash payable at your ceiling",
+    "notGuaranteed": "· projection, not guaranteed",
+    "stock": "Stock:",
+    "breakdownSummary": "Itemised breakdown at the ceiling",
+    "accepted": "Accepted",
+    "accept": "Accept this offer (not binding)",
+    "acceptedNote": "Accepted. You can change your mind until the decision deadline.",
+    "loading": "Loading offers",
+    "title": "Compare offers",
+    "back": "Back to the pool",
+    "decideBy": "Decide by",
+    "none": "No offers yet. Dealers have until the round deadline.",
+    "addonFlag": "This offer adds a dealer-required add-on that the other offers do not include: {items}. Ask the dealer whether you can decline it.",
+    "stockNote": {
+      "enough": "{units} in stock: enough for the {committed} committed buyers",
+      "short": "{units} in stock for {committed} committed buyers: some cars come later",
+      "none": "No stock held: cars are ordered after confirmation",
+      "statement": "(the dealer's statement)",
+      "statementWithDate": "(the dealer's statement, delivery from {date})"
+    }
+  },
+  "signIn": {
+    "title": "Sign in",
+    "email": "Email",
+    "emailHint": "We email you a 6-digit code. No password.",
+    "sendCode": "Email me a code",
+    "passkey": "Sign in with a passkey",
+    "sentTo": "We sent a code to <strong>{email}</strong>. It expires in 10 minutes.",
+    "code": "6-digit code",
+    "submit": "Sign in",
+    "otherEmail": "Use a different email"
+  },
+  "order": {
+    "loadingVoucher": "Loading your voucher",
+    "voucher": "Booking voucher",
+    "booking": "Booking",
+    "qrNote": "Show this QR code at the dealership. It carries a signed token the dealer scans to check your booking. TEST MODE: no real money.",
+    "loading": "Loading your order",
+    "title": "Your order",
+    "confirmBy": "Confirm by",
+    "decline": "Decline this offer",
+    "confirmed": "Confirmed. Your final price is set when confirmations close; it can only be the same or lower.",
+    "confirmationsClose": "Confirmations close",
+    "finalPrice": "Final price",
+    "finalCash": "Final cash payable",
+    "cancelBooking": "Cancel my booking"
+  },
+  "myCars": {
+    "seePools": "See pools for my cars",
+    "noneTicked": "(none ticked = any)",
+    "loading": "Loading your cars",
+    "emptyTitle": "No saved cars yet",
+    "emptyBody": "Open a car and choose “Save this car”. We then show pools in your city and month that you can join.",
+    "browse": "Browse cars",
+    "want": "What you want",
+    "chooseCity": "Choose a city",
+    "chooseMonth": "Choose a month",
+    "coloursNote": "Shared with dealers when they quote stock; colours do not filter pools.",
+    "save": "Save preferences",
+    "saved": "Preferences saved. Suggestions updated.",
+    "poolsTitle": "Pools for your cars",
+    "finding": "Finding pools",
+    "openPool": "Open pool",
+    "viewJoin": "View and join",
+    "pageTitle": "My cars",
+    "metaTitle": "My cars · Convoy"
+  },
+  "orders": {
+    "title": "My orders",
+    "none": "No orders yet. An order appears when you accept an offer and the decision closes."
   }
 }

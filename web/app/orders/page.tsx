@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -8,12 +9,13 @@ import { gatewayGet } from '@/lib/gateway';
 type OrderRow = Schemas['order']['OrderRow'];
 
 export default async function OrdersPage() {
+  const t = await getTranslations('orders');
   const { data } = await gatewayGet<{ orders: OrderRow[] }>('/me/orders');
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-extrabold">My orders</h1>
+      <h1 className="text-2xl font-extrabold">{t('title')}</h1>
       {!data || data.orders.length === 0 ? (
-        <Card><p>No orders yet. An order appears when you accept an offer and the decision closes.</p></Card>
+        <Card><p>{t('none')}</p></Card>
       ) : (
         <ul className="flex flex-col gap-3">
           {data.orders.map((o) => (

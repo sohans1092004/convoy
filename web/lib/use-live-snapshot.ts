@@ -52,6 +52,7 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
   const qc = useQueryClient();
   const [status, setStatus] = React.useState<LiveStatus>('reconnecting');
   const loadRef = React.useRef(load);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref: the query function always calls the current loader
   loadRef.current = load;
   const query = useQuery<T, ApiError>({
     queryKey: key,
@@ -65,6 +66,7 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
 
   React.useEffect(() => {
     if (!streamUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no stream URL means polling only; reflect that state at once
       setStatus('delayed');
       return;
     }

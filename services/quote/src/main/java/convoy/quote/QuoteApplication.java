@@ -97,9 +97,34 @@ public class QuoteApplication {
         return ResponseEntity.ok().eTag("\"" + q.get("version") + "\"").body(convoy.platform.web.Dto.as(q, Api.DealerQuote.class));
     }
 
-    @PostMapping({"/dealer/quotes/{id}/revisions", "/dealer/quotes/{id}/withdraw", "/dealer/quotes/{id}/cancel"})
-    public void notBuilt(@PathVariable UUID id) {
-        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "Revisions, withdrawal and cancellation (QUO-T03/T05/T06) are specified but not built in Phase 1.");
+    /** E068 (ranking-rule.md section 3): own rank per variant only. */
+    @GetMapping("/dealer/quotes/{id}/rank")
+    public Api.Ranks rank(@PathVariable UUID id) {
+        return convoy.platform.web.Dto.as(quotes.ownRank(id), Api.Ranks.class);
+    }
+
+    public record Reason(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 500) String reason) {}
+
+    /** E064 (QUO-T03): a full new draft becomes version n+1. */
+    @PostMapping("/dealer/quotes/{id}/revisions")
+    @Idempotent
+    public Api.DealerQuote revise(@PathVariable UUID id, @RequestBody Api.QuoteDraft draft, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(quotes.revise(id, convoy.platform.web.Dto.map(draft), version(ifMatch)), Api.DealerQuote.class);
+    }
+
+    /** E065 (QUO-T05). */
+    @PostMapping("/dealer/quotes/{id}/withdraw")
+    @Idempotent
+    public Api.DealerQuote withdraw(@PathVariable UUID id, @jakarta.validation.Valid @RequestBody Reason body, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(quotes.withdraw(id, body.reason(), version(ifMatch)), Api.DealerQuote.class);
+    }
+
+    /** E066 (QUO-T06): dealer_admin only. */
+    @PostMapping("/dealer/quotes/{id}/cancel")
+    @convoy.platform.security.RequiresRole("dealer_admin")
+    @Idempotent
+    public Api.DealerQuote cancel(@PathVariable UUID id, @jakarta.validation.Valid @RequestBody Reason body, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(quotes.cancel(id, body.reason(), version(ifMatch)), Api.DealerQuote.class);
     }
 
     // ------------------------------------------------------------------ internal (E073)
@@ -113,13 +138,16 @@ public class QuoteApplication {
 
     // ------------------------------------------------------------------ buyer comparison (E069, E070)
 
-    /** Live quotes of a pool for its committed members: ceiling price plus a labelled projection (AMENDMENT-005). */
+    /**
+     * Quotes of a pool for its committed members: ceiling price plus a labelled projection (AMENDMENT-005). Sealed (P3.B): only
+     * FINAL quotes, i.e. after the final round has closed; while a round is open no buyer can read any quote's contents.
+     */
     @GetMapping("/pools/{poolId}/quotes")
     public Api.Offers compare(@PathVariable UUID poolId) {
         UUID buyer = Caller.current().require("buyer").userId();
         if (quotes.member(poolId, buyer).isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "Offers are shown to committed members of this pool.");
         List<Map<String, Object>> out = new ArrayList<>();
-        for (Map<String, Object> q : quotes.jdbc().queryForList("select id from quotes where pool_id = ? and state in ('SUBMITTED', 'REVISED', 'FINAL') order by submitted_at", poolId)) {
+        for (Map<String, Object> q : quotes.jdbc().queryForList("select id from quotes where pool_id = ? and state = 'FINAL' order by submitted_at", poolId)) {
             out.add(buyerView(poolId, (UUID) q.get("id")));
         }
         return convoy.platform.web.Dto.as(Map.of("pool_id", poolId.toString(), "quotes", out, "ranking_rule", "Cash payable at the ceiling price for mandatory items and baseline insurance (ranking-rule.md)."), Api.Offers.class);
@@ -135,7 +163,7 @@ public class QuoteApplication {
     @SuppressWarnings("unchecked")
     Map<String, Object> buyerView(UUID poolId, UUID quoteId) {
         List<Map<String, Object>> rs = quotes.jdbc().queryForList("select q.*, coalesce(c.accepted, 0) as accepted, coalesce(c.confirmed, 0) as confirmed from quotes q "
-                + "left join count_replica c on c.pool_id = q.pool_id and c.quote_id = q.id where q.id = ? and q.pool_id = ? and q.state in ('SUBMITTED', 'REVISED', 'FINAL')", quoteId, poolId);
+                + "left join count_replica c on c.pool_id = q.pool_id and c.quote_id = q.id where q.id = ? and q.pool_id = ? and q.state = 'FINAL'", quoteId, poolId);
         if (rs.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such offer.");
         Map<String, Object> q = rs.get(0);
         Map<String, Object> ver = quotes.jdbc().queryForMap("select inputs::text as inputs, snapshots::text as snapshots, snapshot_sha256, committed_at from quote_versions "

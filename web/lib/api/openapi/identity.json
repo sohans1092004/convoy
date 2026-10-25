@@ -45,6 +45,36 @@
         }
       }
     },
+    "/staff-invites/{token}/accept": {
+      "post": {
+        "tags": [
+          "invite-controller"
+        ],
+        "operationId": "accept",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMembership"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/sessions/validate": {
       "post": {
         "tags": [
@@ -128,6 +158,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ServiceToken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealerships/{id}/staff/invites": {
+      "post": {
+        "tags": [
+          "invite-controller"
+        ],
+        "operationId": "invite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Invite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffInvite"
                 }
               }
             }
@@ -452,6 +523,20 @@
           "purpose"
         ]
       },
+      "StaffMembership": {
+        "properties": {
+          "dealership_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dealership_id",
+          "role"
+        ]
+      },
       "ValidateBody": {
         "properties": {
           "session_id": {
@@ -587,6 +672,42 @@
           "expires_in",
           "scope",
           "token_type"
+        ]
+      },
+      "Invite": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "dealer_staff|dealer_admin"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ]
+      },
+      "StaffInvite": {
+        "properties": {
+          "invite_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expires_at",
+          "invite_id",
+          "role"
         ]
       },
       "Register": {

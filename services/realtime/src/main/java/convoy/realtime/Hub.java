@@ -120,6 +120,34 @@ public class Hub implements MessageListener {
         }
     }
 
+    /** E122: adjust the pool's quote count (Redis) and tell its buyers the new number: nothing else about the quotes. */
+    void quoteCount(String poolId, int delta, Instant occurredAt) {
+        long n;
+        try {
+            Long v = redis.opsForValue().increment("quotes:count:" + poolId, delta);
+            n = v == null ? 0 : Math.max(0, v);
+        } catch (RuntimeException e) {
+            redisFailures.increment();
+            return; // buyers see the count on their next snapshot; the number is a hint, never the truth
+        }
+        publish("quotes", poolId, occurredAt.toEpochMilli(), "QuoteCountChanged", occurredAt, Map.of("pool_id", poolId, "quote_count", n));
+    }
+
+    long quoteCountOf(String poolId) {
+        try {
+            String v = redis.opsForValue().get("quotes:count:" + poolId);
+            return v == null ? 0 : Math.max(0, Long.parseLong(v));
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /** E122: the final round closed: buyers may load the full comparison now (the quote API serves FINAL quotes only). */
+    void comparisonReady(String poolId, Long validQuoteCount, Instant occurredAt) {
+        publish("quotes", poolId, occurredAt.toEpochMilli(), "ComparisonReady", occurredAt,
+                Map.of("pool_id", poolId, "quote_count", validQuoteCount == null ? 0 : validQuoteCount, "comparison_ready", true));
+    }
+
     void closeSession(String sessionHash) {
         for (Connection c : all()) if (sessionHash.equals(c.sessionHash)) c.close("session revoked");
     }
@@ -141,7 +169,7 @@ public class Hub implements MessageListener {
         Map<String, Object> out = new LinkedHashMap<>(m);
         out.put("server_time", Instant.now().toString());
         String data = write(out);
-        Connection.Msg msg = Boolean.TRUE.equals(m.get("resync")) ? new Connection.Msg("resync", null, data) : new Connection.Msg("pool.changed", key + ":" + version, data);
+        Connection.Msg msg = Boolean.TRUE.equals(m.get("resync")) ? new Connection.Msg("resync", null, data) : new Connection.Msg(m.get("aggregate") + ".changed", key + ":" + version, data); // pool.changed, dealer.changed
         Duration lag = Duration.between(Instant.parse((String) m.get("occurred_at")), Instant.now());
         for (Connection c : cs) {
             if (c.offer(msg)) {

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/refs -- remembers the first ruleset seen to flag a recalculation; reading this ref during render is intentional */
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';

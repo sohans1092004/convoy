@@ -20,7 +20,9 @@ public final class Api {
 
     public record Insurance(@Nullable Long odPaise, @Nullable Long tpPaise, @Nullable Long gstPaise, @Nullable Boolean binding, @Nullable DeclaredCover declaredCover) {}
 
-    public record Stock(Long units, @Nullable List<String> colours, @Nullable String deliveryDate) {}
+    /** A stock claim; evidence is DEALER_CONFIRMED on submitted versions (the dealer's own statement). */
+    public record Stock(Long units, @Nullable List<String> colours, @Nullable String deliveryDate,
+                        @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String evidence) {}
 
     public record DraftLine(@Nullable String variantId, @Nullable Long exShowroomPaise, @Nullable Long registrationPaise, @Nullable Insurance insurance, @Nullable List<Item> insuranceAddons,
                             @Nullable List<Item> fees, @Nullable List<Item> accessories, @Nullable Item extendedWarranty, @Nullable List<Item> otherCharges, @Nullable Stock stock) {}
@@ -46,6 +48,11 @@ public final class Api {
                           String rulesetVersion) {}
 
     public record Inbox(List<Request> requests) {}
+
+    /** E068: exactly these fields (AZ-RNK-01..03: nothing about competitors). */
+    public record Rank(String variantId, int rank, int ofN, String ruleVersion, String computedAt) {}
+
+    public record Ranks(String quoteId, List<Rank> ranks) {}
 
     // ---- internal (E073)
 

@@ -1,0 +1,32 @@
+[
+  {
+    "email": "sim1@convoy.test",
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d002",
+    "strategy": "aggressive",
+    "max_discount_bp": 300,
+    "inventory": [
+      { "variant_code": "swift-lxi-mt", "colour": "White", "quantity": 6, "delivery_days": 10 },
+      { "variant_code": "brezza-vxi-at", "colour": "Grey", "quantity": 4, "delivery_days": 12 }
+    ]
+  },
+  {
+    "email": "sim2@convoy.test",
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d003",
+    "strategy": "misprices_addon",
+    "max_discount_bp": 200,
+    "addon_price_paise": 600000,
+    "inventory": [
+      { "variant_code": "swift-lxi-mt", "colour": "Red", "quantity": 3, "delivery_days": 14 },
+      { "variant_code": "brezza-vxi-at", "colour": "White", "quantity": 2, "delivery_days": 15 }
+    ]
+  },
+  {
+    "email": "sim3@convoy.test",
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d004",
+    "strategy": "conservative",
+    "max_discount_bp": 150,
+    "inventory": [
+      { "variant_code": "swift-lxi-mt", "colour": "Blue", "quantity": 2, "delivery_days": 20 }
+    ]
+  }
+]

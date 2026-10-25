@@ -86,9 +86,45 @@ public class RealtimeApplication {
         Subscriptions s = new Subscriptions();
         for (Class<? extends EventPayload> type : EventTypes.ALL.values()) {
             if (!"pool".equals(constant(type, "AGGREGATE"))) continue;
+            if (type == convoy.contracts.events.QuoteRoundOpened.class) continue; // registered below: pool stream + dealer streams (E121)
+            if (type == convoy.contracts.events.RoundClosed.class) continue; // registered below: pool stream + buyer streams (E122)
             s.on((Class) type, (Subscriptions.Handler<EventPayload>) (Envelope e, EventPayload p) -> hub.publish("pool", e.aggregateId().toString(),
                     e.aggregateVersion(), e.eventType(), Instant.parse(e.occurredAt()), delta(json.convertValue(p, Map.class))));
         }
+        // E121 (P3.C): a dealer's own rank (never competitors') and the rounds it is invited to.
+        s.on(convoy.contracts.events.RankChanged.class, (Envelope e, convoy.contracts.events.RankChanged p) -> {
+            Map<String, Object> d = new LinkedHashMap<>();
+            d.put("quote_id", p.quoteId());
+            d.put("pool_id", p.poolId());
+            d.put("variant_id", p.variantId());
+            d.put("rank", p.rank());
+            d.put("of_n", p.ofN());
+            d.put("rule_version", p.ruleVersion());
+            hub.publish("dealer", p.dealershipId(), Instant.parse(e.occurredAt()).toEpochMilli(), e.eventType(), Instant.parse(e.occurredAt()), d);
+        });
+        s.on(convoy.contracts.events.QuoteRoundOpened.class, (Envelope e, convoy.contracts.events.QuoteRoundOpened p) -> {
+            hub.publish("pool", e.aggregateId().toString(), e.aggregateVersion(), e.eventType(), Instant.parse(e.occurredAt()), delta(json.convertValue(p, Map.class)));
+            for (String dealership : p.invitedDealershipIds()) {
+                Map<String, Object> d = new LinkedHashMap<>();
+                d.put("pool_id", p.poolId());
+                d.put("round_id", p.roundId());
+                d.put("round_no", p.roundNo());
+                d.put("kind", p.kind());
+                d.put("deadline", p.deadline().toString());
+                hub.publish("dealer", dealership, Instant.parse(e.occurredAt()).toEpochMilli(), e.eventType(), Instant.parse(e.occurredAt()), d);
+            }
+        });
+        // E122 (P3.E): buyers of a pool get the number of quotes during the round (never their contents) and, when the final
+        // round closes, a signal to load the full comparison. Counts live in Redis; the inbox applies each event once.
+        s.on(convoy.contracts.events.QuoteSubmitted.class, (Envelope e, convoy.contracts.events.QuoteSubmitted p) ->
+                hub.quoteCount(p.poolId(), 1, Instant.parse(e.occurredAt())));
+        s.on(convoy.contracts.events.QuoteWithdrawn.class, (Envelope e, convoy.contracts.events.QuoteWithdrawn p) -> {
+            if (!Boolean.TRUE.equals(p.afterFinal())) hub.quoteCount(p.poolId(), -1, Instant.parse(e.occurredAt()));
+        });
+        s.on(convoy.contracts.events.RoundClosed.class, (Envelope e, convoy.contracts.events.RoundClosed p) -> {
+            hub.publish("pool", e.aggregateId().toString(), e.aggregateVersion(), e.eventType(), Instant.parse(e.occurredAt()), delta(json.convertValue(p, Map.class)));
+            if ("FINAL".equals(p.kind())) hub.comparisonReady(p.poolId(), p.validQuoteCount(), Instant.parse(e.occurredAt()));
+        });
         // AMENDMENT-008 (Q-044): logout or staff revocation closes the session's streams at once (the 15 s re-check is the fallback).
         s.on(convoy.contracts.events.SessionRevoked.class, (Envelope e, convoy.contracts.events.SessionRevoked p) -> hub.revokeSession(p.sessionIdHash()));
         // A gap that outlives 5 min: take the owner's current version, and tell every client to refetch its snapshot.

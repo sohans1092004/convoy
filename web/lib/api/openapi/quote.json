@@ -54,6 +54,55 @@
         }
       }
     },
+    "/dealer/quotes/{id}/withdraw": {
+      "post": {
+        "tags": [
+          "quote-application"
+        ],
+        "operationId": "withdraw",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reason"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerQuote"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dealer/quotes/{id}/submit": {
       "post": {
         "tags": [
@@ -93,60 +142,12 @@
         }
       }
     },
-    "/dealer/quotes/{id}/cancel": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "notBuilt",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/dealer/quotes/{id}/withdraw": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "notBuilt_1",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/dealer/quotes/{id}/revisions": {
       "post": {
         "tags": [
           "quote-application"
         ],
-        "operationId": "notBuilt_2",
+        "operationId": "revise",
         "parameters": [
           {
             "name": "id",
@@ -156,11 +157,85 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteDraft"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerQuote"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/quotes/{id}/cancel": {
+      "post": {
+        "tags": [
+          "quote-application"
+        ],
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reason"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerQuote"
+                }
+              }
+            }
           }
         }
       }
@@ -322,6 +397,37 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/DealerQuote"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/quotes/{id}/rank": {
+      "get": {
+        "tags": [
+          "quote-application"
+        ],
+        "operationId": "rank",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ranks"
                 }
               }
             }
@@ -651,6 +757,12 @@
               "string",
               "null"
             ]
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -813,6 +925,18 @@
           "output",
           "sha256",
           "tier_index"
+        ]
+      },
+      "Reason": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "Ceiling": {
@@ -1057,6 +1181,51 @@
           "quote_id",
           "state",
           "variant_ids"
+        ]
+      },
+      "Rank": {
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "of_n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rule_version": {
+            "type": "string"
+          },
+          "computed_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "computed_at",
+          "of_n",
+          "rank",
+          "rule_version",
+          "variant_id"
+        ]
+      },
+      "Ranks": {
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "ranks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Rank"
+            }
+          }
+        },
+        "required": [
+          "quote_id",
+          "ranks"
         ]
       },
       "Inbox": {
