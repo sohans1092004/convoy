@@ -31,7 +31,7 @@ public record ConvoyProperties(
         issuers = issuers == null ? Map.of() : issuers;
         publicPaths = publicPaths == null ? List.of("/actuator/health/**", "/actuator/health", "/v3/api-docs/**") : publicPaths;
         aws = aws == null ? new Aws(null, "ap-south-1") : aws;
-        messaging = messaging == null ? new Messaging(200, 1, true, null) : messaging;
+        messaging = messaging == null ? new Messaging(0, 0, null, null, 0) : messaging;
     }
 
     public record Aws(String endpoint, String region) {}
@@ -41,10 +41,16 @@ public record ConvoyProperties(
      * @param waitSeconds      SQS long-poll wait (short locally for a snappy demo)
      * @param enabled          false in tests that have no broker
      * @param gapSnapshotAfter a FULL subscriber's version gap older than this falls back to the owner snapshot (catalogue: 5 min)
+     * @param visibilityTimeoutSeconds SQS visibility timeout of the consumer queues (30 s; failure tests shorten it)
      */
-    public record Messaging(long relayIntervalMs, int waitSeconds, boolean enabled, java.time.Duration gapSnapshotAfter) {
+    public record Messaging(long relayIntervalMs, int waitSeconds, Boolean enabled, java.time.Duration gapSnapshotAfter, int visibilityTimeoutSeconds) {
         public Messaging {
             gapSnapshotAfter = gapSnapshotAfter == null ? java.time.Duration.ofMinutes(5) : gapSnapshotAfter;
+            visibilityTimeoutSeconds = visibilityTimeoutSeconds <= 0 ? 30 : visibilityTimeoutSeconds;
+            // Setting any one messaging property binds the whole record: unset fields keep their defaults, never 0 / false.
+            relayIntervalMs = relayIntervalMs <= 0 ? 200 : relayIntervalMs;
+            waitSeconds = waitSeconds <= 0 ? 1 : waitSeconds;
+            enabled = enabled == null || enabled;
         }
     }
 }

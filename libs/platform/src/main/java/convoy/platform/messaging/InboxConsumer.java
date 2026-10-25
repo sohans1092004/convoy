@@ -27,6 +27,8 @@ import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
  * after commit. A handler exception rolls back and leaves the message for redelivery (DLQ after 5).
  */
 public class InboxConsumer implements SmartLifecycle {
+    /** Fault point (MF-3): the transaction committed, the SQS message was not deleted. */
+    public static final String CRASH_AFTER_COMMIT_BEFORE_ACK = "consumer.afterCommitBeforeAck";
     private static final Logger log = LoggerFactory.getLogger(InboxConsumer.class);
     private final String consumer;
     private final SqsClient sqs;
@@ -37,6 +39,7 @@ public class InboxConsumer implements SmartLifecycle {
     private final Subscriptions subscriptions;
     private final int waitSeconds;
     private final java.time.Duration gapSnapshotAfter;
+    private final int pollers;
     private final Map<String, Subscriptions.Subscription<?>> byType;
     private final List<Thread> threads = new ArrayList<>();
     private volatile boolean running;
@@ -45,6 +48,12 @@ public class InboxConsumer implements SmartLifecycle {
 
     public InboxConsumer(String consumer, SqsClient sqs, Topology topology, JdbcTemplate jdbc, TransactionTemplate tx,
                          ObjectMapper json, Subscriptions subscriptions, int waitSeconds, java.time.Duration gapSnapshotAfter) {
+        this(consumer, sqs, topology, jdbc, tx, json, subscriptions, waitSeconds, gapSnapshotAfter, 4);
+    }
+
+    public InboxConsumer(String consumer, SqsClient sqs, Topology topology, JdbcTemplate jdbc, TransactionTemplate tx,
+                         ObjectMapper json, Subscriptions subscriptions, int waitSeconds, java.time.Duration gapSnapshotAfter, int pollers) {
+        this.pollers = Math.max(1, pollers);
         this.consumer = consumer;
         this.sqs = sqs;
         this.topology = topology;
@@ -79,8 +88,8 @@ public class InboxConsumer implements SmartLifecycle {
             Subscriptions.Subscription<?> first = subs.get(0);
             String url = topology.ensureQueue(consumer, first.producer(), first.fifoTopic(), first.fifoQueue(),
                     subs.stream().map(Subscriptions.Subscription::eventType).toList());
-            Thread t = Thread.ofPlatform().daemon().name("inbox-" + k).start(() -> poll(url));
-            threads.add(t);
+            // Several pollers per queue. Safe on FIFO queues too: SQS never hands out a group's next message while one is in flight.
+            for (int i = 0; i < pollers; i++) threads.add(Thread.ofPlatform().daemon().name("inbox-" + k + "-" + i).start(() -> poll(url)));
         });
         threads.add(Thread.ofPlatform().daemon().name("inbox-parked-" + consumer).start(() -> {
             while (running) {
@@ -98,17 +107,26 @@ public class InboxConsumer implements SmartLifecycle {
         while (running) {
             try {
                 List<Message> msgs = sqs.receiveMessage(b -> b.queueUrl(url).maxNumberOfMessages(10).waitTimeSeconds(waitSeconds)
-                        .messageAttributeNames("All")).messages();
+                        .messageAttributeNames("All").messageSystemAttributeNamesWithStrings("MessageGroupId")).messages();
+                java.util.Set<String> failedGroups = new java.util.HashSet<>();
+                List<software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry> done = new ArrayList<>();
                 for (Message m : msgs) {
+                    String group = m.attributesAsStrings().get("MessageGroupId"); // null on standard queues
+                    if (group != null && failedGroups.contains(group)) continue; // keep this group's order: it comes back after the failed one
                     try {
                         MessageAttributeValue tp = m.messageAttributes().get(Tracing.ATTR);
                         handle(m.body(), tp == null ? null : tp.stringValue());
-                        sqs.deleteMessage(b -> b.queueUrl(url).receiptHandle(m.receiptHandle()));
+                        convoy.platform.Faults.hit(CRASH_AFTER_COMMIT_BEFORE_ACK);
+                        done.add(software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry.builder()
+                                .id(String.valueOf(done.size())).receiptHandle(m.receiptHandle()).build());
                     } catch (RuntimeException e) {
+                        // Redelivered after the visibility timeout (DLQ after 5). Only its own FIFO group waits; every other message goes on.
                         log.warn("handler failed for message {}: {}", m.messageId(), e.toString());
-                        break; // keep order within this batch; the message is redelivered after the visibility timeout (DLQ after 5)
+                        if (group != null) failedGroups.add(group);
                     }
                 }
+                // One acknowledgement per batch; a message whose delete is lost is redelivered and rejected by the inbox.
+                if (!done.isEmpty()) sqs.deleteMessageBatch(b -> b.queueUrl(url).entries(done));
             } catch (RuntimeException e) {
                 if (running) {
                     log.warn("receive on {} failed: {}", url, e.toString());
@@ -166,6 +184,7 @@ public class InboxConsumer implements SmartLifecycle {
                     return;
                 }
                 if (!versionOk(env, sub.aggregate(), Subscriptions.Kind.of(consumer, sub.aggregate()))) return;
+                convoy.platform.Faults.hit("consumer.handle:" + env.eventId()); // MF-5: a handler that fails for this event until fixed
                 EventPayload payload = (EventPayload) json.convertValue(env.payload(), sub.type());
                 sub.handler().handle(env, payload);
                 applied.incrementAndGet();
@@ -186,9 +205,12 @@ public class InboxConsumer implements SmartLifecycle {
      * (the message comes back after the visibility timeout); a gap older than gapSnapshotAfter loads the owner snapshot.
      */
     boolean versionOk(Envelope env, String aggregate, Subscriptions.Kind kind) {
-        List<Long> last = jdbc.queryForList("select last_version from aggregate_versions where consumer = ? and producer = ? and aggregate_id = ? for update",
+        // Placeholder (0 = nothing applied yet) so concurrent pollers always find a row to lock and serialise on it.
+        jdbc.update("insert into aggregate_versions(consumer, producer, aggregate_id, last_version) values (?, ?, ?, 0) on conflict do nothing",
+                consumer, env.producer(), env.aggregateId());
+        long prev = jdbc.queryForObject("select last_version from aggregate_versions where consumer = ? and producer = ? and aggregate_id = ? for update",
                 Long.class, consumer, env.producer(), env.aggregateId());
-        long prev = last.isEmpty() ? 0 : last.get(0);
+        List<Long> last = prev == 0 ? List.of() : List.of(prev);
         if (kind == Subscriptions.Kind.FULL && !last.isEmpty() && env.aggregateVersion() > prev + 1) {
             Subscriptions.SnapshotLoader loader = subscriptions.snapshotLoader(aggregate);
             Boolean overdue = jdbc.queryForObject("select min(parked_at) < clock_timestamp() - make_interval(secs => ?) from parked_events "
@@ -222,7 +244,8 @@ public class InboxConsumer implements SmartLifecycle {
 
     private void setLast(Envelope env, long version) {
         jdbc.update("insert into aggregate_versions(consumer, producer, aggregate_id, last_version) values (?, ?, ?, ?) "
-                + "on conflict (consumer, producer, aggregate_id) do update set last_version = excluded.last_version", consumer, env.producer(), env.aggregateId(), version);
+                + "on conflict (consumer, producer, aggregate_id) do update set last_version = greatest(aggregate_versions.last_version, excluded.last_version)",
+                consumer, env.producer(), env.aggregateId(), version);
     }
 
     private static void sleep(long ms) {
@@ -241,4 +264,6 @@ public class InboxConsumer implements SmartLifecycle {
 
     @Override
     public boolean isRunning() { return running; }
+
+    public String consumer() { return consumer; }
 }

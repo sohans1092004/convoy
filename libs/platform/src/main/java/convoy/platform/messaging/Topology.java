@@ -23,11 +23,49 @@ public class Topology {
     private final SqsClient sqs;
     private final ObjectMapper json;
     private final Map<String, String> topicArns = new ConcurrentHashMap<>();
+    /** DLQ url -> source queue url, for every queue this service consumes (depth alarm, redrive). */
+    private final Map<String, String> dlqs = new ConcurrentHashMap<>();
+    private final int visibilitySeconds;
 
-    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json) {
+    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json) { this(sns, sqs, json, 30); }
+
+    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json, int visibilitySeconds) {
         this.sns = sns;
         this.sqs = sqs;
         this.json = json;
+        this.visibilitySeconds = visibilitySeconds;
+    }
+
+    public Map<String, String> dlqs() { return dlqs; }
+
+    /** Approximate number of messages waiting in a queue (SQS attribute; eventually consistent). */
+    public int depth(String queueUrl) {
+        return Integer.parseInt(sqs.getQueueAttributes(b -> b.queueUrl(queueUrl).attributeNames(QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES))
+                .attributes().getOrDefault(QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES, "0"));
+    }
+
+    /**
+     * Runbook redrive (docs/runbooks/dlq-redrive.md): move every message from a DLQ back to its source queue, after the
+     * cause is fixed. Consumers dedupe on event_id, so a message that was in fact applied is not applied twice.
+     */
+    public int redrive(String dlqUrl) {
+        String source = dlqs.get(dlqUrl);
+        if (source == null) throw new IllegalArgumentException("not a DLQ of this service: " + dlqUrl);
+        boolean fifo = dlqUrl.endsWith(".fifo");
+        int moved = 0;
+        while (true) {
+            var msgs = sqs.receiveMessage(b -> b.queueUrl(dlqUrl).maxNumberOfMessages(10).waitTimeSeconds(1).messageAttributeNames("All")
+                    .messageSystemAttributeNamesWithStrings("MessageGroupId")).messages();
+            if (msgs.isEmpty()) return moved;
+            for (var m : msgs) {
+                sqs.sendMessage(b -> {
+                    b.queueUrl(source).messageBody(m.body()).messageAttributes(m.messageAttributes());
+                    if (fifo) b.messageGroupId(m.attributesAsStrings().getOrDefault("MessageGroupId", "redrive")).messageDeduplicationId(m.messageId() + "-redrive");
+                });
+                sqs.deleteMessage(b -> b.queueUrl(dlqUrl).receiptHandle(m.receiptHandle()));
+                moved++;
+            }
+        }
     }
 
     public static String topicName(String producer, boolean fifo) {
@@ -62,7 +100,7 @@ public class Topology {
         String topicArn = topicArn(producer, fifoTopic);
         Map<QueueAttributeName, String> attrs = new HashMap<>();
         if (fifo) attrs.put(QueueAttributeName.FIFO_QUEUE, "true");
-        attrs.put(QueueAttributeName.VISIBILITY_TIMEOUT, "30");
+        attrs.put(QueueAttributeName.VISIBILITY_TIMEOUT, String.valueOf(visibilitySeconds));
         // Fixed key order: an existing queue is compared attribute by attribute on every start.
         attrs.put(QueueAttributeName.REDRIVE_POLICY, "{\"deadLetterTargetArn\":\"" + dlqArn + "\",\"maxReceiveCount\":\"5\"}");
         String url;
@@ -77,6 +115,7 @@ public class Topology {
             sqs.setQueueAttributes(b -> b.queueUrl(u).attributes(mutable));
         }
         String queueUrl = url;
+        dlqs.put(dlqUrl, queueUrl);
         String arn = sqs.getQueueAttributes(b -> b.queueUrl(queueUrl).attributeNames(QueueAttributeName.QUEUE_ARN))
                 .attributes().get(QueueAttributeName.QUEUE_ARN);
         Map<String, Object> policy = Map.of("Version", "2012-10-17", "Statement", List.of(Map.of(

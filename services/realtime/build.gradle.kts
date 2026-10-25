@@ -4,6 +4,7 @@ dependencies {
     implementation(project(":libs:platform"))
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     testImplementation(testFixtures(project(":libs:platform")))
+    testImplementation("org.testcontainers:localstack")
 }
 
 tasks.bootJar { archiveFileName.set("realtime.jar") }

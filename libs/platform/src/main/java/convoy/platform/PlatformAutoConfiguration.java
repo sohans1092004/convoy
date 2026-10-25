@@ -203,7 +203,21 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
 
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
-    Topology topology(SnsClient sns, SqsClient sqs, ObjectMapper json) { return new Topology(sns, sqs, json); }
+    Topology topology(SnsClient sns, SqsClient sqs, ObjectMapper json, ConvoyProperties p) {
+        return new Topology(sns, sqs, json, p.messaging().visibilityTimeoutSeconds());
+    }
+
+    /**
+     * Consumer and DLQ metrics (messaging-failure-tests.md): inbox_duplicates_total, stale_events_total, parked_events_total,
+     * snapshot_fallbacks_total per consumer; dlq_depth per DLQ, checked every 30 s with an ALARM DLQ_NOT_EMPTY log line
+     * (a CloudWatch alarm on ApproximateNumberOfMessagesVisible in AWS).
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
+    convoy.platform.messaging.MessagingMetrics messagingMetrics(ObjectProvider<InboxConsumer> consumer, Topology topology,
+            ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters, TaskScheduler scheduler) {
+        return new convoy.platform.messaging.MessagingMetrics(consumer.getIfAvailable(), topology, meters.getIfAvailable(), scheduler);
+    }
 
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
