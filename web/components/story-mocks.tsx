@@ -103,7 +103,7 @@ export function pool(over: Partial<Schemas['pool']['Pool']> = {}): Schemas['pool
 
 export const MEMBER: Schemas['pool']['Membership'] = {
   id: 'mem1', pool_id: 'p1', state: 'INTERESTED', current_payment_id: null, terms_version: null, accepted_quote_id: null, accepted_variant_id: null,
-  release_reason: null, version: 1,
+  release_reason: null, choice_deadline: null, version: 1,
 };
 
 export const problem = (status: number, code: string, detail: string) => ({ status, body: { status, code, detail, title: detail } });

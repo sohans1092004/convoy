@@ -64,22 +64,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/refunds/{id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["manualResolution"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/admin/refunds/{id}/resolve-manually": {
         parameters: {
             query?: never;
@@ -89,7 +73,23 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["manualResolution_1"];
+        post: operations["resolveManually"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refunds/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approveManual"];
         delete?: never;
         options?: never;
         head?: never;
@@ -120,6 +120,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["adminRefunds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reconciliation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reconciliationRuns"];
         put?: never;
         post?: never;
         delete?: never;
@@ -168,6 +184,18 @@ export interface components {
             failure_reason: string | null;
             razorpay_refund_id: string | null;
         };
+        ManualBody: {
+            evidence_ref: string;
+            note: string;
+        };
+        ManualRefund: {
+            id: string;
+            state: string;
+            manual: boolean;
+            requested_by: string | null;
+            approved_by: string | null;
+            evidence_ref: string | null;
+        };
         QueuedRefund: {
             id: string;
             payment_id: string;
@@ -183,9 +211,28 @@ export interface components {
             failure_reason: string | null;
             next_attempt_at: string;
             created_at: string;
+            requested_by: string | null;
         };
         RefundQueue: {
             refunds: components["schemas"]["QueuedRefund"][];
+        };
+        Mismatch: {
+            mismatch_class: string;
+            payment_id: string | null;
+            detail: string;
+        };
+        ReconciliationRun: {
+            id: string;
+            started_at: string;
+            finished_at: string | null;
+            /** Format: int32 */
+            checked: number;
+            /** Format: int32 */
+            mismatch_count: number;
+            mismatches: components["schemas"]["Mismatch"][];
+        };
+        ReconciliationRuns: {
+            runs: components["schemas"]["ReconciliationRun"][];
         };
     };
     responses: never;
@@ -291,7 +338,7 @@ export interface operations {
             };
         };
     };
-    manualResolution: {
+    resolveManually: {
         parameters: {
             query?: never;
             header?: never;
@@ -300,18 +347,24 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ManualRefund"];
+                };
             };
         };
     };
-    manualResolution_1: {
+    approveManual: {
         parameters: {
             query?: never;
             header?: never;
@@ -327,7 +380,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ManualRefund"];
+                };
             };
         };
     };
@@ -369,6 +424,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RefundQueue"];
+                };
+            };
+        };
+    };
+    reconciliationRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReconciliationRuns"];
                 };
             };
         };

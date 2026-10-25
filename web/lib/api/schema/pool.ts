@@ -180,11 +180,8 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        AcceptBody: {
-            /** Format: uuid */
-            quote_id: string;
-            /** Format: uuid */
-            variant_id: string;
+        ReroundChoiceBody: {
+            choice: string;
         };
         Membership: {
             id: string;
@@ -195,8 +192,15 @@ export interface components {
             accepted_quote_id: string | null;
             accepted_variant_id: string | null;
             release_reason: string | null;
+            choice_deadline: string | null;
             /** Format: int64 */
             version: number;
+        };
+        AcceptBody: {
+            /** Format: uuid */
+            quote_id: string;
+            /** Format: uuid */
+            variant_id: string;
         };
         Preferences: {
             city: string | null;
@@ -322,20 +326,28 @@ export interface operations {
     reroundChoice: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "If-Match"?: string;
+            };
             path: {
                 id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReroundChoiceBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["Membership"];
+                };
             };
         };
     };

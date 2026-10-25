@@ -9,7 +9,8 @@
     "signOut": "Sign out",
     "testMode": "TEST MODE: no real money",
     "saved": "My cars",
-    "account": "Account"
+    "account": "Account",
+    "admin": "Admin"
   },
   "home": {
     "title": "Buy the same car together, with prices you can check",
@@ -35,7 +36,9 @@
   "confirm": {
     "title": "Confirm at most {ceiling} (cash payable) — TEST MODE",
     "body": "You will never pay more than {ceiling}. If fewer buyers confirm than the dealer's minimum, this offer can't go ahead and your ₹999 test deposit is refunded (or, if the pool tries once more, you choose to keep your place). You can cancel after confirming and still get your ₹999 back.",
-    "drop": "If {nextMin}+ buyers confirm by {deadline} the price drops to {nextPrice}."
+    "drop": "If {nextMin}+ buyers confirm by {deadline} the price drops to {nextPrice}.",
+    "consent": "If your booking is issued, we share your name and email with this offer's dealer only, so they can arrange delivery. No other dealer gets them.",
+    "cta": "Confirm at most {ceiling}"
   },
   "closed": {
     "title": "This pool has closed",
@@ -198,7 +201,9 @@
       "none": "No stock held: cars are ordered after confirmation",
       "statement": "(the dealer's statement)",
       "statementWithDate": "(the dealer's statement, delivery from {date})"
-    }
+    },
+    "reliability": "{honoured} of {total} final offers honoured through delivery, last {days} days ({percent}%)",
+    "reliabilityNone": "No completed bookings in the last {days} days yet"
   },
   "signIn": {
     "title": "Sign in",
@@ -224,7 +229,17 @@
     "confirmationsClose": "Confirmations close",
     "finalPrice": "Final price",
     "finalCash": "Final cash payable",
-    "cancelBooking": "Cancel my booking"
+    "cancelBooking": "Cancel my booking",
+    "promised": "Promised delivery from {date}",
+    "loadFailed": "This order could not be loaded.",
+    "confirmedAtMost": "Confirmed at most {ceiling}",
+    "confirmedWhen": "Confirmed {at}. The final price is set when confirmations close on {close}.",
+    "ceilingWas": "Your ceiling was {ceiling}.",
+    "priceFell": "More buyers confirmed, so your price fell.",
+    "priceStayed": "The price stayed at your ceiling.",
+    "finalBreakdown": "Final price breakdown",
+    "ceilingBreakdown": "Breakdown at your ceiling",
+    "snapshot": "Snapshot {sha} · calculated {at}"
   },
   "myCars": {
     "seePools": "See pools for my cars",
@@ -249,5 +264,200 @@
   "orders": {
     "title": "My orders",
     "none": "No orders yet. An order appears when you accept an offer and the decision closes."
+  },
+  "timeline": {
+    "title": "Where your order is",
+    "step": {
+      "accepted": "Offer accepted",
+      "confirmation": "Confirmation at your ceiling",
+      "deposit": "Deposit",
+      "issued": "Booking issued",
+      "dealerConfirmed": "Dealer confirmed the booking",
+      "scheduled": "Delivery scheduled",
+      "outcome": "Delivered or cancelled"
+    },
+    "deposit": {
+      "INITIATED": "payment started",
+      "PENDING": "confirming with Razorpay",
+      "CAPTURED": "held until the offer resolves",
+      "HELD_FOR_BOOKING": "held for your booking",
+      "REFUND_PENDING": "refund on its way",
+      "REFUNDED": "refunded in full",
+      "RELEASED": "returned in full after delivery",
+      "FAILED": "payment failed",
+      "VOIDED_UNPAID": "not paid"
+    },
+    "status": {
+      "done": "done",
+      "current": "in progress",
+      "upcoming": "not yet",
+      "ended": "did not happen"
+    },
+    "next": {
+      "confirm": "Next: confirm at your ceiling (or decline) before the deadline.",
+      "waitResolution": "Next: confirmations close; your final price is set then and can only fall.",
+      "waitVoucher": "Next: your deposit is being held and the stock reserved. Your voucher appears in a few seconds.",
+      "waitDealerConfirm": "Next: the dealer confirms your booking within 48 hours.",
+      "waitDeliveryDate": "Next: the dealer sets a delivery date.",
+      "openDispute": "Your delivery is overdue. You can open a case and we will follow up with the dealer.",
+      "confirmDelivery": "Next: when you have your car, confirm delivery. That returns your deposit.",
+      "review": "Delivered. You can review the dealer.",
+      "refunded": "This order has ended. Your deposit is refunded in full.",
+      "none": "Nothing to do right now."
+    }
+  },
+  "lifecycle": {
+    "disputeCategory": "What went wrong?",
+    "disputeWhat": "Tell us what happened",
+    "openDispute": "Open a case",
+    "category": {
+      "NOT_DELIVERED": "Car not delivered",
+      "DELIVERY_OVERDUE": "Delivery overdue",
+      "PRICE_NOT_HONOURED": "Price not honoured",
+      "STOCK_UNAVAILABLE": "Stock unavailable",
+      "DEALER_CANCELLED": "Dealer cancelled",
+      "DEALER_NOT_HONOURED": "Dealer did not honour the booking",
+      "WRONG_VARIANT": "Wrong car or variant",
+      "CHARGES_DISPUTE": "Unexpected charges",
+      "REFUND_NOT_RECEIVED": "Refund not received",
+      "OTHER": "Something else"
+    },
+    "reviewRating": "Your rating (1 to 5)",
+    "reviewText": "Your review (optional)",
+    "postReview": "Post review",
+    "reviewPosted": "Thank you. Your review is posted.",
+    "declined": "You declined. Your ₹999 test deposit is being refunded.",
+    "deliveryOn": "Delivery on {date} ({slot})",
+    "deliveryBody": "Show your voucher at the dealership. When the car is handed over, confirm delivery here. Your ₹999 test deposit is then returned in full.",
+    "confirmDelivery": "I have my car: confirm delivery",
+    "deliveredDone": "Delivery confirmed. Your deposit is being returned.",
+    "overdue": "Your delivery is more than 7 days past the promised date ({date}). Open a case below and we will follow up with the dealer.",
+    "deliveredTitle": "Delivered",
+    "deliveredBody": "Delivered {at}. Your ₹999 test deposit is returned in full.",
+    "endedTitle": "Order ended",
+    "ended": {
+      "BUYER_DECLINED": "You declined this offer. Your ₹999 test deposit is refunded in full.",
+      "MISSED_CONFIRMATION_DEADLINE": "The confirmation deadline passed without your confirmation. Your ₹999 test deposit is refunded in full.",
+      "BUYER_CANCELLED": "You cancelled. Your ₹999 test deposit is refunded in full, and nobody else's price changed.",
+      "DEALER_CANCELLED": "The dealer cancelled. Your ₹999 test deposit is refunded in full.",
+      "DEALER_NOT_HONOURED": "The dealer did not honour the booking. Your ₹999 test deposit is refunded in full.",
+      "STOCK_UNAVAILABLE": "The dealer no longer has the car in stock. Your ₹999 test deposit is refunded in full.",
+      "DEPOSIT_UNAVAILABLE": "We could not hold your deposit for the booking. Anything paid is refunded in full.",
+      "ADMIN_DISPUTE_RESOLUTION": "Our team cancelled the booking after reviewing your case. Your ₹999 test deposit is refunded in full.",
+      "QUOTE_VOID": "Too few buyers confirmed this offer, so it could not go ahead. Your ₹999 test deposit is refunded in full.",
+      "DECLINED": "This order was declined. Your ₹999 test deposit is refunded in full.",
+      "VOIDED": "This offer could not go ahead. Check your pool: you may be asked to keep your place for one more try.",
+      "CANCELLED": "This order was cancelled. Your ₹999 test deposit is refunded in full."
+    },
+    "caseOpened": "We opened a support case for you automatically; an admin reviews it.",
+    "cases": "Your cases",
+    "problem": "Report a problem",
+    "cancelTerms": "Cancel this booking? In test mode you get your full ₹999 deposit back. Your cancellation never changes anyone else's price.",
+    "cancelYes": "Yes, cancel",
+    "cancelNo": "Keep my booking",
+    "cancelledDone": "Cancelled. Your deposit is being refunded in full."
+  },
+  "reround": {
+    "title": "The offer could not go ahead: keep your place?",
+    "body": "Too few buyers confirmed, so the offer was void. This pool tries once more.",
+    "keep": "Keep my place: your ₹999 test deposit stays as your commitment for the next round. No new payment.",
+    "refund": "Refund now: you get your ₹999 back and leave the pool.",
+    "silence": "If you do not choose in time, we refund you.",
+    "deadline": "Choose by",
+    "keepCta": "Keep my place",
+    "refundCta": "Refund me now",
+    "saved": "Saved."
+  },
+  "dealerBookings": {
+    "title": "Bookings",
+    "empty": "No bookings yet.",
+    "loading": "Loading bookings",
+    "booking": "Booking {id}",
+    "overdue": "overdue",
+    "confirmBy": "Confirm by",
+    "confirm": "Confirm booking",
+    "date": "Delivery date",
+    "slot": "Time slot",
+    "setDate": "Set delivery date",
+    "reschedule": "Reschedule",
+    "scheduled": "Delivery {date} ({slot})",
+    "voucher": "Buyer's voucher code (scan the QR)",
+    "handOver": "Hand over car",
+    "delivered": "Delivered {at}",
+    "cancelled": "Cancelled ({reason})",
+    "contact": "Buyer",
+    "showContact": "Show buyer contact",
+    "cancelTitle": "Cancel this booking",
+    "cancelTerms": "The buyer is refunded in full, a support case opens for admin review, and your reliability score counts it.",
+    "cancel": "Cancel booking"
+  },
+  "admin": {
+    "title": "Admin console",
+    "audited": "Every action here is audited. Manual money actions need a second, different admin.",
+    "tab": {
+      "refunds": "Refunds",
+      "disputes": "Disputes",
+      "verification": "Dealer verification",
+      "reconciliation": "Reconciliation"
+    },
+    "loading": "Loading",
+    "noRefunds": "No refunds need attention.",
+    "noDisputes": "No open disputes.",
+    "noDealers": "No dealerships waiting.",
+    "noRuns": "No reconciliation runs yet.",
+    "attempts": "{n} attempts",
+    "retry": "Retry now",
+    "awaitingSecond": "A manual refund was requested. A different admin must approve it.",
+    "approve": "Approve manual refund",
+    "evidence": "Evidence reference (bank statement, NEFT id)",
+    "note": "Note",
+    "askManual": "Request manual refund",
+    "rejectReason": "Reason (needed to reject)",
+    "verify": "Verify",
+    "reject": "Reject",
+    "openedBy": "opened by {by}",
+    "proposed": "proposed: {outcome}",
+    "runSummary": "{checked} deposits checked, {mismatches} mismatches"
+  },
+  "dispute": {
+    "loading": "Loading the case",
+    "loadFailed": "This case could not be loaded.",
+    "title": "Case: {category}",
+    "openedBySystem": "Opened automatically",
+    "openedByBuyer": "Opened by the buyer",
+    "awaiting": "Waiting for the {party} to reply by {by}",
+    "resolvedAs": "Resolved: {outcome}. Appeal until {until}.",
+    "evidence": "Evidence ({n} of 10)",
+    "history": "History",
+    "addFile": "Add a photo or PDF (up to 10 MB)",
+    "badType": "Only JPEG, PNG or PDF files.",
+    "tooBig": "That file is over 10 MB.",
+    "upload": "Upload",
+    "uploaded": "Uploaded.",
+    "uploadFailed": "The upload failed; try again.",
+    "message": "Add a message",
+    "appealWhy": "Why do you want to appeal?",
+    "send": "Send",
+    "appeal": "Appeal (once)",
+    "withdraw": "Withdraw my case",
+    "adminTitle": "Admin",
+    "assign": "Assign to me",
+    "note": "Note or question",
+    "askParty": "Ask",
+    "dealer": "Dealer",
+    "buyer": "Buyer",
+    "requestInfo": "Request information",
+    "outcome": "Outcome",
+    "outcomes": {
+      "REFUND_BUYER": "Refund the buyer",
+      "CANCEL_BOOKING": "Cancel the booking (refund)",
+      "DEALER_WARNING": "Warn the dealer",
+      "PRICE_ADJUSTMENT_RECORDED": "Price adjustment recorded",
+      "NO_ACTION": "No action"
+    },
+    "resolve": "Resolve",
+    "confirmOutcome": "Confirm this outcome (second admin)",
+    "proposedBy": "Proposed outcome: {outcome}. A different admin must confirm it.",
+    "moneyRule": "Refunds and cancellations need a second, different admin (AMENDMENT-001)."
   }
 }

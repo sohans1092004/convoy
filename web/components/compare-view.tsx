@@ -68,17 +68,27 @@ export function addonFlags(offers: Offer[]): Record<string, Line[]> {
   return out;
 }
 
-function useDealerName(id: string) {
-  const [name, setName] = React.useState<string>('Dealer');
+type Reliability = Schemas['dealer']['Reliability'];
+
+function useDealer(id: string) {
+  const [d, setD] = React.useState<{ name: string; reliability: Reliability | null }>({ name: 'Dealer', reliability: null });
   React.useEffect(() => {
-    call(api.GET('/dealerships/{id}', { params: { path: { id } } })).then((r) => setName(r.data.trade_name)).catch(() => {});
+    call(api.GET('/dealerships/{id}', { params: { path: { id } } })).then((r) => setD({ name: r.data.trade_name, reliability: r.data.reliability })).catch(() => {});
   }, [id]);
-  return name;
+  return d;
+}
+
+/** AMENDMENT-009: the reliability score always comes with its counts and window, never as a bare percentage. */
+export function ReliabilityNote({ r }: { r: Reliability | null }) {
+  const t = useTranslations('compare');
+  if (!r) return null;
+  return <p className="text-sm text-muted">{r.total === 0 ? t('reliabilityNone', { days: r.window_days })
+    : t('reliability', { honoured: r.honoured, total: r.total, days: r.window_days, percent: r.score_percent ?? 0 })}</p>;
 }
 
 function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onAccepted }: { offer: Offer; poolId: string; accepted: boolean; canAccept: boolean; committed: number; flagged: Line[]; onAccepted: () => void }) {
   const t = useTranslations('compare');
-  const name = useDealerName(offer.dealership_id);
+  const { name, reliability } = useDealer(offer.dealership_id);
   const v = offer.variants[0];
   const accept = useCommand(async (key: string) => {
     const me = await call(api.GET('/pools/{id}/members/me', { params: { path: { id: poolId } } }));
@@ -94,6 +104,7 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onA
         <CardTitle as="h3">{name}</CardTitle>
         {accepted ? <Badge tone="success">{t('yourChoice')}</Badge> : null}
         <Badge>{offer.state === 'FINAL' ? t('finalOffer') : t('sealedOffer', { version: offer.version_no })}</Badge>
+        <span className="basis-full"><ReliabilityNote r={reliability} /></span>
       </div>
       {flagged.length ? (
         <p role="note" className="rounded-lg bg-warning-bg p-2 text-sm text-warning-fg">

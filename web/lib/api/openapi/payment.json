@@ -145,36 +145,53 @@
         }
       }
     },
-    "/admin/refunds/{id}/approve": {
-      "post": {
-        "tags": [
-          "payment-application"
-        ],
-        "operationId": "manualResolution",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/admin/refunds/{id}/resolve-manually": {
       "post": {
         "tags": [
           "payment-application"
         ],
-        "operationId": "manualResolution_1",
+        "operationId": "resolveManually",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualRefund"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/refunds/{id}/approve": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "approveManual",
         "parameters": [
           {
             "name": "id",
@@ -188,7 +205,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualRefund"
+                }
+              }
+            }
           }
         }
       }
@@ -237,6 +261,26 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/RefundQueue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reconciliation/runs": {
+      "get": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "reconciliationRuns",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRuns"
                 }
               }
             }
@@ -375,6 +419,61 @@
           "state"
         ]
       },
+      "ManualBody": {
+        "properties": {
+          "evidence_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "evidence_ref",
+          "note"
+        ]
+      },
+      "ManualRefund": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "manual": {
+            "type": "boolean"
+          },
+          "requested_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approved_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "approved_by",
+          "evidence_ref",
+          "id",
+          "manual",
+          "requested_by",
+          "state"
+        ]
+      },
       "QueuedRefund": {
         "properties": {
           "id": {
@@ -417,6 +516,12 @@
           },
           "created_at": {
             "type": "string"
+          },
+          "requested_by": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -431,6 +536,7 @@
           "payment_id",
           "pool_id",
           "reason_code",
+          "requested_by",
           "state"
         ]
       },
@@ -445,6 +551,78 @@
         },
         "required": [
           "refunds"
+        ]
+      },
+      "Mismatch": {
+        "properties": {
+          "mismatch_class": {
+            "type": "string"
+          },
+          "payment_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "mismatch_class",
+          "payment_id"
+        ]
+      },
+      "ReconciliationRun": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "checked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mismatch_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mismatches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Mismatch"
+            }
+          }
+        },
+        "required": [
+          "checked",
+          "finished_at",
+          "id",
+          "mismatch_count",
+          "mismatches",
+          "started_at"
+        ]
+      },
+      "ReconciliationRuns": {
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationRun"
+            }
+          }
+        },
+        "required": [
+          "runs"
         ]
       }
     }

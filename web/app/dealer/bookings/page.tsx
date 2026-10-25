@@ -1,30 +1,7 @@
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { ist, rupees } from '@/lib/format';
-import type { Schemas } from '@/lib/api';
-import { gatewayGet } from '@/lib/gateway';
+import { cookies } from 'next/headers';
+import { DealerBookings } from '@/components/dealer-bookings';
 
-type Booking = Schemas['order']['DealerBooking'];
-
-export default async function DealerBookings() {
-  const { data } = await gatewayGet<{ bookings: Booking[] }>('/dealer/bookings');
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-extrabold">Bookings</h1>
-      {!data || data.bookings.length === 0 ? <Card><p>No bookings yet.</p></Card> : (
-        <ul className="flex flex-col gap-3">
-          {data.bookings.map((b) => (
-            <li key={b.id}>
-              <Card className="flex flex-wrap items-center gap-3">
-                <span className="font-mono font-semibold">{b.id.slice(-8).toUpperCase()}</span>
-                <Badge tone={b.state === 'ISSUED' ? 'warning' : 'success'}>{b.state.replace(/_/g, ' ').toLowerCase()}</Badge>
-                <span className="tabular">{rupees(b.final_cash_payable_paise)}</span>
-                <span className="text-sm text-muted">Confirm by {ist(b.dealer_confirm_deadline)}</span>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+export default async function DealerBookingsPage() {
+  const roles = ((await cookies()).get('cv_roles')?.value ?? '').split(',');
+  return <DealerBookings admin={roles.includes('dealer_admin')} />;
 }

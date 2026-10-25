@@ -20,11 +20,36 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReroundChoiceBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                }
+              }
+            }
           }
         }
       }
@@ -480,20 +505,15 @@
   },
   "components": {
     "schemas": {
-      "AcceptBody": {
+      "ReroundChoiceBody": {
         "properties": {
-          "quote_id": {
+          "choice": {
             "type": "string",
-            "format": "uuid"
-          },
-          "variant_id": {
-            "type": "string",
-            "format": "uuid"
+            "pattern": "KEEP|REFUND"
           }
         },
         "required": [
-          "quote_id",
-          "variant_id"
+          "choice"
         ]
       },
       "Membership": {
@@ -537,6 +557,12 @@
               "null"
             ]
           },
+          "choice_deadline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "version": {
             "type": "integer",
             "format": "int64"
@@ -545,6 +571,7 @@
         "required": [
           "accepted_quote_id",
           "accepted_variant_id",
+          "choice_deadline",
           "current_payment_id",
           "id",
           "pool_id",
@@ -552,6 +579,22 @@
           "state",
           "terms_version",
           "version"
+        ]
+      },
+      "AcceptBody": {
+        "properties": {
+          "quote_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "quote_id",
+          "variant_id"
         ]
       },
       "Preferences": {

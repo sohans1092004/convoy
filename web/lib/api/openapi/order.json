@@ -5,12 +5,61 @@
     "version": "v0"
   },
   "paths": {
-    "/orders/{id}/cancel": {
+    "/dealer/bookings/{id}/delivery": {
+      "put": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "scheduleDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/disputes": {
       "post": {
         "tags": [
           "order-application"
         ],
-        "operationId": "notBuilt",
+        "operationId": "openDispute",
         "parameters": [
           {
             "name": "id",
@@ -22,9 +71,26 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
           }
         }
       }
@@ -34,7 +100,7 @@
         "tags": [
           "order-application"
         ],
-        "operationId": "notBuilt_1",
+        "operationId": "decline",
         "parameters": [
           {
             "name": "id",
@@ -48,7 +114,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
           }
         }
       }
@@ -102,6 +175,240 @@
         }
       }
     },
+    "/orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/disputes/{id}/withdraw": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "withdraw",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/disputes/{id}/responses": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "respond",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/disputes/{id}/evidence-uploads": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "upload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceUpload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/disputes/{id}/appeal": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "appeal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/bookings/{id}/deliver": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "deliver",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dealer/bookings/{id}/confirm": {
       "post": {
         "tags": [
@@ -134,6 +441,247 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/DealerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "dealerCancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DealerCancelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bookings/{id}/confirm-delivery": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "confirmDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "cancelBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes/{id}/resolve": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes/{id}/request-info": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "requestInfo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InfoBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes/{id}/assign": {
+      "post": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "assign",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
                 }
               }
             }
@@ -223,6 +771,37 @@
         }
       }
     },
+    "/disputes/{id}": {
+      "get": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "getDispute",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dispute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dealer/bookings": {
       "get": {
         "tags": [
@@ -242,19 +821,368 @@
           }
         }
       }
+    },
+    "/dealer/bookings/{id}/contact": {
+      "get": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuyerContact"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes": {
+      "get": {
+        "tags": [
+          "order-application"
+        ],
+        "operationId": "disputeQueue",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisputeQueue"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
-      "ConfirmBody": {
+      "DeliveryBody": {
         "properties": {
-          "ceiling_snapshot_hash": {
+          "scheduled_date": {
             "type": "string",
-            "minLength": 1
+            "format": "date"
+          },
+          "slot": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
           }
         },
         "required": [
-          "ceiling_snapshot_hash"
+          "scheduled_date",
+          "slot"
+        ]
+      },
+      "DealerBooking": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "promised_delivery_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dealer_confirm_deadline": {
+            "type": "string"
+          },
+          "scheduled_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_slot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overdue_flag": {
+            "type": "boolean"
+          },
+          "cancel_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contact_released": {
+            "type": "boolean"
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "final_cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "cancel_reason",
+          "contact_released",
+          "dealer_confirm_deadline",
+          "delivered_at",
+          "delivery_slot",
+          "final_cash_payable_paise",
+          "id",
+          "order_id",
+          "overdue_flag",
+          "promised_delivery_date",
+          "scheduled_date",
+          "state",
+          "variant_id",
+          "version"
+        ]
+      },
+      "DisputeBody": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "category",
+          "description"
+        ]
+      },
+      "Dispute": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "booking_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dealership_id": {
+            "type": "string"
+          },
+          "buyer_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "opened_by": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "awaiting_party": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "respond_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposed_outcome": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolved_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appeal_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appeal_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisputeEvent"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvidenceFile"
+            }
+          }
+        },
+        "required": [
+          "appeal_count",
+          "appeal_until",
+          "awaiting_party",
+          "booking_id",
+          "buyer_id",
+          "category",
+          "created_at",
+          "dealership_id",
+          "description",
+          "evidence",
+          "history",
+          "id",
+          "opened_by",
+          "order_id",
+          "outcome",
+          "owner_id",
+          "proposed_outcome",
+          "resolved_at",
+          "respond_by",
+          "state",
+          "version"
+        ]
+      },
+      "DisputeEvent": {
+        "properties": {
+          "actor_role": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "from_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "actor_role",
+          "at",
+          "from_state",
+          "note",
+          "to_state"
+        ]
+      },
+      "EvidenceFile": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "uploader_role": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "download_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_type",
+          "created_at",
+          "download_url",
+          "file_name",
+          "id",
+          "size_bytes",
+          "uploader_role"
         ]
       },
       "BookingRef": {
@@ -264,6 +1192,10 @@
           },
           "state": {
             "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           },
           "promised_delivery_date": {
             "type": [
@@ -276,13 +1208,90 @@
           },
           "dealership_id": {
             "type": "string"
+          },
+          "voucher_active": {
+            "type": "boolean"
+          },
+          "scheduled_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_slot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overdue_flag": {
+            "type": "boolean"
+          },
+          "cancel_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelled_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contact_released_at": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
+          "cancel_reason",
+          "cancelled_at",
+          "contact_released_at",
           "dealer_confirm_deadline",
           "dealership_id",
+          "delivered_at",
+          "delivery_slot",
           "id",
+          "overdue_flag",
           "promised_delivery_date",
+          "scheduled_date",
+          "state",
+          "version",
+          "voucher_active"
+        ]
+      },
+      "DisputeRef": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "opened_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "created_at",
+          "id",
+          "opened_by",
           "state"
         ]
       },
@@ -379,6 +1388,19 @@
           "created_at": {
             "type": "string"
           },
+          "ceiling_snapshot_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confirmed_ceiling_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
           "snapshots": {
             "type": "object",
             "additionalProperties": {
@@ -395,6 +1417,15 @@
               }
             ]
           },
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisputeRef"
+            }
+          },
+          "dealership_id": {
+            "type": "string"
+          },
           "server_time": {
             "type": "string"
           }
@@ -404,10 +1435,14 @@
           "buyer_id",
           "cancel_reason",
           "cancelled_at",
+          "ceiling_snapshot_id",
           "confirmation_deadline",
           "confirmed_at",
+          "confirmed_ceiling_paise",
           "created_at",
+          "dealership_id",
           "decline_reason",
+          "disputes",
           "id",
           "pool_id",
           "quote_id",
@@ -486,47 +1521,148 @@
           "tier_index"
         ]
       },
-      "DealerBooking": {
+      "ConfirmBody": {
         "properties": {
-          "id": {
-            "type": "string"
+          "ceiling_snapshot_hash": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "ceiling_snapshot_hash"
+        ]
+      },
+      "TextBody": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "UploadBody": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "minLength": 1
           },
-          "order_id": {
-            "type": "string"
+          "content_type": {
+            "type": "string",
+            "minLength": 1
           },
-          "state": {
-            "type": "string"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "promised_delivery_date": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "dealer_confirm_deadline": {
-            "type": "string"
-          },
-          "variant_id": {
-            "type": "string"
-          },
-          "final_cash_payable_paise": {
+          "size_bytes": {
             "type": "integer",
             "format": "int64"
           }
         },
         "required": [
-          "dealer_confirm_deadline",
-          "final_cash_payable_paise",
-          "id",
-          "order_id",
-          "promised_delivery_date",
-          "state",
-          "variant_id",
-          "version"
+          "content_type",
+          "file_name",
+          "size_bytes"
+        ]
+      },
+      "EvidenceUpload": {
+        "properties": {
+          "evidence_id": {
+            "type": "string"
+          },
+          "upload_url": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "expires_in_seconds",
+          "headers",
+          "method",
+          "upload_url"
+        ]
+      },
+      "DeliverBody": {
+        "properties": {
+          "voucher_token": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "voucher_token"
+        ]
+      },
+      "DealerCancelBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ResolveBody": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "note",
+          "outcome"
+        ]
+      },
+      "InfoBody": {
+        "properties": {
+          "party": {
+            "type": "string",
+            "minLength": 1
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "party",
+          "question"
+        ]
+      },
+      "AssignBody": {
+        "properties": {
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "owner_id"
         ]
       },
       "Voucher": {
@@ -617,6 +1753,100 @@
         },
         "required": [
           "bookings"
+        ]
+      },
+      "BuyerContact": {
+        "properties": {
+          "booking_id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "consent_version": {
+            "type": "string"
+          },
+          "consented_at": {
+            "type": "string"
+          },
+          "released_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "booking_id",
+          "consent_version",
+          "consented_at",
+          "email",
+          "released_at"
+        ]
+      },
+      "DisputeQueue": {
+        "properties": {
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisputeRow"
+            }
+          }
+        },
+        "required": [
+          "disputes"
+        ]
+      },
+      "DisputeRow": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "dealership_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "opened_by": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposed_outcome": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposed_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "created_at",
+          "dealership_id",
+          "id",
+          "opened_by",
+          "order_id",
+          "owner_id",
+          "proposed_by",
+          "proposed_outcome",
+          "state"
         ]
       }
     }

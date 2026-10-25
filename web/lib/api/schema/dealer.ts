@@ -16,6 +16,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bookings/{bookingId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/dealerships/{id}/verify": {
         parameters: {
             query?: never;
@@ -56,6 +72,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dealerships/{id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reviews"];
         put?: never;
         post?: never;
         delete?: never;
@@ -105,6 +137,19 @@ export interface components {
             version: number;
             created_at: string;
         };
+        ReviewBody: {
+            /** Format: int32 */
+            rating: number;
+            body: string;
+        };
+        Review: {
+            id: string;
+            booking_id: string;
+            dealership_id: string;
+            /** Format: int32 */
+            rating: number;
+            body: string;
+        };
         Decision: {
             decision: string;
             reason: string | null;
@@ -125,6 +170,32 @@ export interface components {
             status: string;
             synthetic: boolean;
             verified_at: string | null;
+            reliability: components["schemas"]["Reliability"];
+        };
+        Reliability: {
+            /** Format: int64 */
+            honoured: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            score_percent: number | null;
+            /** Format: int32 */
+            window_days: number;
+        };
+        PublicReview: {
+            id: string;
+            /** Format: int32 */
+            rating: number;
+            body: string;
+            created_at: string;
+        };
+        Reviews: {
+            dealership_id: string;
+            /** Format: int64 */
+            count: number;
+            /** Format: double */
+            average_rating: number | null;
+            reviews: components["schemas"]["PublicReview"][];
         };
         Queue: {
             dealerships: components["schemas"]["Registration"][];
@@ -158,6 +229,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Registration"];
+                };
+            };
+        };
+    };
+    review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Review"];
                 };
             };
         };
@@ -231,6 +328,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Dealership"];
+                };
+            };
+        };
+    };
+    reviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Reviews"];
                 };
             };
         };
