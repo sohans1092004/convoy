@@ -201,7 +201,8 @@ class PaymentMessagingFailureIT extends ServiceTest {
         orderRelay.tick(); // SNS has it; the row is not marked delivered
         await("first delivery applied", () -> refunds(buyer, pool) == 1, 20_000);
         orderRelay.tick(); // restart: the same event_id is published again
-        await("second delivery rejected by the inbox (duplicate counted)", () -> consumer.duplicates.get() == duplicates + 1, 20_000);
+        // 60 s: the republish has twice taken > 20 s to reach SQS on a loaded CI runner (LocalStack); never locally. Known flake (P2 report §7).
+        await("second delivery rejected by the inbox (duplicate counted)", () -> consumer.duplicates.get() == duplicates + 1, 60_000);
         invariants(event, buyer, pool, false);
     }
 

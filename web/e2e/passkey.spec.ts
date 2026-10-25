@@ -44,6 +44,7 @@ test('a buyer adds a passkey and signs in with it, no email code', async ({ page
 
   // A failed prompt (here: the user does not pass the fingerprint/face check) is explained, not shown as a network error.
   await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible(); // sign-out's own navigation must finish first
   await cdp.send('WebAuthn.setUserVerified', { authenticatorId, isUserVerified: false });
   await page.goto('/sign-in');
   await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
