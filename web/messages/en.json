@@ -190,7 +190,15 @@
     "title": "Compare offers",
     "back": "Back to the pool",
     "decideBy": "Decide by",
-    "none": "No offers yet. Dealers have until the round deadline."
+    "none": "No offers yet. Dealers have until the round deadline.",
+    "addonFlag": "This offer adds a dealer-required add-on that the other offers do not include: {items}. Ask the dealer whether you can decline it.",
+    "stockNote": {
+      "enough": "{units} in stock: enough for the {committed} committed buyers",
+      "short": "{units} in stock for {committed} committed buyers: some cars come later",
+      "none": "No stock held: cars are ordered after confirmation",
+      "statement": "(the dealer's statement)",
+      "statementWithDate": "(the dealer's statement, delivery from {date})"
+    }
   },
   "signIn": {
     "title": "Sign in",

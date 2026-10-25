@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Breakdown, type EngineOutput } from './breakdown';
-import { stockConfidence, TierLadder } from './compare-view';
+import { addonFlags, StockNote, stockConfidence, TierLadder } from './compare-view';
 import { rupees } from '@/lib/format';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
@@ -54,10 +54,23 @@ describe('tier ladder', () => {
 });
 
 describe('stock confidence', () => {
-  it('compares the stock claim with the committed buyers and says it is the dealer\'s statement', () => {
-    expect(stockConfidence({ units: 6, colours: ['White'], delivery_date: '2026-11-20' }, 4)).toMatchObject({ level: 'enough' });
-    expect(stockConfidence({ units: 2, colours: ['White'], delivery_date: null }, 4).text).toContain('some cars come later');
-    expect(stockConfidence({ units: 0, colours: [], delivery_date: null }, 4).level).toBe('none');
-    expect(stockConfidence({ units: 6, colours: ['White'], delivery_date: '2026-11-20' }, 4).text).toContain("dealer's statement, delivery from 2026-11-20");
+  it('compares the stock claim with the committed buyers', () => {
+    expect(stockConfidence({ units: 6, colours: ['White'], delivery_date: '2026-11-20' }, 4)).toBe('enough');
+    expect(stockConfidence({ units: 2, colours: ['White'], delivery_date: null }, 4)).toBe('short');
+    expect(stockConfidence({ units: 0, colours: [], delivery_date: null }, 4)).toBe('none');
+  });
+  it('says it is the dealer\'s statement (translated wording)', () => {
+    const html = render(<StockNote stock={{ units: 2, colours: ['White'], delivery_date: '2026-11-20' }} committed={4} />);
+    expect(html).toContain('some cars come later');
+    expect(html).toContain('delivery from 2026-11-20');
+  });
+});
+
+describe('dealer-required add-on flag', () => {
+  const offer = (id: string, lines: unknown[]) => ({ quote_id: id, variants: [{ ceiling: { output: { lines } } }] }) as never;
+  const addon = { code: 'ACCESSORY:MUDFLAPS', amount_paise: 600000, evidence: 'DEALER_CONFIRMED', in_cash_payable: true, flags: ['DEALER_REQUIRED'] };
+  it('flags an add-on only one offer requires, not one every offer requires', () => {
+    expect(Object.keys(addonFlags([offer('a', [addon]), offer('b', []), offer('c', [])]))).toEqual(['a']);
+    expect(addonFlags([offer('a', [addon]), offer('b', [addon])])).toEqual({});
   });
 });

@@ -75,6 +75,9 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           cd web && pnpm exec playwright install --with-deps chromium && pnpm exec playwright test
+      - name: 'Three-dealer journey (1 Playwright dealer + 2 simulated: aggressive, mispriced add-on)'
+        working-directory: web
+        run: THREE_DEALERS=1 pnpm exec playwright test e2e/journey.spec.ts --project=mobile-360
       - name: Route JS budgets (baseline + 10 %, Q-037)
         working-directory: web
         run: node scripts/js-budgets.mjs

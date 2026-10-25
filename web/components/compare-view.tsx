@@ -10,7 +10,7 @@ import { Countdown } from '@/components/ui/countdown';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, etagVersion, type Schemas } from '@/lib/api';
-import { ist, rupees } from '@/lib/format';
+import { ist, lineLabel, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 import { useTranslations } from 'next-intl';
@@ -38,11 +38,34 @@ export function TierLadder({ tiers, minFulfilment }: { tiers: TierView[]; minFul
 }
 
 /** How sure the stock claim is: the dealer's own statement, compared with how many buyers have committed so far. */
-export function stockConfidence(stock: Stock, committed: number) {
-  const level = stock.units >= Math.max(1, committed) ? 'enough' : stock.units > 0 ? 'short' : 'none';
-  const text = level === 'enough' ? `${stock.units} in stock: enough for the ${committed} committed ${committed === 1 ? 'buyer' : 'buyers'}`
-    : level === 'short' ? `${stock.units} in stock for ${committed} committed buyers: some cars come later` : 'No stock held: cars are ordered after confirmation';
-  return { level, text: `${text} (dealer's statement${stock.delivery_date ? `, delivery from ${stock.delivery_date}` : ''})` };
+export function stockConfidence(stock: Stock, committed: number): 'enough' | 'short' | 'none' {
+  return stock.units >= Math.max(1, committed) ? 'enough' : stock.units > 0 ? 'short' : 'none';
+}
+
+export function StockNote({ stock, committed }: { stock: Stock; committed: number }) {
+  const t = useTranslations('compare.stockNote');
+  return (
+    <>
+      {t(stockConfidence(stock, committed), { units: stock.units, committed })}{' '}
+      {stock.delivery_date ? t('statementWithDate', { date: stock.delivery_date }) : t('statement')}
+    </>
+  );
+}
+
+type Line = Offer['variants'][number]['ceiling']['output']['lines'][number];
+/** Dealer-required add-ons (accessories the buyer cannot decline) in an offer's ceiling price. */
+export const requiredAddons = (offer: Offer): Line[] =>
+  offer.variants.flatMap((v) => v.ceiling.output.lines.filter((l) => l.code.startsWith('ACCESSORY:') && l.flags.includes('DEALER_REQUIRED')));
+
+/** Flags each dealer-required add-on that no other offer in the comparison requires (P3.F: the mispriced add-on case). */
+export function addonFlags(offers: Offer[]): Record<string, Line[]> {
+  const out: Record<string, Line[]> = {};
+  for (const o of offers) {
+    const others = new Set(offers.filter((x) => x.quote_id !== o.quote_id).flatMap((x) => requiredAddons(x).map((l) => l.code)));
+    const lonely = requiredAddons(o).filter((l) => !others.has(l.code));
+    if (lonely.length) out[o.quote_id] = lonely;
+  }
+  return out;
 }
 
 function useDealerName(id: string) {
@@ -53,7 +76,7 @@ function useDealerName(id: string) {
   return name;
 }
 
-function OfferCard({ offer, poolId, accepted, canAccept, committed, onAccepted }: { offer: Offer; poolId: string; accepted: boolean; canAccept: boolean; committed: number; onAccepted: () => void }) {
+function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onAccepted }: { offer: Offer; poolId: string; accepted: boolean; canAccept: boolean; committed: number; flagged: Line[]; onAccepted: () => void }) {
   const t = useTranslations('compare');
   const name = useDealerName(offer.dealership_id);
   const v = offer.variants[0];
@@ -72,6 +95,11 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, onAccepted }
         {accepted ? <Badge tone="success">{t('yourChoice')}</Badge> : null}
         <Badge>{offer.state === 'FINAL' ? t('finalOffer') : t('sealedOffer', { version: offer.version_no })}</Badge>
       </div>
+      {flagged.length ? (
+        <p role="note" className="rounded-lg bg-warning-bg p-2 text-sm text-warning-fg">
+          {t('addonFlag', { items: flagged.map((l) => `${lineLabel(l.code)} ${rupees(l.amount_paise)}`).join(', ') })}
+        </p>
+      ) : null}
       <p className="text-xs text-muted">{t('lastUpdated', { time: ist(offer.committed_at), version: offer.version_no })}</p>
       <div>
         <p className="text-sm font-semibold">{t('ceilingTitle')}</p>
@@ -83,7 +111,7 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, onAccepted }
       </p>
       <TierLadder tiers={v.tiers} minFulfilment={offer.min_fulfilment} />
       <CardText>Minimum {offer.min_fulfilment} confirmed {offer.min_fulfilment === 1 ? 'buyer' : 'buyers'}{v.stock.colours?.length ? ` · ${v.stock.colours.join('/')}` : ''}</CardText>
-      <p className="text-sm"><span className="font-semibold">{t('stock')}</span> {stockConfidence(v.stock, committed).text}</p>
+      <p className="text-sm"><span className="font-semibold">{t('stock')}</span> <StockNote stock={v.stock} committed={committed} /></p>
       <details>
         <summary className="min-h-6 cursor-pointer text-sm font-semibold">{t('breakdownSummary')}</summary>
         <div className="mt-2"><Breakdown output={v.ceiling.output} caption={`${name}: breakdown at the ceiling tier`} /></div>
@@ -118,10 +146,10 @@ export function CompareView({ poolId }: { poolId: string }) {
       <p className="text-sm text-muted">Every figure comes from the same price engine. The ceiling is guaranteed; the projection is not. {offers.data.ranking_rule}</p>
       {offers.data.quotes.length === 0 ? <Card><p>{t('none')}</p></Card> : null}
       <div className="grid gap-4 lg:grid-cols-2">
-        {offers.data.quotes.map((o) => (
-          <OfferCard key={o.quote_id} offer={o} poolId={poolId} accepted={p?.my_membership?.accepted_quote_id === o.quote_id} canAccept={canAccept} committed={p?.committed_count ?? 0}
+        {(() => { const flags = addonFlags(offers.data.quotes); return offers.data.quotes.map((o) => (
+          <OfferCard key={o.quote_id} offer={o} poolId={poolId} accepted={p?.my_membership?.accepted_quote_id === o.quote_id} canAccept={canAccept} committed={p?.committed_count ?? 0} flagged={flags[o.quote_id] ?? []}
             onAccepted={() => { pool.refresh(); offers.refresh(); }} />
-        ))}
+        )); })()}
       </div>
     </div>
   );

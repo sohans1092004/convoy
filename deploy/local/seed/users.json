@@ -50,5 +50,26 @@
       "dealer_staff"
     ],
     "dealership_id": "0190f3a0-0000-7000-8000-00000000d001"
+  },
+  {
+    "email": "sim1@convoy.test",
+    "roles": [
+      "dealer_staff"
+    ],
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d002"
+  },
+  {
+    "email": "sim2@convoy.test",
+    "roles": [
+      "dealer_staff"
+    ],
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d003"
+  },
+  {
+    "email": "sim3@convoy.test",
+    "roles": [
+      "dealer_staff"
+    ],
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d004"
   }
 ]
