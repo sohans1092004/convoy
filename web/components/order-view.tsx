@@ -19,6 +19,7 @@ import { useSnapshot } from '@/lib/use-snapshot';
 type Voucher = Schemas['order']['Voucher'];
 
 function VoucherCard({ orderId }: { orderId: string }) {
+  const to = useTranslations('order');
   const [v, setV] = React.useState<Voucher | null>(null);
   const [svg, setSvg] = React.useState('');
   React.useEffect(() => {
@@ -27,21 +28,22 @@ function VoucherCard({ orderId }: { orderId: string }) {
       setSvg(await QRCode.toString(r.data.qr_payload, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }));
     }).catch(() => {});
   }, [orderId]);
-  if (!v) return <Skeleton className="h-64" label="Loading your voucher" />;
+  if (!v) return <Skeleton className="h-64" label={to('loadingVoucher')} />;
   return (
     <Card emphasis className="flex flex-col items-start gap-3 sm:flex-row">
       <div role="img" aria-label={`QR code for booking voucher ${v.id.slice(-8)}`} className="w-48 shrink-0 rounded-lg bg-white p-2" dangerouslySetInnerHTML={{ __html: svg }} />
       <div className="flex flex-col gap-1">
-        <CardTitle>Booking voucher</CardTitle>
-        <p className="text-sm">Booking <span className="font-mono">{v.id.slice(-8).toUpperCase()}</span> · <Badge tone="success">{v.state.replace(/_/g, ' ').toLowerCase()}</Badge></p>
+        <CardTitle>{to('voucher')}</CardTitle>
+        <p className="text-sm">{to('booking')} <span className="font-mono">{v.id.slice(-8).toUpperCase()}</span> · <Badge tone="success">{v.state.replace(/_/g, ' ').toLowerCase()}</Badge></p>
         {v.promised_delivery_date ? <p className="text-sm">Promised delivery from {v.promised_delivery_date}</p> : null}
-        <CardText>Show this QR code at the dealership. It carries a signed token the dealer scans to check your booking. TEST MODE: no real money.</CardText>
+        <CardText>{to('qrNote')}</CardText>
       </div>
     </Card>
   );
 }
 
 export function OrderView({ orderId }: { orderId: string }) {
+  const to = useTranslations('order');
   const t = useTranslations('confirm');
   const snap = useSnapshot(() => call(api.GET('/orders/{id}', { params: { path: { id: orderId } } })), [orderId]);
   const confirm = useCommand(async (key: string) => {
@@ -56,41 +58,41 @@ export function OrderView({ orderId }: { orderId: string }) {
   const decline = useCommand(async () => call(api.POST('/orders/{id}/decline', { params: { path: { id: orderId } } })));
   const cancel = useCommand(async () => call(api.POST('/orders/{id}/cancel', { params: { path: { id: orderId } } })));
   const o = snap.data;
-  if (snap.loading && !o) return <Skeleton className="h-96" label="Loading your order" />;
+  if (snap.loading && !o) return <Skeleton className="h-96" label={to('loading')} />;
   if (!o) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{snap.problem?.detail ?? 'This order could not be loaded.'}</p>;
   const ceiling = o.snapshots.ceiling!;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-extrabold">Your order</h1>
+        <h1 className="text-2xl font-extrabold">{to('title')}</h1>
         <Badge tone={o.state === 'BOOKED' ? 'success' : o.state === 'CONFIRMATION_PENDING' ? 'warning' : 'neutral'}>{o.state.replace(/_/g, ' ').toLowerCase()}</Badge>
       </div>
       {o.state === 'CONFIRMATION_PENDING' ? (
         <Card emphasis className="flex flex-col gap-3">
           <CardTitle>{t('title', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</CardTitle>
           <p className="text-sm">{t('body', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</p>
-          <Countdown deadline={o.confirmation_deadline} label="Confirm by" />
+          <Countdown deadline={o.confirmation_deadline} label={to('confirmBy')} />
           <div className="flex flex-wrap gap-2">
             <Button loading={confirm.state.kind === 'loading'} onClick={() => confirm.execute()}>Confirm at most {rupees(ceiling.output.cash_payable_paise)}</Button>
-            <Button variant="secondary" loading={decline.state.kind === 'loading'} onClick={() => decline.execute()}>Decline this offer</Button>
+            <Button variant="secondary" loading={decline.state.kind === 'loading'} onClick={() => decline.execute()}>{to('decline')}</Button>
           </div>
         </Card>
       ) : null}
       <CommandStatus state={decline.state} />
       {/* Outside the card: the card disappears once the order is confirmed, the outcome must stay visible. */}
-      <CommandStatus state={confirm.state} successText="Confirmed. Your final price is set when confirmations close; it can only be the same or lower." />
+      <CommandStatus state={confirm.state} successText={to('confirmed')} />
       {o.state === 'CONFIRMED' ? (
         <Card className="flex flex-col gap-2">
           <CardTitle>Confirmed at most {rupees(ceiling.output.cash_payable_paise)}</CardTitle>
           <CardText>Confirmed {ist(o.confirmed_at)}. The final price is set when confirmations close on {ist(o.confirmation_deadline)}.</CardText>
-          <Countdown deadline={o.confirmation_deadline} label="Confirmations close" />
+          <Countdown deadline={o.confirmation_deadline} label={to('confirmationsClose')} />
         </Card>
       ) : null}
       {o.state === 'BOOKED' && o.snapshots.final ? (
         <>
           <Card className="flex flex-col gap-1">
-            <CardTitle>Final price</CardTitle>
-            <Price paise={o.snapshots.final.output.cash_payable_paise} size="lg" label="Final cash payable" />
+            <CardTitle>{to('finalPrice')}</CardTitle>
+            <Price paise={o.snapshots.final.output.cash_payable_paise} size="lg" label={to('finalCash')} />
             <CardText>Your ceiling was {rupees(ceiling.output.cash_payable_paise)}. {o.snapshots.final.output.cash_payable_paise < ceiling.output.cash_payable_paise ? 'More buyers confirmed, so your price fell.' : 'The price stayed at your ceiling.'}</CardText>
           </Card>
           <VoucherCard orderId={o.id} />
@@ -98,7 +100,7 @@ export function OrderView({ orderId }: { orderId: string }) {
       ) : null}
       {o.state === 'CONFIRMED' || o.state === 'BOOKED' ? (
         <div className="flex flex-col gap-2">
-          <Button variant="secondary" className="self-start" loading={cancel.state.kind === 'loading'} onClick={() => cancel.execute()}>Cancel my booking</Button>
+          <Button variant="secondary" className="self-start" loading={cancel.state.kind === 'loading'} onClick={() => cancel.execute()}>{to('cancelBooking')}</Button>
           <CommandStatus state={cancel.state} />
         </div>
       ) : null}

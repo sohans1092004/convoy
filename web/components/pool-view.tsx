@@ -128,28 +128,28 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
     try {
       await loadScript(checkoutUrl);
     } catch {
-      commit.setState({ kind: 'error', problem: { status: 0, detail: 'The test checkout could not load. Your place is held; try again.' } });
+      commit.setState({ kind: 'error', problem: { status: 0, detail: tp('checkout.loadFailed') } });
       return;
     }
     const rzp = new window.Razorpay!({
       key: dep.razorpay_key_id, order_id: dep.razorpay_order_id, amount: dep.amount_paise, currency: 'INR', name: 'Convoy (TEST)', description: 'Test deposit',
       handler: async (resp: Record<string, string>) => {
-        commit.setState({ kind: 'pending', message: 'Payment received by Razorpay — confirming (usually under a minute). TEST: no real money.' });
+        commit.setState({ kind: 'pending', message: tp('checkout.received') });
         await call(api.POST('/payments/{id}/checkout-callback', { params: { path: { id: dep.payment_id } }, body: resp as never }));
         const until = Date.now() + 90_000;
         while (Date.now() < until) {
           await new Promise((r) => setTimeout(r, 1500));
           const m = await call(api.GET('/pools/{id}/members/me', { params: { path: { id: poolId } } }));
-          if (m.data.state === 'COMMITTED') { commit.setState({ kind: 'success', message: 'You are committed. Your ₹999 test deposit is held, not paid to anyone.' }); await snap.refresh(); return; }
+          if (m.data.state === 'COMMITTED') { commit.setState({ kind: 'success', message: tp('checkout.committed') }); await snap.refresh(); return; }
         }
-        commit.setState({ kind: 'pending', message: 'Still confirming with Razorpay. You can leave this page; we will show it here once confirmed.' });
+        commit.setState({ kind: 'pending', message: tp('checkout.stillConfirming') });
       },
     });
-    rzp.on('payment.failed', () => commit.setState({ kind: 'error', problem: { status: 402, detail: 'The test payment failed. Nothing was charged; you can try again.' } }));
+    rzp.on('payment.failed', () => commit.setState({ kind: 'error', problem: { status: 402, detail: tp('checkout.failed') } }));
     rzp.open();
   }
 
-  if (snap.loading && !pool) return <Skeleton className="h-96" label="Loading the pool" />;
+  if (snap.loading && !pool) return <Skeleton className="h-96" label={tp('checkout.loading')} />;
   if (!pool) {
     return (
       <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-danger">

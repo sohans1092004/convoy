@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { Breakdown, type EngineOutput } from './breakdown';
 import { stockConfidence, TierLadder } from './compare-view';
 import { rupees } from '@/lib/format';
+import { NextIntlClientProvider } from 'next-intl';
+import type { ReactNode } from 'react';
+import messages from '../messages/en.json';
+
+const render = (ui: ReactNode) => renderToStaticMarkup(<NextIntlClientProvider locale="en" messages={messages} timeZone="Asia/Kolkata">{ui}</NextIntlClientProvider>);
 
 // Component tests (P3.E): rendered to static markup, so they check what reaches the page without a browser.
 const output = {
@@ -16,7 +21,7 @@ const output = {
 } as unknown as EngineOutput;
 
 describe('price breakdown', () => {
-  const html = renderToStaticMarkup(<Breakdown output={output} caption="Breakdown at the ceiling" />);
+  const html = render(<Breakdown output={output} caption="Breakdown at the ceiling" />);
   it('has a stacked mobile list (no table) with every line, amount and evidence label', () => {
     const mobile = html.slice(0, html.indexOf('</section>'));
     expect(mobile).not.toContain('<table');
@@ -38,7 +43,7 @@ describe('tier ladder', () => {
     { min: 5, max: 9, cash_payable_paise: 65347500, is_ceiling: true },
     { min: 10, max: null, cash_payable_paise: 64347500, is_ceiling: false },
   ];
-  const html = renderToStaticMarkup(<TierLadder tiers={tiers} minFulfilment={5} />);
+  const html = render(<TierLadder tiers={tiers} minFulfilment={5} />);
   it('states the rule, marks the ceiling and the void range, and lists every price', () => {
     expect(html).toContain('Price can only fall');
     expect(html).toContain('5–9 confirmed');

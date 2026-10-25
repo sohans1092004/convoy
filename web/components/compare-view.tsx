@@ -13,6 +13,7 @@ import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
+import { useTranslations } from 'next-intl';
 
 type Offer = Schemas['quote']['Offer'];
 type TierView = Schemas['quote']['TierView'];
@@ -20,14 +21,15 @@ type Stock = Schemas['quote']['Stock'];
 
 /** The ladder: each confirmed-buyer range with its price; the ceiling is marked; the price can only fall. */
 export function TierLadder({ tiers, minFulfilment }: { tiers: TierView[]; minFulfilment: number }) {
+  const t = useTranslations('compare');
   return (
     <div>
-      <h4 className="text-sm font-semibold">Price can only fall</h4>
-      <ol className="mt-1 flex flex-col gap-1 text-sm" aria-label="Tier ladder">
-        {tiers.map((t) => (
-          <li key={t.min} className={t.is_ceiling ? 'font-bold' : ''}>
-            {t.max === null ? `${t.min}+` : `${t.min}–${t.max}`} confirmed: <span className="tabular">{rupees(t.cash_payable_paise)}</span>
-            {t.is_ceiling ? ' — your ceiling' : ''}{t.max !== null && t.max < minFulfilment ? ' (offer void below the minimum)' : ''}
+      <h4 className="text-sm font-semibold">{t('priceOnlyFalls')}</h4>
+      <ol className="mt-1 flex flex-col gap-1 text-sm" aria-label={t('tierLadder')}>
+        {tiers.map((r) => (
+          <li key={r.min} className={r.is_ceiling ? 'font-bold' : ''}>
+            {r.max === null ? `${r.min}+` : `${r.min}–${r.max}`} {t('confirmed')}: <span className="tabular">{rupees(r.cash_payable_paise)}</span>
+            {r.is_ceiling ? ` ${t('yourCeiling')}` : ''}{r.max !== null && r.max < minFulfilment ? ` ${t('voidBelowMin')}` : ''}
           </li>
         ))}
       </ol>
@@ -52,6 +54,7 @@ function useDealerName(id: string) {
 }
 
 function OfferCard({ offer, poolId, accepted, canAccept, committed, onAccepted }: { offer: Offer; poolId: string; accepted: boolean; canAccept: boolean; committed: number; onAccepted: () => void }) {
+  const t = useTranslations('compare');
   const name = useDealerName(offer.dealership_id);
   const v = offer.variants[0];
   const accept = useCommand(async (key: string) => {
@@ -66,31 +69,31 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, onAccepted }
     <Card emphasis={accepted} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <CardTitle as="h3">{name}</CardTitle>
-        {accepted ? <Badge tone="success">Your choice</Badge> : null}
-        <Badge>{offer.state === 'FINAL' ? 'Final offer' : `Sealed offer v${offer.version_no}`}</Badge>
+        {accepted ? <Badge tone="success">{t('yourChoice')}</Badge> : null}
+        <Badge>{offer.state === 'FINAL' ? t('finalOffer') : t('sealedOffer', { version: offer.version_no })}</Badge>
       </div>
-      <p className="text-xs text-muted">Last updated {ist(offer.committed_at)} (version {offer.version_no})</p>
+      <p className="text-xs text-muted">{t('lastUpdated', { time: ist(offer.committed_at), version: offer.version_no })}</p>
       <div>
-        <p className="text-sm font-semibold">Cash payable at your ceiling (the most you can pay)</p>
-        <Price paise={v.ceiling.cash_payable_paise} size="lg" label="Cash payable at your ceiling" />
+        <p className="text-sm font-semibold">{t('ceilingTitle')}</p>
+        <Price paise={v.ceiling.cash_payable_paise} size="lg" label={t('ceilingLabel')} />
       </div>
       <p className="rounded-lg border border-dashed border-border px-3 py-2 text-sm">
         <span className="font-semibold">{v.projection.label}:</span>{' '}
-        {v.projection.cash_payable_paise === null ? <span>{v.projection.note}</span> : <><span className="tabular">{rupees(v.projection.cash_payable_paise)}</span> <span className="text-muted">· projection, not guaranteed</span></>}
+        {v.projection.cash_payable_paise === null ? <span>{v.projection.note}</span> : <><span className="tabular">{rupees(v.projection.cash_payable_paise)}</span> <span className="text-muted">{t('notGuaranteed')}</span></>}
       </p>
       <TierLadder tiers={v.tiers} minFulfilment={offer.min_fulfilment} />
       <CardText>Minimum {offer.min_fulfilment} confirmed {offer.min_fulfilment === 1 ? 'buyer' : 'buyers'}{v.stock.colours?.length ? ` · ${v.stock.colours.join('/')}` : ''}</CardText>
-      <p className="text-sm"><span className="font-semibold">Stock:</span> {stockConfidence(v.stock, committed).text}</p>
+      <p className="text-sm"><span className="font-semibold">{t('stock')}</span> {stockConfidence(v.stock, committed).text}</p>
       <details>
-        <summary className="min-h-6 cursor-pointer text-sm font-semibold">Itemised breakdown at the ceiling</summary>
+        <summary className="min-h-6 cursor-pointer text-sm font-semibold">{t('breakdownSummary')}</summary>
         <div className="mt-2"><Breakdown output={v.ceiling.output} caption={`${name}: breakdown at the ceiling tier`} /></div>
       </details>
       {canAccept ? (
         <>
           <Button variant={accepted ? 'secondary' : 'primary'} disabled={accepted} loading={accept.state.kind === 'loading'} onClick={() => accept.execute()}>
-            {accepted ? 'Accepted' : 'Accept this offer (not binding)'}
+            {accepted ? t('accepted') : t('accept')}
           </Button>
-          <CommandStatus state={accept.state} successText="Accepted. You can change your mind until the decision deadline." />
+          <CommandStatus state={accept.state} successText={t('acceptedNote')} />
         </>
       ) : null}
     </Card>
@@ -98,21 +101,22 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, onAccepted }
 }
 
 export function CompareView({ poolId }: { poolId: string }) {
+  const t = useTranslations('compare');
   const pool = useSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
   const offers = useSnapshot(() => call(api.GET('/pools/{poolId}/quotes', { params: { path: { poolId } } })), [poolId]);
-  if ((pool.loading && !pool.data) || (offers.loading && !offers.data)) return <Skeleton className="h-96" label="Loading offers" />;
+  if ((pool.loading && !pool.data) || (offers.loading && !offers.data)) return <Skeleton className="h-96" label={t('loading')} />;
   if (!offers.data) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{offers.problem?.detail ?? 'Offers could not be loaded.'}</p>;
   const p = pool.data;
   const canAccept = p?.state === 'DECISION_OPEN' && ['COMMITTED', 'ACCEPTED'].includes(p.my_membership?.state ?? '');
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">Compare offers</h1>
-        <Link href={`/pools/${poolId}`} className="text-sm font-semibold text-primary underline">Back to the pool</Link>
+        <h1 className="text-2xl font-extrabold">{t('title')}</h1>
+        <Link href={`/pools/${poolId}`} className="text-sm font-semibold text-primary underline">{t('back')}</Link>
       </div>
-      {p?.decision_deadline && p.state === 'DECISION_OPEN' ? <Countdown deadline={p.decision_deadline} label="Decide by" /> : null}
+      {p?.decision_deadline && p.state === 'DECISION_OPEN' ? <Countdown deadline={p.decision_deadline} label={t('decideBy')} /> : null}
       <p className="text-sm text-muted">Every figure comes from the same price engine. The ceiling is guaranteed; the projection is not. {offers.data.ranking_rule}</p>
-      {offers.data.quotes.length === 0 ? <Card><p>No offers yet. Dealers have until the round deadline.</p></Card> : null}
+      {offers.data.quotes.length === 0 ? <Card><p>{t('none')}</p></Card> : null}
       <div className="grid gap-4 lg:grid-cols-2">
         {offers.data.quotes.map((o) => (
           <OfferCard key={o.quote_id} offer={o} poolId={poolId} accepted={p?.my_membership?.accepted_quote_id === o.quote_id} canAccept={canAccept} committed={p?.committed_count ?? 0}

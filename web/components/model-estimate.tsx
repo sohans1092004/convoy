@@ -85,15 +85,15 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
       </Card>
       <section aria-labelledby="estimate" className="flex flex-col gap-3">
         <h2 id="estimate" className="text-lg font-bold">{t('estimateTitle', { city })}</h2>
-        {estimate.isPending && estimate.isFetching ? <Skeleton className="h-64" label="Calculating the on-road estimate" /> : null}
+        {estimate.isPending && estimate.isFetching ? <Skeleton className="h-64" label={t('calculating')} /> : null}
         {estimate.isFetching && previous ? <p aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
         {noPrice ? (
           <Card><p className="text-sm"><strong>No verified price for {variant?.name} in {city} yet.</strong> {estimate.error?.problem?.detail}</p>
-            <p className="mt-2 text-sm text-muted">We only estimate when every input is published or verified. Try another city, or join a pool: a dealer&apos;s quote gives exact figures.</p></Card>
+            <p className="mt-2 text-sm text-muted">{t('onlyVerified')}</p></Card>
         ) : estimate.isError && !current ? (
           <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger">
-            <p>The estimate could not be calculated right now. Your variant and city are kept.</p>
-            <Button variant="secondary" onClick={() => estimate.refetch()}>Try again</Button>
+            <p>{t('estimateFailed')}</p>
+            <Button variant="secondary" onClick={() => estimate.refetch()}>{t('retry')}</Button>
           </div>
         ) : null}
         {(estimate.isError && current && !noPrice) || (!online && current) ? (

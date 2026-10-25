@@ -8,7 +8,7 @@ import * as React from 'react';
 export function useQuoteCount(poolId: string, enabled: boolean, onComparisonReady: () => void) {
   const [count, setCount] = React.useState<number | null>(null);
   const ready = React.useRef(onComparisonReady);
-  ready.current = onComparisonReady;
+  React.useEffect(() => { ready.current = onComparisonReady; }); // latest callback, without restarting the stream
   React.useEffect(() => {
     if (!enabled) return;
     const es = new EventSource(`/api/stream/me?pool_id=${encodeURIComponent(poolId)}`);

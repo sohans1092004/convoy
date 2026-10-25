@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -28,6 +29,7 @@ function months(): string[] {
 
 /** Save / unsave one model (catalog E025/E026). */
 export function SaveCarButton({ modelId, initiallySaved }: { modelId: string; initiallySaved: boolean }) {
+  const t = useTranslations('myCars');
   const [saved, setSaved] = React.useState(initiallySaved);
   const toggle = useCommand(async () => {
     const r = saved
@@ -40,17 +42,18 @@ export function SaveCarButton({ modelId, initiallySaved }: { modelId: string; in
       <Button variant="secondary" aria-pressed={saved} loading={toggle.state.kind === 'loading'} onClick={() => toggle.execute()}>
         {saved ? 'Saved to My cars' : 'Save this car'}
       </Button>
-      {saved ? <Link className="text-sm underline" href="/saved">See pools for my cars</Link> : null}
+      {saved ? <Link className="text-sm underline" href="/saved">{t('seePools')}</Link> : null}
       <CommandStatus state={toggle.state} />
     </div>
   );
 }
 
 function Checks({ legend, options, value, onChange }: { legend: string; options: { value: string; label: string }[]; value: string[]; onChange: (v: string[]) => void }) {
+  const t = useTranslations('myCars');
   if (options.length === 0) return null;
   return (
     <fieldset className="flex flex-col gap-1">
-      <legend className="text-sm font-semibold">{legend} <span className="font-normal text-muted">(none ticked = any)</span></legend>
+      <legend className="text-sm font-semibold">{legend} <span className="font-normal text-muted">{t('noneTicked')}</span></legend>
       <div className="flex flex-wrap gap-3">
         {options.map((o) => (
           <label key={o.value} className="flex min-h-11 items-center gap-2 text-sm">
@@ -65,6 +68,7 @@ function Checks({ legend, options, value, onChange }: { legend: string; options:
 
 /** Saved cars, the buyer's matching preferences (pool E031) and pool suggestions (pool E030). */
 export function MyCars() {
+  const t = useTranslations('myCars');
   const router = useRouter();
   const [cars, setCars] = React.useState<SavedCar[] | null>(null);
   const [models, setModels] = React.useState<Model[]>([]);
@@ -108,13 +112,13 @@ export function MyCars() {
   });
 
   if (problem) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{problem}</p>;
-  if (!cars || !prefs) return <Skeleton className="h-96" label="Loading your cars" />;
+  if (!cars || !prefs) return <Skeleton className="h-96" label={t('loading')} />;
   if (cars.length === 0) {
     return (
       <Card className="flex flex-col gap-2">
-        <CardTitle>No saved cars yet</CardTitle>
-        <CardText>Open a car and choose &ldquo;Save this car&rdquo;. We then show pools in your city and month that you can join.</CardText>
-        <Button asChild className="self-start"><Link href="/">Browse cars</Link></Button>
+        <CardTitle>{t('emptyTitle')}</CardTitle>
+        <CardText>{t('emptyBody')}</CardText>
+        <Button asChild className="self-start"><Link href="/">{t('browse')}</Link></Button>
       </Card>
     );
   }
@@ -126,17 +130,17 @@ export function MyCars() {
   return (
     <div className="flex flex-col gap-5">
       <Card className="flex flex-col gap-4">
-        <CardTitle>What you want</CardTitle>
+        <CardTitle>{t('want')}</CardTitle>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-semibold">City
             <select className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" value={prefs.city ?? ''} onChange={(e) => set({ city: e.target.value || null })}>
-              <option value="">Choose a city</option>
+              <option value="">{t('chooseCity')}</option>
               {CITIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold">Purchase month
             <select className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" value={prefs.purchase_month ?? ''} onChange={(e) => set({ purchase_month: e.target.value || null })}>
-              <option value="">Choose a month</option>
+              <option value="">{t('chooseMonth')}</option>
               {months().map((m) => <option key={m}>{m}</option>)}
             </select>
           </label>
@@ -145,15 +149,15 @@ export function MyCars() {
         <Checks legend="Fuel" options={fuels.map((f) => ({ value: f, label: f.toLowerCase() }))} value={prefs.fuels} onChange={(v) => set({ fuels: v })} />
         <Checks legend="Transmission" options={transmissions.map((t) => ({ value: t, label: t }))} value={prefs.transmissions} onChange={(v) => set({ transmissions: v })} />
         <label className="flex flex-col gap-1 text-sm font-semibold">Colours (comma separated)
-          <span className="font-normal text-muted">Shared with dealers when they quote stock; colours do not filter pools.</span>
+          <span className="font-normal text-muted">{t('coloursNote')}</span>
           <input className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" value={colour} onChange={(e) => setColour(e.target.value)} />
         </label>
-        <Button className="self-start" loading={save.state.kind === 'loading'} onClick={() => save.execute()}>Save preferences</Button>
-        <CommandStatus state={save.state} successText="Preferences saved. Suggestions updated." />
+        <Button className="self-start" loading={save.state.kind === 'loading'} onClick={() => save.execute()}>{t('save')}</Button>
+        <CommandStatus state={save.state} successText={t('saved')} />
       </Card>
 
-      <h2 className="text-xl font-bold">Pools for your cars</h2>
-      {results === null ? <Skeleton className="h-40" label="Finding pools" /> : results.map((r) => {
+      <h2 className="text-xl font-bold">{t('poolsTitle')}</h2>
+      {results === null ? <Skeleton className="h-40" label={t('finding')} /> : results.map((r) => {
         const car = cars.find((c) => c.slug === r.model_slug);
         return (
           <Card key={r.model_slug} className="flex flex-col gap-3">
@@ -161,11 +165,11 @@ export function MyCars() {
             {r.pools.map((s) => (
               <div key={s.pool_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
                 <div>
-                  <Badge tone="info">Open pool</Badge>
+                  <Badge tone="info">{t('openPool')}</Badge>
                   <p className="mt-1 text-sm">{s.status}</p>
                   {s.join_deadline ? <p className="text-xs text-muted">Joining closes {ist(s.join_deadline)}</p> : null}
                 </div>
-                <Button asChild><Link href={`/pools/${s.pool_id}`}>View and join</Link></Button>
+                <Button asChild><Link href={`/pools/${s.pool_id}`}>{t('viewJoin')}</Link></Button>
               </div>
             ))}
             {r.note ? <CardText>{r.note}</CardText> : null}
