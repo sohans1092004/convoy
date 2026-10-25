@@ -18,13 +18,14 @@ Conventions (apply to every row, not repeated):
 | E004 | identity | POST | /auth/passkeys/register | authenticated | no | no | validation-failed | P1 | AZ-E004-A, AZ-E004-D |
 | E005 | identity | POST | /auth/passkeys/authenticate | anonymous | no | no | unauthenticated | P1 | AZ-E005-A |
 | E151 | identity | POST | /auth/passkeys/authenticate/options | anonymous | no | no | - | P2 | AZ-E151-A |
+| E152 | identity | POST | /internal/sessions/check | service:realtime | no | no | - | P2 | AZ-E152-A, AZ-E152-D, AZ-T6 |
 | E006 | identity | POST | /auth/logout | authenticated | no | no | - | P1 | AZ-E006-A, AZ-E006-D |
 | E007 | identity | GET | /me | authenticated | no | no | - | P1 | AZ-E007-A, AZ-E007-D |
 | E008 | identity | POST | /internal/sessions/validate | service:gateway | no | no | unauthenticated | P1 | AZ-E008-A, AZ-E008-D, AZ-SVC-01 |
 | E009 | identity | POST | /internal/oauth/token | service:any | no | no | unauthenticated | P1 | AZ-E009-A, AZ-E009-D, AZ-SVC-02 |
 | E010 | identity | POST | /dealerships/{id}/staff/invites | dealer_admin | yes | no | - | P3 | AZ-E010-A, AZ-E010-D, AZ-E010-X |
 | E011 | identity | POST | /staff-invites/{token}/accept | authenticated | yes | no | not-found | P3 | AZ-E011-A, AZ-E011-D |
-| E012 | identity | DELETE | /dealerships/{id}/staff/{userId} | dealer_admin | yes | no | not-found | P3 | AZ-E012-A, AZ-E012-D, AZ-E012-X, AZ-T6 |
+| E012 | identity | DELETE | /dealerships/{id}/staff/{userId} | dealer_admin | yes | no | not-found | P2 | AZ-E012-A, AZ-E012-D, AZ-E012-X, AZ-T6 |
 | E013 | identity | GET | /dealerships/{id}/staff | dealer_admin | no | no | - | P3 | AZ-E013-A, AZ-E013-D, AZ-E013-X |
 | E014 | identity | PUT | /me/consents/{purpose} | authenticated | no | no | - | P5 | AZ-E014-A, AZ-E014-D |
 | E015 | identity | POST | /me/data-export | authenticated | yes | no | - | P5 | AZ-E015-A, AZ-E015-D |

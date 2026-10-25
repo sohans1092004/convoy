@@ -36,5 +36,19 @@
     "roles": [
       "platform_admin"
     ]
+  },
+  {
+    "email": "dealeradmin1@convoy.test",
+    "roles": [
+      "dealer_admin"
+    ],
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d001"
+  },
+  {
+    "email": "dealer3@convoy.test",
+    "roles": [
+      "dealer_staff"
+    ],
+    "dealership_id": "0190f3a0-0000-7000-8000-00000000d001"
   }
 ]

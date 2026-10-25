@@ -22,7 +22,7 @@ gateway:
   client-id: gateway
   client-secret: ${CLIENT_SECRET_GATEWAY}
   token-ttl: 120s
-  session-cache-ttl: 30s
+  session-cache-ttl: 25s # auth-contract.md: <= 30 s; 5 s margin so a revocation (AZ-T6) is refused within 30 s incl. polling
   services:
     identity: ${IDENTITY_URL:http://identity:8080}
     catalog: ${CATALOG_URL:http://catalog:8080}

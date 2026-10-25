@@ -75,6 +75,36 @@
         }
       }
     },
+    "/internal/sessions/check": {
+      "post": {
+        "tags": [
+          "staff-controller"
+        ],
+        "operationId": "check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCheck"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/oauth/token": {
       "post": {
         "tags": [
@@ -324,6 +354,46 @@
           }
         }
       }
+    },
+    "/dealerships/{id}/staff/{userId}": {
+      "delete": {
+        "tags": [
+          "staff-controller"
+        ],
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -423,6 +493,49 @@
           "session_expires_at",
           "sid",
           "user_id"
+        ]
+      },
+      "CheckBody": {
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionRef"
+            }
+          }
+        },
+        "required": [
+          "sessions"
+        ]
+      },
+      "SessionRef": {
+        "properties": {
+          "sid": {
+            "type": "string"
+          },
+          "dealership_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "dealership_id",
+          "sid"
+        ]
+      },
+      "SessionCheck": {
+        "properties": {
+          "invalid": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "invalid"
         ]
       },
       "TokenBody": {

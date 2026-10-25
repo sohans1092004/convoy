@@ -4,7 +4,9 @@ import convoy.platform.problem.ApiProblem;
 import convoy.platform.problem.ProblemType;
 import convoy.platform.security.Caller;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
@@ -29,11 +31,13 @@ public class StreamController {
     private static final Logger log = LoggerFactory.getLogger(StreamController.class);
     private final Hub hub;
     private final RestClient pool;
+    private final RestClient identity;
     private final RealtimeApplication.RealtimeSettings settings;
 
-    public StreamController(Hub hub, RestClient poolClient, RealtimeApplication.RealtimeSettings settings, TaskScheduler scheduler) {
+    public StreamController(Hub hub, RestClient poolClient, RestClient identityClient, RealtimeApplication.RealtimeSettings settings, TaskScheduler scheduler) {
         this.hub = hub;
         this.pool = poolClient;
+        this.identity = identityClient;
         this.settings = settings;
         scheduler.scheduleWithFixedDelay(this::heartbeat, settings.heartbeat());
         scheduler.scheduleWithFixedDelay(this::revalidate, settings.revalidate());
@@ -112,7 +116,30 @@ public class StreamController {
         }
     }
 
+    /**
+     * Every {@code realtime.revalidate} (15 s): one batch call asks identity which sessions are no longer good (logged
+     * out, or dealer staff whose membership was revoked: AZ-T6) and closes their streams; then each stream's pool access
+     * is re-checked. Identity unavailable: connections are kept until the next check (the gateway still refuses API calls).
+     */
+    @SuppressWarnings("unchecked")
     void revalidate() {
+        List<Connection> all = new java.util.ArrayList<>();
+        hub.all().forEach(all::add);
+        if (!all.isEmpty()) {
+            try {
+                List<Map<String, Object>> refs = all.stream().map(c -> {
+                    Map<String, Object> m = new java.util.HashMap<>();
+                    m.put("sid", c.sessionHash);
+                    m.put("dealership_id", c.dealershipId == null ? null : c.dealershipId.toString());
+                    return m;
+                }).distinct().toList();
+                Map<String, Object> r = identity.post().uri("/internal/sessions/check").body(Map.of("sessions", refs)).retrieve().body(Map.class);
+                Set<String> invalid = new java.util.HashSet<>((List<String>) r.get("invalid"));
+                for (Connection c : all) if (invalid.contains(c.sessionHash)) c.close("session revoked");
+            } catch (RestClientException e) {
+                log.info("session re-check unavailable ({}); keeping connections until the next check", e.getMessage());
+            }
+        }
         for (Connection c : hub.all()) {
             try {
                 if (!allowed(c.poolId, c.buyerId, c.dealershipId)) c.close("access revoked");

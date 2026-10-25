@@ -34,5 +34,7 @@ public final class Api {
 
     public record PasskeyRegistered(String credentialId, String createdAt) {}
 
+    public record SessionCheck(List<String> invalid) {}
+
     public record ServiceToken(String accessToken, String tokenType, long expiresIn, List<String> scope) {}
 }

@@ -62,7 +62,9 @@ public class Users {
         for (String r : roles) jdbc.update("insert into user_roles(user_id, role) values (?, ?)", id, r);
         if (dealershipId != null) {
             String staffRole = roles.contains("dealer_admin") ? "dealer_admin" : "dealer_staff";
-            jdbc.update("insert into dealership_staff(dealership_id, user_id, role) values (?, ?, ?) on conflict do nothing", dealershipId, id, staffRole);
+            // "exactly these roles": a seeded staff member revoked in a local test (AZ-T6) is active again after a restart
+            jdbc.update("insert into dealership_staff(dealership_id, user_id, role) values (?, ?, ?) on conflict (dealership_id, user_id) "
+                    + "do update set role = excluded.role, status = 'ACTIVE', revoked_at = null", dealershipId, id, staffRole);
         }
         return id;
     }

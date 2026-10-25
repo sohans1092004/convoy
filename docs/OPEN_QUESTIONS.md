@@ -199,3 +199,8 @@ Format: question · options · **default chosen** · impact.
 - Added in P2 (scope F). WebAuthn sign-in needs a server challenge before the assertion, which E005 alone cannot carry, so **E151** `POST /auth/passkeys/authenticate/options` (anonymous) was added to api-outline.md. No existing row changed.
 - **Default:** attestation `none` (no authenticator-vendor check), user verification required, discoverable credentials (sign-in without an email), ES256 + RS256, challenge lifetime 5 min (`identity.passkeys.challenge-minutes`), verified with webauthn4j 0.31.11 (Apache-2.0, no cost).
 - Open: whether dealer staff must use passkeys (stronger than email codes), and whether to require attestation for staff. Needs a security decision before a real pilot.
+
+### Q-044 — Staff revocation within 30 s (AZ-T6): what was pulled forward — DEFAULTED (P2)
+- Added in P2 (scope F). Measuring AZ-T6 needs a revoke action, so **E012** (revoke staff) moved from P3 to P2; E010/E011 (invites) stay in P3. **E152** `POST /internal/sessions/check` (service:realtime) was added: realtime sends one batch per cycle and closes streams whose session was revoked or whose staff membership ended.
+- **Default:** gateway session cache 25 s (contract: ≤ 30 s; 5 s margin for polling), realtime re-check every 15 s. Revocation removes the dealer role and keeps the user's buyer access and session.
+- Measured locally: reports/p2/revocation.json. Open: whether revocation should also end all the staff member's sessions (stricter), and event-driven cache eviction on StaffRevoked (would make it near-instant; the TTL remains the guarantee).

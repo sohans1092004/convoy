@@ -40,4 +40,4 @@ realtime:
   # realtime-recovery.md: heartbeat 15 s, bounded queue 256 per connection, re-validate access every 30 s.
   heartbeat: ${REALTIME_HEARTBEAT:15s}
   queue-capacity: ${REALTIME_QUEUE_CAPACITY:256}
-  revalidate: ${REALTIME_REVALIDATE:30s}
+  revalidate: ${REALTIME_REVALIDATE:15s} # AZ-T6: a revoked session's stream closes within 30 s

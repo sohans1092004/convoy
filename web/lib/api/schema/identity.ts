@@ -32,6 +32,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/sessions/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/oauth/token": {
         parameters: {
             query?: never;
@@ -192,6 +208,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dealerships/{id}/staff/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -219,6 +251,16 @@ export interface components {
             dealership_id: string | null;
             sid: string;
             session_expires_at: string;
+        };
+        CheckBody: {
+            sessions: components["schemas"]["SessionRef"][];
+        };
+        SessionRef: {
+            sid: string;
+            dealership_id: string | null;
+        };
+        SessionCheck: {
+            invalid: string[];
         };
         TokenBody: {
             grant_type: string;
@@ -377,6 +419,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SessionValidation"];
+                };
+            };
+        };
+    };
+    check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SessionCheck"];
                 };
             };
         };
@@ -597,6 +663,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Jwks"];
+                };
+            };
+        };
+    };
+    revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Status"];
                 };
             };
         };

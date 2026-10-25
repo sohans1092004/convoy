@@ -75,6 +75,10 @@ public class RealtimeApplication {
     @Bean
     RestClient poolClient(ServiceTokens tokens, RestClient.Builder builder, RealtimeSettings s) { return tokens.client(builder, "pool", s.poolUrl()); }
 
+    /** E152: the batch session re-check (revoked staff, logged-out sessions). */
+    @Bean
+    RestClient identityClient(ServiceTokens tokens, RestClient.Builder builder, convoy.platform.ConvoyProperties p) { return tokens.client(builder, "identity", p.identityUrl()); }
+
     /** Every pool-aggregate event type (realtime is a FULL pool subscriber in the catalogue). */
     @Bean
     @SuppressWarnings({"unchecked", "rawtypes"})
