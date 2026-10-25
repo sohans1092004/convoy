@@ -66,6 +66,10 @@ public abstract class ServiceTest {
             java.nio.file.Path root = java.nio.file.Path.of("").toAbsolutePath();
             while (!java.nio.file.Files.exists(root.resolve("settings.gradle.kts")) && !java.nio.file.Files.exists(root.resolve("settings.gradle"))) root = root.getParent();
             java.nio.file.Path file = root.resolve("web/lib/api/openapi/" + service + ".json");
+            if ("1".equals(System.getenv("CONVOY_WRITE_OPENAPI"))) { // regenerate the committed spec from the test (then: node web/scripts/gen-api.mjs --offline)
+                java.nio.file.Files.writeString(file, json.writerWithDefaultPrettyPrinter().writeValueAsString(live) + System.lineSeparator().substring(System.lineSeparator().length() - 1));
+                return;
+            }
             org.assertj.core.api.Assertions.assertThat(live)
                     .as("OpenAPI for %s differs from %s: regenerate the web client (node web/scripts/gen-api.mjs against the stack) and commit it", service, file)
                     .isEqualTo(json.readTree(file.toFile()));

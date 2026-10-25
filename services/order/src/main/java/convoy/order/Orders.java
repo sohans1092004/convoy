@@ -51,8 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class Orders {
     private static final Logger log = LoggerFactory.getLogger(Orders.class);
     private static final SecureRandom RANDOM = new SecureRandom();
-    public static final TransitionTable ORDER = TransitionTable.load("order", Set.of("ORD-T01", "ORD-T02", "ORD-T05", "ORD-T06", "ORD-T07"));
-    public static final TransitionTable BOOKING = TransitionTable.load("booking", Set.of("BKG-T01", "BKG-T02"));
+    public static final TransitionTable ORDER = TransitionTable.load("order", Set.of("ORD-T01", "ORD-T02", "ORD-T03", "ORD-T04", "ORD-T05", "ORD-T06", "ORD-T07", "ORD-T08", "ORD-T09", "ORD-T10"));
+    public static final TransitionTable BOOKING = TransitionTable.load("booking", Set.of("BKG-T01", "BKG-T02", "BKG-T03", "BKG-T04", "BKG-T05", "BKG-T06", "BKG-T07", "BKG-T08"));
+    /** Shown on the confirm screen: the buyer's name and email go only to this offer's dealer, and only once a booking is issued. */
+    public static final String CONTACT_CONSENT_VERSION = "2026-10-26-p4";
     private final JdbcTemplate jdbc;
     private final Outbox outbox;
     private final ObjectMapper json;
@@ -100,6 +102,7 @@ public class Orders {
         UUID pool = UUID.fromString(e.poolId());
         jdbc.update("insert into pool_resolutions(pool_id, round_set, state, confirmation_deadline) values (?, ?, 'PENDING', ?) on conflict do nothing",
                 pool, e.roundSet(), Timestamp.from(e.confirmationDeadline()));
+        jdbc.update("insert into sagas(pool_id, round_set, step) values (?, ?, 'FROZEN') on conflict do nothing", pool, e.roundSet()); // P4.B
         for (Map<String, Object> a : e.acceptances()) {
             UUID buyer = UUID.fromString((String) a.get("buyer_id")), quote = UUID.fromString((String) a.get("quote_id")), variant = UUID.fromString((String) a.get("variant_id"));
             if (jdbc.queryForObject("select count(*) from orders where pool_id = ? and buyer_id = ? and round_set = ?", Integer.class, pool, buyer, e.roundSet()) > 0) continue;
@@ -176,6 +179,8 @@ public class Orders {
                     .with("server_time", jdbc.queryForObject("select clock_timestamp()", Timestamp.class).toInstant().toString());
         }
         int count = jdbc.queryForObject("update quote_capacity set confirmed_count = confirmed_count + 1 where quote_id = ? returning confirmed_count", Integer.class, o.get("quote_id"));
+        jdbc.update("insert into contact_consents(order_id, buyer_id, dealership_id, terms_version) select ?, ?, dealership_id, ? from quote_replica where quote_id = ? on conflict do nothing",
+                orderId, buyer, CONTACT_CONSENT_VERSION, o.get("quote_id"));
         outbox.append(orderId, ((Number) ok.get(0).get("version")).longValue(), new ConfirmationRecorded(orderId.toString(), o.get("pool_id").toString(),
                 o.get("quote_id").toString(), ((Timestamp) ok.get(0).get("confirmed_at")).toInstant(), (long) count));
         return view(orderId, buyer);
@@ -340,9 +345,12 @@ public class Orders {
                     "computed_at", ((Timestamp) s.get("computed_at")).toInstant().toString()));
         }
         o.put("snapshots", snaps);
-        List<Map<String, Object>> b = jdbc.queryForList("select id, state, promised_delivery_date::text as promised_delivery_date, dealer_confirm_deadline, dealership_id "
-                + "from bookings where order_id = ?", orderId);
+        List<Map<String, Object>> b = jdbc.queryForList("select id, state, version, promised_delivery_date::text as promised_delivery_date, dealer_confirm_deadline, dealership_id, "
+                + "voucher_active, scheduled_date::text as scheduled_date, delivery_slot, delivered_at, overdue_flag, cancel_reason, cancelled_at, "
+                + "(select released_at from contact_releases r where r.booking_id = b.id) as contact_released_at from bookings b where order_id = ?", orderId);
         o.put("booking", b.isEmpty() ? null : iso(b.get(0)));
+        o.put("disputes", jdbc.queryForList("select id, category, state, opened_by, created_at from disputes where order_id = ? order by created_at", orderId).stream().map(Orders::iso).toList());
+        o.put("dealership_id", jdbc.queryForObject("select dealership_id::text from quote_replica where quote_id = ?::uuid", String.class, o.get("quote_id")));
         o.put("server_time", jdbc.queryForObject("select clock_timestamp()", Timestamp.class).toInstant().toString());
         return o;
     }
@@ -350,7 +358,9 @@ public class Orders {
     public Map<String, Object> voucher(UUID orderId, UUID buyer) {
         ownOrder(orderId, buyer, false);
         List<Map<String, Object>> b = jdbc.queryForList("select id, state, voucher_token, promised_delivery_date::text as promised_delivery_date, dealership_id from bookings where order_id = ?", orderId);
-        if (b.isEmpty()) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "The voucher appears once your booking is issued.");
+        if (b.isEmpty() || !jdbc.queryForObject("select voucher_active from bookings where order_id = ?", Boolean.class, orderId)) {
+            throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "The voucher appears once your deposit is held and the dealer's stock is reserved (usually seconds).");
+        }
         Map<String, Object> out = iso(b.get(0));
         out.put("qr_payload", out.remove("voucher_token"));
         out.put("verification", "ES256-signed token; the dealer scans it at handover (booking.yaml).");
@@ -359,6 +369,8 @@ public class Orders {
 
     public Map<String, Object> dealerBooking(UUID bookingId) {
         return iso(jdbc.queryForMap("select b.id, b.order_id, b.state, b.version, b.promised_delivery_date::text as promised_delivery_date, b.dealer_confirm_deadline, "
+                + "b.scheduled_date::text as scheduled_date, b.delivery_slot, b.delivered_at, b.overdue_flag, b.cancel_reason, "
+                + "exists (select 1 from contact_releases r where r.booking_id = b.id) as contact_released, "
                 + "o.variant_id, (s.output->>'cash_payable_paise')::bigint as final_cash_payable_paise from bookings b join orders o on o.id = b.order_id "
                 + "join price_snapshots s on s.id = b.final_snapshot_id where b.id = ?", bookingId));
     }

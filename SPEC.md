@@ -122,6 +122,21 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Rule (Q-044): revoking a staff member ends all their sessions at once: identity deletes them and emits `SessionRevoked` (reason STAFF_REVOKED) per session plus `StaffRevoked`. The gateway and realtime evict on the event; the 25 s session cache remains the fallback guarantee.
 - Source: the owner's Phase 2.5 instructions (2026-10-25). Files: OPEN_QUESTIONS.md, membership state machine, transitions vectors, problem-types.yaml, auth-contract.md. Phase: P2.5.
 
+**AMENDMENT-009 — Dealer reliability score (closes Q-036).**
+- Rule: reliability = FINAL commitments honoured through to delivery over the last 90 days, `honoured / (honoured + not honoured)`. Honoured = a booking delivered (`BookingDelivered`). Not honoured = a booking cancelled by the dealer, not confirmed within the 48 h window, or cancelled for missing stock (`BookingCancelled` with reason `DEALER_CANCELLED`, `DEALER_NO_CONFIRM` or `STOCK_UNAVAILABLE`), or a quote withdrawn after FINAL (`QuoteWithdrawn{after_final: true}`). Buyer cancellations and open bookings do not count. Each event counts once (by event id).
+- Display: always with both counts and the window ("9 of 10 FINAL offers honoured, last 90 days"); never a bare percentage. With no outcomes yet the score is absent ("No completed bookings yet"), not 0 % or 100 %.
+- Owner: dealer service (Q-021). Exposed on `GET /dealerships/{id}` as `reliability {honoured, total, score_percent, window_days}`; `ReliabilityScoreChanged` on every counted outcome.
+- Source: the owner's P4.E instruction (2026-10-26: "a simple, documented formula ... show it with the sample size"). Files: OPEN_QUESTIONS.md (Q-036), cancellation-rules.md, Reputation.java. Phase: P4.
+
+### Contract additions in P4 (owner's P4 instructions, 2026-10-26)
+- E154 `POST /bookings/{id}/confirm-delivery` (buyer): the owner's P4.D flow has the buyer confirm delivery (BKG-T05 by the buyer), next to E090 where the dealer scans the buyer's voucher. Either releases the deposit and posts the success fee.
+- E155 `GET /dealer/bookings/{id}/contact` (dealer staff) and E157 `GET /internal/users/{id}/contact` (identity, `service:order`, scope `contacts:read`): contact release to the dealer of the confirmed quote only. The buyer consents when confirming (`order.contact_consents`, version `2026-10-26-p4`); the release is a saga step after the deposit hold and stock reservation (`order.contact_releases`).
+- E156 `GET /admin/disputes` (platform_admin): the disputes queue.
+- `PoolReopened` / re-round choice built (E042, POOL-T09/T10, MEM-T12..T16); the choice window is `pool.durations.reround-choice` (48 h; the demo stack uses `DEMO_REROUND_CHOICE_SECONDS`).
+- Money outcomes of a dispute (`REFUND_BUYER`, `CANCEL_BOOKING`) follow AMENDMENT-001: the owning admin proposes, a second, different admin confirms the same outcome.
+- The voucher is valid only after the saga's BOOKINGS_ISSUED step (deposit held, stock reserved); before that E085 answers `invalid-transition`.
+- `PoolClosed` refund reasons follow deposit-contract.md §3 exactly: `POOL_<end_state>`, and `QUOTE_VOID` for `ALL_QUOTES_VOID` (P1 had sent `POOL_<end_reason>`).
+
 ### Contract additions in P3 (owner's P3.A instructions, 2026-10-25)
 - Dealership status `PENDING` renamed `PENDING_VERIFICATION`; new `REJECTED` (admin rejects with a reason). Every registration and decision is audited (`dealer.dealership_audit`).
 - `DealershipVerified` payload: `brand_ids: uuid[]` became `brands: string[]` (dealerships store brand names, as pools do) and gained `registered_by`; identity now consumes it and makes the registrant the dealership's admin.

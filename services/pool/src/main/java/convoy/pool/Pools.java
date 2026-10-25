@@ -49,7 +49,7 @@ import org.springframework.web.client.RestClientException;
 public class Pools {
     private static final Logger log = LoggerFactory.getLogger(Pools.class);
     public static final ZoneId IST = ZoneId.of("Asia/Kolkata");
-    public static final TransitionTable POOL = TransitionTable.load("pool", Set.of("POOL-T01", "POOL-T02", "POOL-T03", "POOL-T04", "POOL-T05", "POOL-T06", "POOL-T07", "POOL-T08", "POOL-T09", "POOL-T10", "POOL-T11", "POOL-T12"));
+    public static final TransitionTable POOL = TransitionTable.load("pool", Set.of("POOL-T01", "POOL-T02", "POOL-T03", "POOL-T04", "POOL-T05", "POOL-T06", "POOL-T07", "POOL-T08", "POOL-T09", "POOL-T10", "POOL-T11", "POOL-T12", "POOL-T14"));
     public static final TransitionTable MEMBERSHIP = TransitionTable.load("membership",
             Set.of("MEM-T01", "MEM-T02", "MEM-T03", "MEM-T04", "MEM-T05", "MEM-T06", "MEM-T07", "MEM-T08", "MEM-T09", "MEM-T10", "MEM-T11", "MEM-T12", "MEM-T13", "MEM-T14", "MEM-T15", "MEM-T16"));
     public static final TransitionTable ROUND = TransitionTable.load("round", Set.of("RND-T01", "RND-T02"));
@@ -464,6 +464,15 @@ public class Pools {
         long v = jdbc.queryForObject("update pools set state = ?, end_reason = ?, version = version + 1 where id = ? returning version", Long.class, endState, endReason, poolId);
         outbox.append(poolId, v, new PoolClosed(poolId.toString(), endState, endReason));
         log.info("pool {} closed: {} ({})", poolId, endState, endReason);
+    }
+
+    /** POOL-T14: every booking of the pool is delivered or cancelled. */
+    public void allBookingsClosed(UUID poolId) {
+        Map<String, Object> pool = lockPool(poolId);
+        if (!"BOOKING".equals(pool.get("state"))) return; // repeat or late
+        POOL.check("BOOKING", "COMPLETED");
+        long v = jdbc.queryForObject("update pools set state = 'COMPLETED', version = version + 1 where id = ? returning version", Long.class, poolId);
+        outbox.append(poolId, v, new convoy.contracts.events.PoolCompleted(poolId.toString()));
     }
 
     /** POOL-T09 (single re-round, AMENDMENT-002): VOID buyers keep their deposit and choose within 48 h (MEM-T12); others go back to INTERESTED (MEM-T16). */

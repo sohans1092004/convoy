@@ -59,6 +59,7 @@ public class PoolApplication {
                 .on(PaymentCaptured.class, (e, p) -> pools.paymentCaptured(e, p))
                 .on(PaymentFailed.class, (e, p) -> pools.paymentFailed(p.paymentId()))
                 .on(convoy.contracts.events.PaymentVoided.class, (e, p) -> pools.paymentFailed(p.paymentId()))
-                .on(BookingsIssued.class, (e, p) -> pools.bookingsIssued(e, p));
+                .on(BookingsIssued.class, (e, p) -> pools.bookingsIssued(e, p))
+                .on(convoy.contracts.events.AllBookingsClosed.class, (e, p) -> pools.allBookingsClosed(java.util.UUID.fromString(p.poolId())));
     }
 }

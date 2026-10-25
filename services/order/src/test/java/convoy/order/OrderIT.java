@@ -41,6 +41,7 @@ class OrderIT extends ServiceTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired TransactionTemplate tx;
     @Autowired Orders orders;
+    @Autowired Lifecycle lifecycle;
 
     /** Swift LXi MT, MH, dealer ex-showroom Rs 5,83,900; tiers 1-4 Rs 10,000 off, 5+ Rs 25,000 off (engine computes each price). */
     static Map<String, Object> swiftInput() {
@@ -118,7 +119,8 @@ class OrderIT extends ServiceTest {
             assertThat(v.path("state").asText()).isEqualTo("BOOKED");
             long fin = v.at("/snapshots/final/output/cash_payable_paise").asLong();
             assertThat(fin).isLessThan(ceiling); // 5 confirmed -> tier 5+: the price fell
-            assertThat(get("/orders/" + orderOf(b, s.pool()) + "/voucher", TestTokens.buyer("order", b)).status()).isEqualTo(200);
+            // P4.B: the voucher is valid only once the deposit is held and the stock reserved (saga step BOOKINGS_ISSUED)
+            assertThat(get("/orders/" + orderOf(b, s.pool()) + "/voucher", TestTokens.buyer("order", b)).status()).isEqualTo(409);
         }
         assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'DepositHoldRequested' and payload->>'pool_id' = ?", Integer.class, s.pool().toString())).isEqualTo(5);
         assertThat(jdbc.queryForObject("select payload->>'bookings_count' from outbox where event_type = 'BookingsIssued' and payload->>'pool_id' = ?", String.class, s.pool().toString())).isEqualTo("5");
@@ -134,6 +136,17 @@ class OrderIT extends ServiceTest {
         assertThat(send("POST", "/dealer/bookings/" + booking + "/confirm", TestTokens.dealer("order", UUID.randomUUID(), UUID.randomUUID()), null,
                 Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"1\"")).status()).isEqualTo(404);
         assertThat(send("POST", "/dealer/bookings/" + booking + "/confirm", dealer, null, Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"1\"")).status()).isEqualTo(200);
+        for (UUID bk : jdbc.queryForList("select b.id from bookings b join orders o on o.id = b.order_id where o.pool_id = ?", UUID.class, s.pool())) {
+            orders.stepDone(bk, "HOLD_DEPOSIT");
+            orders.stepDone(bk, "RESERVE_STOCK");
+        }
+        try {
+            EventContext.set(Uuid7.next(), null);
+            lifecycle.advance(s.pool(), 1);
+        } finally {
+            EventContext.clear();
+        }
+        for (UUID b : s.buyers()) assertThat(get("/orders/" + orderOf(b, s.pool()) + "/voucher", TestTokens.buyer("order", b)).status()).isEqualTo(200);
         String bookings = get("/dealer/bookings", dealer).body();
         assertThat(bookings).contains(booking.toString());
         // AZ-T2: no buyer identity in dealer booking views (contact details only after consent, later phases).
@@ -170,7 +183,9 @@ class OrderIT extends ServiceTest {
         assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'DepositRefundRequested' and payload->>'reason' = 'MISSED_CONFIRMATION_DEADLINE' and payload->>'buyer_id' = ?",
                 Integer.class, b2.toString())).isEqualTo(1);
         assertThat(get("/orders/" + o0 + "/decline", TestTokens.buyer("order", b0)).status()).isEqualTo(405);
-        assertThat(JSON.readTree(send("POST", "/orders/" + o0 + "/cancel", TestTokens.buyer("order", b0), null, Map.of()).body()).path("code").asText()).isEqualTo("NOT_IMPLEMENTED_IN_P1");
+        // ORD-T03 is built (P4): a booked order is cancelled through its booking (E086), not the order
+        assertThat(JSON.readTree(send("POST", "/orders/" + o0 + "/cancel", TestTokens.buyer("order", b0), null,
+                Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"" + view(b0, o0).path("version").asLong() + "\"")).body()).path("code").asText()).isEqualTo("INVALID_TRANSITION");
     }
 
     @Test

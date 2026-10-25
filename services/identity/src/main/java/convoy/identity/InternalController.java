@@ -19,6 +19,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -61,6 +62,15 @@ public class InternalController {
         out.put("sid", hash);
         out.put("session_expires_at", ((java.sql.Timestamp) rows.get(0).get("expires_at")).toInstant().toString());
         return convoy.platform.web.Dto.as(out, Api.SessionValidation.class);
+    }
+
+    /** E157 (P4.B contact release): a buyer's email for order, which serves it only to the dealer of a released booking. */
+    @GetMapping("/internal/users/{id}/contact")
+    @convoy.platform.security.RequiresScope("contacts:read")
+    public Map<String, Object> contact(@PathVariable java.util.UUID id) {
+        Caller.current().requireScope("contacts:read");
+        Users.User u = users.find(id).orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "No such user."));
+        return Map.of("user_id", u.id().toString(), "email", u.email());
     }
 
     public record TokenBody(String grantType, @NotBlank String clientId, @NotBlank String clientSecret, @NotBlank String audience) {}

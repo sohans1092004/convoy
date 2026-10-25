@@ -103,6 +103,7 @@ services:
       CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
       CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME}
       CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
+      CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SEED_USERS_FILE: /seed/users.json
@@ -207,6 +208,8 @@ services:
       <<: *service-env
       OTEL_SERVICE_NAME: order
       DB_PASSWORD: ${DB_PASSWORD_ORDER}
+      CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER}
+      EVIDENCE_PUBLIC_ENDPOINT: http://localhost:4566
 
   payment:
     <<: *service
