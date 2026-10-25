@@ -7,7 +7,7 @@ import { recordServerTime } from './server-clock';
 export type LiveStatus = 'live' | 'reconnecting' | 'delayed';
 
 interface Versioned { version: number }
-interface StreamMessage { aggregate: string; id: string; version: number; delta?: Record<string, unknown>; server_time?: string; resync?: boolean }
+interface StreamMessage { aggregate: string; id: string; version: number; event_type?: string; delta?: Record<string, unknown>; server_time?: string; resync?: boolean }
 
 /** Merge a delta into the snapshot (deltas are hints carrying absolute values; the snapshot is the truth, realtime-recovery.md §2). */
 export function applyDelta<T extends Versioned>(snap: T, msg: StreamMessage): T {
@@ -15,13 +15,20 @@ export function applyDelta<T extends Versioned>(snap: T, msg: StreamMessage): T 
 }
 
 /**
- * What to do with a stream message given the local version (pure, unit-tested):
- * apply only version == local + 1, ignore version <= local, anything newer is a gap -> refetch the snapshot.
+ * Events whose whole effect on the snapshot is the absolute counts in their delta. Every other event changes nested
+ * state the delta cannot carry (rounds, the buyer's own membership, a state reached as a side effect such as
+ * RoundClosed -> DECISION_OPEN), so it refetches the snapshot instead of merging.
  */
-export function decide(local: number | undefined, incoming: number): 'apply' | 'ignore' | 'resync' {
+const IN_PLACE = new Set(['MemberJoined', 'MemberLeft']);
+
+/**
+ * What to do with a stream message given the local version (pure, unit-tested):
+ * ignore version <= local; apply version == local + 1 when the event is a counts-only one; anything else refetches.
+ */
+export function decide(local: number | undefined, incoming: number, eventType?: string): 'apply' | 'ignore' | 'resync' {
   if (local === undefined) return 'resync';
   if (incoming <= local) return 'ignore';
-  return incoming === local + 1 ? 'apply' : 'resync';
+  return incoming === local + 1 && eventType !== undefined && IN_PLACE.has(eventType) ? 'apply' : 'resync';
 }
 
 /** Full-jitter exponential backoff: random(0, min(cap, base * 2^attempt)). */
@@ -51,7 +58,8 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
     queryFn: async () => newer(qc.getQueryData<T>(key), (await loadRef.current()).data),
     refetchInterval: status === 'live' ? false : 10_000,
   });
-  const refresh = React.useCallback(() => qc.invalidateQueries({ queryKey: key }), [qc, key]);
+  // Never cancels a refetch in flight: a flapping stream must not restart it forever and hide its failure.
+  const refresh = React.useCallback(() => qc.invalidateQueries({ queryKey: key }, { cancelRefetch: false }), [qc, key]);
   const setData = React.useCallback((f: (old: T) => T) => qc.setQueryData<T>(key, (old) => (old ? f(old) : old)), [qc, key]);
   const accept = React.useCallback((data: T) => qc.setQueryData<T>(key, (old) => newer(old, data)), [qc, key]);
 
@@ -76,7 +84,7 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
       const msg = JSON.parse(ev.data) as StreamMessage;
       if (msg.server_time) recordServerTime(msg.server_time, Date.now(), Date.now());
       const local = qc.getQueryData<T>(key)?.version;
-      const d = decide(local, msg.version);
+      const d = decide(local, msg.version, msg.event_type);
       if (d === 'apply') qc.setQueryData<T>(key, (old) => (old ? applyDelta(old, msg) : old));
       else if (d === 'resync') refresh();
     };
@@ -86,9 +94,13 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
       es = new EventSource(streamUrl);
       lastEventAt = Date.now();
       const seen = () => { lastEventAt = Date.now(); };
+      // The backoff resets only once the stream proves healthy (a heartbeat or a message), not on connect: a stream
+      // that connects and drops at once keeps backing off.
+      const healthy = () => { attempt = 0; };
+      es.addEventListener('heartbeat', healthy);
+      es.addEventListener('pool.changed', healthy);
       for (const name of ['ready', 'pool.changed', 'resync', 'heartbeat']) es.addEventListener(name, seen);
       es.addEventListener('ready', () => {
-        attempt = 0;
         clearTimeout(delayedTimer);
         setStatus('live');
         refresh(); // snapshot after connecting, then only newer versions

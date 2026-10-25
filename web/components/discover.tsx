@@ -28,13 +28,15 @@ export function Discover() {
     queryKey: ['models', city],
     queryFn: async () => (await call(api.GET('/catalog/models', { params: { query: city ? { city } : {} } }))).data as ModelList,
     placeholderData: keepPreviousData,
+    staleTime: 0, // returning to a city refreshes its prices; a failed refresh shows the cached list as stale
   });
   const data = models.data;
   if (data && firstRuleset.current === null) firstRuleset.current = data.ruleset_version;
   const rulesetChanged = data && firstRuleset.current !== null && data.ruleset_version !== firstRuleset.current;
   const needle = q.trim().toLowerCase();
   const shown = (data?.models ?? []).filter((m) => !needle || `${m.brand} ${m.name} ${m.body_type}`.toLowerCase().includes(needle));
-  const stale = Boolean(data) && (models.isError || !online);
+  // Stale = this city's cached list after its refresh failed (never another city's list presented as this one's).
+  const stale = Boolean(data) && !models.isPlaceholderData && (models.isError || !online);
 
   return (
     <section aria-labelledby="cars" className="flex flex-col gap-3">

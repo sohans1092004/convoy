@@ -58,6 +58,17 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     } catch {
       return problem(503, 'dependency-unavailable', 'DEPENDENCY_UNAVAILABLE', 'A required downstream dependency is unavailable', 'Convoy is unreachable right now. Try again shortly.');
     }
+    // An expired or revoked session must not break public reads: retry a GET once without it and drop the dead cookies.
+    let sessionExpired = false;
+    if (upstream.status === 401 && sid && req.method === 'GET' && !route.startsWith('stream/')) {
+      sessionExpired = true;
+      headers.delete('X-Convoy-Session');
+      try {
+        upstream = await fetch(`${GATEWAY}/api/${route}${req.nextUrl.search}`, { method: 'GET', headers, cache: 'no-store', redirect: 'manual' });
+      } catch {
+        return problem(503, 'dependency-unavailable', 'DEPENDENCY_UNAVAILABLE', 'A required downstream dependency is unavailable', 'Convoy is unreachable right now. Try again shortly.');
+      }
+    }
     span.setAttribute('http.status_code', upstream.status);
     const out = new Headers();
     for (const h of FORWARD_RES) {
@@ -94,7 +105,12 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       return res;
     }
     body = body && (body as ArrayBuffer).byteLength === 0 ? null : body;
-    return new NextResponse(body, { status: upstream.status, headers: out });
+    const res = new NextResponse(body, { status: upstream.status, headers: out });
+    if (sessionExpired) {
+      res.cookies.delete('cv_sid');
+      res.cookies.delete('cv_roles');
+    }
+    return res;
   });
 }
 

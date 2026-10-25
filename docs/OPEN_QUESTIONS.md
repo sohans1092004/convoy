@@ -164,6 +164,11 @@ Format: question · options · **default chosen** · impact.
 ### Q-037 — What are the starting route JS budget caps?
 - **Default:** caps in frontend-quality.md §3, revised once P1 sets the measured baseline.
 - Impact: CI gate values.
+- **P2 (2026-10-25):** baseline measured (gzip first-load JS, `web/perf/budgets.json`): discover 185.5 KB, join 189.4,
+  pool 189.3, compare 185.3, confirm 194.1, my cars 184.5, quote builder 200.9. Per the P2 prompt the CI budget is
+  baseline × 1.10. Five routes exceed the starting caps (discover 170, join 150, pool 170, confirm 150, my cars 170): about
+  180 KB of every route is the shared runtime (React 19, Next.js, next-intl, TanStack Query, Radix). Still open: whether to
+  cut that (e.g. drop a dependency, split providers) to meet the caps, or raise the caps.
 
 ### Q-038 — Which AWS account plan do full runs need?
 - **Default:** assume the paid plan. Whether the free plan restricts Fargate, WAF or Multi-AZ RDS was not verified.

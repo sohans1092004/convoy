@@ -10,7 +10,8 @@ type Model = Schemas['catalog']['Model'];
 export default async function ModelPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { status, data } = await gatewayGet<Model>(`/catalog/models/${slug}`);
-  if (status === 404 || !data) notFound();
+  if (status === 404) notFound();
+  if (!data) throw new Error(`catalogue unavailable (${status})`); // error boundary, never a false 404
   const roles = ((await cookies()).get('cv_roles')?.value ?? '').split(',');
   const saved = roles.includes('buyer') ? (await gatewayGet<Schemas['catalog']['SavedCars']>('/me/saved-cars')).data?.cars ?? [] : [];
   return (

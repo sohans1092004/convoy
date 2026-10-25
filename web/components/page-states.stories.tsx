@@ -43,11 +43,13 @@ export const DiscoverErrorKeepsSearch: Story = {
   },
 };
 export const DiscoverStale: Story = {
-  render: models({ 'GET /api/catalog/models\\?city=Pune': [problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')], 'GET /api/catalog/models': [ok(MODELS)] }),
+  render: models({ 'GET /api/catalog/models\\?city=Pune': [ok(MODELS)], 'GET /api/catalog/models$': [ok(MODELS), problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] }),
   play: async ({ canvasElement }) => {
     const c = within(canvasElement);
     await c.findByText('Creta', { exact: false });
     await userEvent.selectOptions(c.getByLabelText('City'), 'Pune');
+    await c.findByText(/3 cars · Pune/);
+    await userEvent.selectOptions(c.getByLabelText('City'), '');
     await expect(await c.findByText(/latest refresh failed/)).toBeVisible();
   },
 };
@@ -82,11 +84,13 @@ export const JoinLoading: Story = { render: join({ [est]: ['hang'] }) };
 export const JoinEmpty: Story = { name: 'Join empty (no verified price here)', render: join({ [est]: [problem(422, 'QUOTE_INVALID', 'RTO_UNVERIFIED')] }) };
 export const JoinErrorKeepsChoices: Story = { render: join({ [est]: [problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] }) };
 export const JoinStale: Story = {
-  render: join({ [`${est}\\?city=Delhi`]: [problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')], [est]: [ok(ESTIMATE)] }),
+  render: join({ [`${est}\\?city=Delhi`]: [ok({ ...ESTIMATE, city: 'Delhi' })], [est]: [ok(ESTIMATE), problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] }),
   play: async ({ canvasElement }) => {
     const c = within(canvasElement);
     await c.findByText('Estimated cash payable');
     await userEvent.selectOptions(c.getByLabelText('City'), 'Delhi');
+    await c.findByRole('heading', { name: 'On-road estimate in Delhi' });
+    await userEvent.selectOptions(c.getByLabelText('City'), 'Pune');
     await expect(await c.findByText(/could not be refreshed/)).toBeVisible();
   },
 };

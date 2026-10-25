@@ -3,11 +3,15 @@ import { applyDelta, backoffMs, decide, newer } from './use-live-snapshot';
 
 describe('stream version rule (realtime-recovery.md §2)', () => {
   it('applies only the next version, ignores old ones and resyncs on a gap', () => {
-    expect(decide(4, 5)).toBe('apply');
-    expect(decide(4, 4)).toBe('ignore');
+    expect(decide(4, 5, 'MemberJoined')).toBe('apply');
+    expect(decide(4, 4, 'MemberJoined')).toBe('ignore');
     expect(decide(4, 2)).toBe('ignore');
-    expect(decide(4, 7)).toBe('resync');
-    expect(decide(undefined, 1)).toBe('resync');
+    expect(decide(4, 7, 'MemberLeft')).toBe('resync');
+    expect(decide(undefined, 1, 'MemberJoined')).toBe('resync');
+  });
+
+  it('refetches for events that change more than counts (found by the P1 journey: RoundClosed has no state field)', () => {
+    for (const e of ['RoundClosed', 'DecisionOpened', 'AcceptancesFrozen', 'MemberCommitted', undefined]) expect(decide(4, 5, e)).toBe('resync');
   });
 
   it('merges a delta and takes its version, keeping fields the delta does not carry', () => {

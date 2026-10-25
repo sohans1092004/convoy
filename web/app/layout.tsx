@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Toaster } from '@/components/ui/toast';
+import { LocaleSwitch } from '@/components/locale-switch';
 import { SignOutButton } from '@/components/sign-out';
 import { QueryProvider } from '@/lib/query';
 import './globals.css';
@@ -13,12 +14,13 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations('nav');
+  const locale = await getLocale();
   const jar = await cookies();
   const signedIn = Boolean(jar.get('cv_sid'));
   const roles = (jar.get('cv_roles')?.value ?? '').split(',');
   const dealer = roles.some((r) => r.startsWith('dealer'));
   return (
-    <html lang="en-IN">
+    <html lang={locale === 'hi' ? 'hi-IN' : 'en-IN'}>
       <body className="min-h-screen">
         <NextIntlClientProvider>
           <QueryProvider>
@@ -33,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {signedIn && !dealer ? <Link href="/orders" className="text-sm font-medium">{t('orders')}</Link> : null}
                 {dealer ? <Link href="/dealer" className="text-sm font-medium">{t('dealer')}</Link> : null}
                 {dealer ? <Link href="/dealer/bookings" className="text-sm font-medium">{t('bookings')}</Link> : null}
-                <span className="ml-auto">{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>
+                <span className="ml-auto flex items-center gap-4"><LocaleSwitch />{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>
               </nav>
             </header>
             <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{children}</main>

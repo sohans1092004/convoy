@@ -69,5 +69,71 @@
     "from": "From {price} ex-showroom",
     "cityNotConfirmed": "Manufacturer price; city not confirmed",
     "source": "Prices from the manufacturers' official pages (ruleset {version}). Only verified variant prices are listed."
+  },
+  "pool": {
+    "state": {
+      "FORMING": "Gathering buyers",
+      "READY_FOR_QUOTES": "Enough buyers: inviting dealers",
+      "QUOTE_OPEN": "Dealers are quoting (sealed)",
+      "FINAL_ROUND": "Best-and-final round",
+      "DECISION_OPEN": "Offers are in: decide",
+      "CONFIRMATION": "Confirm your price",
+      "BOOKING": "Bookings issued",
+      "EXPIRED": "Closed: not enough buyers",
+      "NO_QUOTES": "Closed: no offers",
+      "CANCELLED": "Closed"
+    },
+    "live": {
+      "live": "Live",
+      "reconnecting": "Reconnecting…",
+      "delayed": "Updates delayed — refreshing every 10 s"
+    },
+    "loadFailed": "This pool could not be loaded.",
+    "retry": "Try again",
+    "offline": "You are offline. This is the last known state of the pool; joining, committing and leaving are paused until you reconnect.",
+    "stale": "Counts may be out of date: last updated {time}. Retrying every 10 s.",
+    "whoIsIn": "Who is in",
+    "committed": "Committed (deposit held)",
+    "interested": "Interested, no deposit",
+    "empty": "No one has joined yet. Join free as interested, or commit to be the first.",
+    "progress": "Committed buyers towards the minimum",
+    "minimum": "Minimum {min} committed {min, plural, one {buyer} other {buyers}} before dealers are invited. Purchase month {month}.",
+    "deadline": {
+      "forming": "Forming closes",
+      "sealed": "Sealed round closes",
+      "decide": "Decide by",
+      "confirm": "Confirm by"
+    },
+    "offersTitle": "Offers are in",
+    "offersBody": "Compare the dealers' itemised offers and accept one. Accepting is not binding.",
+    "compare": "Compare offers",
+    "orderTitle": "Your order",
+    "orderBody": "Confirm your price, or see your booking.",
+    "orders": "Go to my orders",
+    "yourPlace": "Your place",
+    "status": "Status:",
+    "notIn": "You are not in this pool yet.",
+    "join": "Join as interested (free)",
+    "joined": "You joined as interested.",
+    "depositNote": "Deposit {amount} · Razorpay test mode",
+    "leave": "Leave this pool",
+    "leaveRefund": "Leave this pool (full ₹999 refund)",
+    "left": "You left the pool. Any deposit is being refunded in full.",
+    "footerLive": "Live updates on. Last update {time}.",
+    "footerPolling": "Refreshing every 10 seconds. Last update {time}."
+  },
+  "join": {
+    "variant": "Variant",
+    "city": "City",
+    "title": "Buy with others in {city}",
+    "car": "car",
+    "body": "Join buyers who want a {variant} this month. Dealers then compete for the whole group.",
+    "offline": "You are offline. Joining is paused until you reconnect; your choices are kept.",
+    "join": "Join or start a pool in {city}",
+    "dealerNo": "Dealer accounts cannot join pools.",
+    "signIn": "Sign in to join a pool",
+    "ready": "Pool ready. Opening it…",
+    "estimateTitle": "On-road estimate in {city}",
+    "cash": "Estimated cash payable"
   }
 }

@@ -19,11 +19,7 @@ type Deposit = Schemas['pool']['Deposit'];
 
 declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => { open(): void; on(e: string, f: (x: unknown) => void): void } } }
 
-const STATE_TEXT: Record<string, string> = {
-  FORMING: 'Gathering buyers', READY_FOR_QUOTES: 'Enough buyers: inviting dealers', QUOTE_OPEN: 'Dealers are quoting (sealed)',
-  FINAL_ROUND: 'Best-and-final round', DECISION_OPEN: 'Offers are in: decide', CONFIRMATION: 'Confirm your price', BOOKING: 'Bookings issued',
-  EXPIRED: 'Closed: not enough buyers', NO_QUOTES: 'Closed: no offers', CANCELLED: 'Closed',
-};
+const STATES = ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN', 'FINAL_ROUND', 'DECISION_OPEN', 'CONFIRMATION', 'BOOKING', 'EXPIRED', 'NO_QUOTES', 'CANCELLED'];
 
 /** Why the pool ended (or why the buyer's late payment was not used) and what happened to the deposit (scope A). */
 function ClosedCard({ pool, me }: { pool: Schemas['pool']['Pool']; me: Membership | undefined }) {
@@ -48,14 +44,13 @@ function ClosedCard({ pool, me }: { pool: Schemas['pool']['Pool']; me: Membershi
   );
 }
 
-const LIVE_TEXT: Record<LiveStatus, string> = { live: 'Live', reconnecting: 'Reconnecting…', delayed: 'Updates delayed — refreshing every 10 s' };
-
 /** Live / reconnecting / delayed, announced politely when it changes. */
 export function LiveIndicator({ status }: { status: LiveStatus }) {
+  const t = useTranslations('pool.live');
   return (
     <span role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-sm text-muted">
       <span aria-hidden className={`size-2 rounded-full ${status === 'live' ? 'bg-success-fg' : status === 'reconnecting' ? 'bg-warning-fg' : 'bg-danger'}`} />
-      {LIVE_TEXT[status]}
+      {t(status)}
     </span>
   );
 }
@@ -79,6 +74,7 @@ function loadScript(src: string) {
 
 export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl: string }) {
   const t = useTranslations('precommit');
+  const tp = useTranslations('pool');
   const snap = useLiveSnapshot(['pool', poolId], () => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), `/api/stream/pools/${poolId}`);
   const online = useOnline();
   const [ack, setAck] = React.useState(false);
@@ -154,8 +150,8 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   if (!pool) {
     return (
       <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-danger">
-        <p>{snap.problem?.detail ?? 'This pool could not be loaded.'}</p>
-        <Button variant="secondary" onClick={() => snap.refresh()}>Try again</Button>
+        <p>{snap.problem?.detail ?? tp('loadFailed')}</p>
+        <Button variant="secondary" onClick={() => snap.refresh()}>{tp('retry')}</Button>
       </div>
     );
   }
@@ -173,48 +169,48 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-2xl font-extrabold">{pool.brand} {pool.model_slug.split('-').slice(1).join(' ')} pool, {pool.city}</h1>
-        <Badge tone="info">{STATE_TEXT[pool.state] ?? pool.state}</Badge>
+        <Badge tone="info">{STATES.includes(pool.state) ? tp(`state.${pool.state}`) : pool.state}</Badge>
         <LiveIndicator status={online ? snap.status : 'delayed'} />
       </div>
       {!online ? (
-        <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">You are offline. This is the last known state of the pool; joining, committing and leaving are paused until you reconnect.</p>
+        <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">{tp('offline')}</p>
       ) : stale ? (
-        <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">Counts may be out of date: last updated {ist(new Date(snap.updatedAt).toISOString(), true)}. Retrying every 10 s.</p>
+        <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">{tp('stale', { time: ist(new Date(snap.updatedAt).toISOString(), true) })}</p>
       ) : null}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
           <Card className="flex flex-col gap-3">
-            <CardTitle>Who is in</CardTitle>
+            <CardTitle>{tp('whoIsIn')}</CardTitle>
             <dl className="grid grid-cols-2 gap-3">
-              <div><dt className="text-sm text-muted">Committed (deposit held)</dt><dd className="tabular text-2xl font-bold">{pool.committed_count}</dd></div>
-              <div><dt className="text-sm text-muted">Interested, no deposit</dt><dd className="tabular text-2xl font-bold">{pool.interested_count - pool.committed_count}</dd></div>
+              <div><dt className="text-sm text-muted">{tp('committed')}</dt><dd className="tabular text-2xl font-bold">{pool.committed_count}</dd></div>
+              <div><dt className="text-sm text-muted">{tp('interested')}</dt><dd className="tabular text-2xl font-bold">{pool.interested_count - pool.committed_count}</dd></div>
             </dl>
-            {pool.interested_count === 0 && joinable ? <CardText>No one has joined yet. Join free as interested, or commit to be the first.</CardText> : null}
+            {pool.interested_count === 0 && joinable ? <CardText>{tp('empty')}</CardText> : null}
             <div>
-              <div className="h-3 overflow-hidden rounded-full border border-border bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={pool.min_members} aria-valuenow={pool.committed_count} aria-label="Committed buyers towards the minimum">
+              <div className="h-3 overflow-hidden rounded-full border border-border bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={pool.min_members} aria-valuenow={pool.committed_count} aria-label={tp('progress')}>
                 <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
               </div>
-              <CardText className="mt-1">Minimum {pool.min_members} committed {pool.min_members === 1 ? 'buyer' : 'buyers'} before dealers are invited. Purchase month {pool.purchase_month}.</CardText>
+              <CardText className="mt-1">{tp('minimum', { min: pool.min_members, month: pool.purchase_month })}</CardText>
             </div>
-            {deadline ? <Countdown deadline={deadline} label={pool.state === 'FORMING' ? 'Forming closes' : pool.state === 'QUOTE_OPEN' ? 'Sealed round closes' : pool.state === 'DECISION_OPEN' ? 'Decide by' : 'Confirm by'} /> : null}
+            {deadline ? <Countdown deadline={deadline} label={tp(pool.state === 'FORMING' ? 'deadline.forming' : pool.state === 'QUOTE_OPEN' ? 'deadline.sealed' : pool.state === 'DECISION_OPEN' ? 'deadline.decide' : 'deadline.confirm')} /> : null}
           </Card>
           {['EXPIRED', 'NO_QUOTES', 'CANCELLED'].includes(pool.state) || me?.release_reason === 'LATE_CAPTURE' ? <ClosedCard pool={pool} me={me ?? undefined} /> : null}
           {pool.state === 'DECISION_OPEN' && me && ['COMMITTED', 'ACCEPTED'].includes(me.state) ? (
-            <Card emphasis><CardTitle>Offers are in</CardTitle><CardText className="mb-3">Compare the dealers&apos; itemised offers and accept one. Accepting is not binding.</CardText>
-              <Button asChild><Link href={`/pools/${pool.id}/compare`}>Compare offers</Link></Button></Card>
+            <Card emphasis><CardTitle>{tp('offersTitle')}</CardTitle><CardText className="mb-3">{tp('offersBody')}</CardText>
+              <Button asChild><Link href={`/pools/${pool.id}/compare`}>{tp('compare')}</Link></Button></Card>
           ) : null}
           {['CONFIRMATION', 'BOOKING'].includes(pool.state) && me?.state === 'HANDED_TO_ORDER' ? (
-            <Card emphasis><CardTitle>Your order</CardTitle><CardText className="mb-3">Confirm your price, or see your booking.</CardText>
-              <Button asChild><Link href="/orders">Go to my orders</Link></Button></Card>
+            <Card emphasis><CardTitle>{tp('orderTitle')}</CardTitle><CardText className="mb-3">{tp('orderBody')}</CardText>
+              <Button asChild><Link href="/orders">{tp('orders')}</Link></Button></Card>
           ) : null}
         </div>
         <Card className="flex flex-col gap-3">
-          <CardTitle>Your place</CardTitle>
-          <p className="text-sm">{me ? <>Status: <strong>{me.state.replace(/_/g, ' ').toLowerCase()}</strong></> : 'You are not in this pool yet.'}</p>
+          <CardTitle>{tp('yourPlace')}</CardTitle>
+          <p className="text-sm">{me ? <>{tp('status')} <strong>{me.state.replace(/_/g, ' ').toLowerCase()}</strong></> : tp('notIn')}</p>
           {!me && joinable ? (
-            <Button variant="secondary" disabled={!online} loading={join.state.kind === 'loading'} onClick={() => join.execute()}>Join as interested (free)</Button>
+            <Button variant="secondary" disabled={!online} loading={join.state.kind === 'loading'} onClick={() => join.execute()}>{tp('join')}</Button>
           ) : null}
-          <CommandStatus state={join.state} successText="You joined as interested." />
+          <CommandStatus state={join.state} successText={tp('joined')} />
           {canCommit ? (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-2 p-3">
               <h3 className="font-bold">{t('title')}</h3>
@@ -233,17 +229,17 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
                 <span>{t('ack', { version: pool.terms_version })}</span>
               </label>
               <Button disabled={!ack || !online} loading={commit.state.kind === 'loading'} onClick={onCommit}>{t('commit')}</Button>
-              <p className="text-xs text-muted">Deposit {rupees(pool.deposit_amount_paise)} · Razorpay test mode</p>
+              <p className="text-xs text-muted">{tp('depositNote', { amount: rupees(pool.deposit_amount_paise) })}</p>
             </div>
           ) : null}
           <CommandStatus state={commit.state} />
           {me && me.id !== 'pending' && ['INTERESTED', 'COMMITTED', 'ACCEPTED'].includes(me.state) && ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN', 'FINAL_ROUND', 'DECISION_OPEN'].includes(pool.state) ? (
-            <Button variant="link" disabled={!online} loading={leave.state.kind === 'loading'} onClick={() => leave.execute()}>Leave this pool{me.state !== 'INTERESTED' ? ' (full ₹999 refund)' : ''}</Button>
+            <Button variant="link" disabled={!online} loading={leave.state.kind === 'loading'} onClick={() => leave.execute()}>{me.state !== 'INTERESTED' ? tp('leaveRefund') : tp('leave')}</Button>
           ) : null}
-          <CommandStatus state={leave.state} successText="You left the pool. Any deposit is being refunded in full." />
+          <CommandStatus state={leave.state} successText={tp('left')} />
         </Card>
       </div>
-      <p className="text-xs text-muted">{snap.status === 'live' && online ? 'Live updates on.' : 'Refreshing every 10 seconds.'} Last update {ist(new Date(snap.updatedAt || Date.now()).toISOString(), true)}.</p>
+      <p className="text-xs text-muted">{tp(snap.status === 'live' && online ? 'footerLive' : 'footerPolling', { time: ist(new Date(snap.updatedAt || Date.now()).toISOString(), true) })}</p>
     </div>
   );
 }

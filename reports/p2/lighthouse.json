@@ -1,0 +1,37 @@
+{
+  "measured_at": "2026-10-25T04:01:00.669Z",
+  "commit": "2ff3699",
+  "lighthouse_cli": "@lhci/cli 0.15.1",
+  "results": {
+    "discover": {
+      "url": "http://localhost:3000/",
+      "runs": 1,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 2874,
+      "cls": 0,
+      "tbt_ms": 444,
+      "performance": 84
+    },
+    "model": {
+      "url": "http://localhost:3000/models/maruti-swift",
+      "runs": 1,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 2837,
+      "cls": 0,
+      "tbt_ms": 658,
+      "performance": 79
+    },
+    "pool": {
+      "url": "http://localhost:3000/pools/<pool-id>",
+      "runs": 1,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 2635,
+      "cls": 0,
+      "tbt_ms": 165,
+      "performance": 95
+    }
+  }
+}

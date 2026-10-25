@@ -92,6 +92,9 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await expect(page.getByText('You are committed.')).toBeVisible({ timeout: 90_000 });
   step('committed (webhook captured the test deposit)');
 
+  await page.goto('/orders');
+  const ordersBefore = await page.getByRole('link', { name: /^Order / }).evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  await page.goto(`/pools/${poolId}`);
   await dealerQuote(browser, poolId, info.project.name);
   step('dealer submitted a sealed quote');
 
@@ -104,9 +107,16 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await expect(page.getByText('Accepted. You can change your mind')).toBeVisible();
   step('accepted');
 
-  await expect.poll(async () => { await page.goto('/orders'); return page.getByRole('link', { name: /^Order / }).count(); }, { timeout: 240_000, intervals: [5000] }).toBeGreaterThan(0);
+  // The seeded buyer may hold orders from earlier runs (a reused local stack): open the one this run created.
+  let order: string | undefined;
+  await expect.poll(async () => {
+    await page.goto('/orders');
+    const hrefs = await page.getByRole('link', { name: /^Order / }).evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    order = hrefs.find((h) => h && !ordersBefore.includes(h)) ?? undefined;
+    return order;
+  }, { timeout: 240_000, intervals: [5000] }).toBeTruthy();
   await axe(page, 'orders');
-  await page.getByRole('link', { name: /^Order / }).first().click();
+  await page.goto(order!);
   await expect(page.getByRole('button', { name: /Confirm at most/ })).toBeVisible();
   await axe(page, 'order (confirm)');
   await page.getByRole('button', { name: /Confirm at most/ }).click();

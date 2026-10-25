@@ -13,3 +13,4 @@ test-results/
 *.log
 .impeccable/
 reports/p1-media/
+.lighthouseci/

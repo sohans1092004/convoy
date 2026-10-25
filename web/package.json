@@ -12,7 +12,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
     "e2e": "playwright test",
-    "gen:api": "node scripts/gen-api.mjs"
+    "gen:api": "node scripts/gen-api.mjs",
+    "test:stories": "playwright test -c playwright.storybook.config.ts"
   },
   "dependencies": {
     "@convoy/contracts": "workspace:*",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@lhci/cli": "0.15.1",
     "@playwright/test": "1.64.1",
     "@storybook/addon-a11y": "10.6.3",
     "@storybook/nextjs-vite": "10.6.3",
