@@ -23,10 +23,12 @@ public class IdentityApplication {
      * @param sessionDays   session lifetime (30 days, sliding)
      * @param clients       service clients: id -> {secret, scopes: {audience: [scope]}}
      * @param seedUsersFile optional JSON file of local test users (local profile only)
+     * @param passkeys      WebAuthn relying party: id (the web app's host), the origins the browser reports, challenge lifetime
      */
     @ConfigurationProperties(prefix = "identity")
     public record IdentitySettings(String dataKey, String mailFrom, int otpMinutes, int sessionDays,
-                                   Map<String, Client> clients, String seedUsersFile) {
+                                   Map<String, Client> clients, String seedUsersFile, Passkeys passkeys) {
+        public record Passkeys(String rpId, String rpName, List<String> origins, int challengeMinutes) {}
         public record Client(String secret, Map<String, List<String>> scopes) {}
     }
 

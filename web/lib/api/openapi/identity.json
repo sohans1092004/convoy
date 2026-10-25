@@ -105,15 +105,52 @@
         }
       }
     },
+    "/auth/passkeys/register": {
+      "post": {
+        "tags": [
+          "passkey-controller"
+        ],
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Register"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRegistered"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/passkeys/register/options": {
       "post": {
         "tags": [
-          "auth-controller"
+          "passkey-controller"
         ],
-        "operationId": "passkeys",
+        "operationId": "registerOptions",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRegistrationOptions"
+                }
+              }
+            }
           }
         }
       }
@@ -121,25 +158,49 @@
     "/auth/passkeys/authenticate": {
       "post": {
         "tags": [
-          "auth-controller"
+          "passkey-controller"
         ],
-        "operationId": "passkeys_1",
+        "operationId": "authenticate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Authenticate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/auth/passkeys/register": {
+    "/auth/passkeys/authenticate/options": {
       "post": {
         "tags": [
-          "auth-controller"
+          "passkey-controller"
         ],
-        "operationId": "passkeys_2",
+        "operationId": "authenticateOptions",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyAuthenticationOptions"
+                }
+              }
+            }
           }
         }
       }
@@ -415,22 +476,129 @@
           "token_type"
         ]
       },
-      "OtpVerify": {
+      "Register": {
         "properties": {
-          "email": {
+          "challenge_id": {
             "type": "string",
-            "format": "email",
             "minLength": 1
           },
-          "code": {
+          "client_data_json": {
             "type": "string",
-            "minLength": 1,
-            "pattern": "\\d{6}"
+            "minLength": 1
+          },
+          "attestation_object": {
+            "type": "string",
+            "minLength": 1
+          },
+          "transports": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "code",
-          "email"
+          "attestation_object",
+          "challenge_id",
+          "client_data_json",
+          "transports"
+        ]
+      },
+      "PasskeyRegistered": {
+        "properties": {
+          "credential_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "created_at",
+          "credential_id"
+        ]
+      },
+      "PasskeyRegistrationOptions": {
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "challenge": {
+            "type": "string"
+          },
+          "rp_id": {
+            "type": "string"
+          },
+          "rp_name": {
+            "type": "string"
+          },
+          "user_handle": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exclude_credentials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "challenge",
+          "challenge_id",
+          "exclude_credentials",
+          "rp_id",
+          "rp_name",
+          "timeout_ms",
+          "user_handle",
+          "user_name"
+        ]
+      },
+      "Authenticate": {
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "credential_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "client_data_json": {
+            "type": "string",
+            "minLength": 1
+          },
+          "authenticator_data": {
+            "type": "string",
+            "minLength": 1
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 1
+          },
+          "user_handle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "authenticator_data",
+          "challenge_id",
+          "client_data_json",
+          "credential_id",
+          "signature",
+          "user_handle"
         ]
       },
       "Session": {
@@ -466,6 +634,47 @@
         "required": [
           "id",
           "roles"
+        ]
+      },
+      "PasskeyAuthenticationOptions": {
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "challenge": {
+            "type": "string"
+          },
+          "rp_id": {
+            "type": "string"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "challenge",
+          "challenge_id",
+          "rp_id",
+          "timeout_ms"
+        ]
+      },
+      "OtpVerify": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\d{6}"
+          }
+        },
+        "required": [
+          "code",
+          "email"
         ]
       },
       "OtpStart": {

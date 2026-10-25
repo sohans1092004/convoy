@@ -42,6 +42,11 @@ identity:
   otp-minutes: 10
   session-days: 30
   seed-users-file: ${SEED_USERS_FILE:}
+  passkeys:
+    rp-id: ${PASSKEY_RP_ID:localhost}
+    rp-name: Convoy
+    origins: ${PASSKEY_ORIGINS:http://localhost:3000}
+    challenge-minutes: 5
   clients:
     gateway: { secret: "${CLIENT_SECRET_GATEWAY}", scopes: { identity: [sessions:validate] } }
     pool:

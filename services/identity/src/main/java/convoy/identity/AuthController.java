@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** E001, E002, E006 (and E003-E005 passkeys: specified, not built in P1). */
+/** E001, E002, E006 (passkeys E003-E005: PasskeyController). */
 @RestController
 public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
@@ -92,7 +92,11 @@ public class AuthController {
             throw ApiProblem.of(ProblemType.UNAUTHENTICATED, "That code is not right. Check the email and try again.");
         }
         jdbc.update("update otp_challenges set used_at = clock_timestamp() where id = ?", cid);
-        UUID userId = users.findOrRegister(email);
+        return session(users.findOrRegister(email));
+    }
+
+    /** A new session for the user (OTP or passkey sign-in). Only SHA-256 of the id is stored. */
+    Api.Session session(UUID userId) {
         String sessionId = Crypto.randomToken();
         OffsetDateTime expires = jdbc.queryForObject("insert into sessions(id_hash, user_id, expires_at) values (?, ?, clock_timestamp() + make_interval(days => ?)) "
                 + "returning expires_at", OffsetDateTime.class, Crypto.sha256(sessionId), userId, settings.sessionDays());
@@ -111,8 +115,4 @@ public class AuthController {
         return convoy.platform.web.Dto.as(Map.of("status", "LOGGED_OUT"), Api.Status.class);
     }
 
-    @PostMapping({"/auth/passkeys/register/options", "/auth/passkeys/register", "/auth/passkeys/authenticate"})
-    public void passkeys() {
-        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "Passkeys (E003-E005) are specified but not built in Phase 1; use the email code.");
-    }
 }

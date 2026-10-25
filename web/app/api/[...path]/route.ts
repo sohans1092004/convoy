@@ -12,7 +12,8 @@ const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:8080';
 const SECURE = process.env.COOKIE_SECURE !== 'false';
 const FORWARD_REQ = ['content-type', 'accept', 'idempotency-key', 'if-match', 'x-correlation-id'];
 const FORWARD_RES = ['content-type', 'etag', 'server-time', 'idempotent-replayed', 'x-correlation-id', 'retry-after'];
-const NO_SESSION_NEEDED = new Set(['auth/otp/start', 'auth/otp/verify']);
+const NO_SESSION_NEEDED = new Set(['auth/otp/start', 'auth/otp/verify', 'auth/passkeys/authenticate/options', 'auth/passkeys/authenticate']);
+const SIGN_IN = new Set(['auth/otp/verify', 'auth/passkeys/authenticate']); // responses carry a session id: set the cookie, never echo it
 const SESSION_DAYS = 30;
 
 function problem(status: number, slug: string, code: string, title: string, detail: string) {
@@ -83,7 +84,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     }
     let body: BodyInit | null = upstream.status === 204 ? null : await upstream.arrayBuffer();
 
-    if (route === 'auth/otp/verify' && upstream.ok) {
+    if (SIGN_IN.has(route) && upstream.ok) {
       const data = JSON.parse(new TextDecoder().decode(body as ArrayBuffer));
       const res = NextResponse.json({ user: data.user }, { status: 200 });
       const opts = { httpOnly: true, secure: SECURE, sameSite: 'lax' as const, path: '/', maxAge: SESSION_DAYS * 86400 };

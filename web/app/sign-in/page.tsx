@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { api, call } from '@/lib/api';
+import { passkeysSupported, signInWithPasskey } from '@/lib/passkey';
 import { useCommand } from '@/lib/use-command';
 
 function SignInForm() {
@@ -16,6 +17,13 @@ function SignInForm() {
   const [step, setStep] = React.useState<'email' | 'code'>('email');
   const start = useCommand(async () => call(api.POST('/auth/otp/start', { body: { email } })));
   const verify = useCommand(async () => call(api.POST('/auth/otp/verify', { body: { email, code } })));
+  const passkey = useCommand(signInWithPasskey);
+  const [canPasskey, setCanPasskey] = React.useState(false);
+  React.useEffect(() => setCanPasskey(passkeysSupported()), []);
+  const done = (roles: string[]) => {
+    router.push(next ?? (roles.some((x) => x.startsWith('dealer')) ? '/dealer' : '/'));
+    router.refresh();
+  };
 
   return (
     <Card className="mx-auto flex w-full max-w-md flex-col gap-4">
@@ -25,16 +33,19 @@ function SignInForm() {
           <Input label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} hint="We email you a 6-digit code. No password." />
           <Button type="submit" loading={start.state.kind === 'loading'}>Email me a code</Button>
           <CommandStatus state={start.state} />
+          {canPasskey ? (
+            <>
+              <Button type="button" variant="secondary" loading={passkey.state.kind === 'loading'}
+                onClick={async () => { const r = await passkey.execute(); if (r) done(r.data.user.roles); }}>Sign in with a passkey</Button>
+              <CommandStatus state={passkey.state} />
+            </>
+          ) : null}
         </form>
       ) : (
         <form className="flex flex-col gap-3" onSubmit={async (e) => {
           e.preventDefault();
           const r = await verify.execute();
-          if (r) {
-            const roles = r.data.user.roles;
-            router.push(next ?? (roles.some((x) => x.startsWith('dealer')) ? '/dealer' : '/'));
-            router.refresh();
-          }
+          if (r) done(r.data.user.roles);
         }}>
           <p className="text-sm">We sent a code to <strong>{email}</strong>. It expires in 10 minutes.</p>
           <Input label="6-digit code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required value={code} onChange={(e) => setCode(e.target.value)}

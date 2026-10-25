@@ -17,6 +17,7 @@ Conventions (apply to every row, not repeated):
 | E003 | identity | POST | /auth/passkeys/register/options | authenticated | no | no | - | P1 | AZ-E003-A, AZ-E003-D |
 | E004 | identity | POST | /auth/passkeys/register | authenticated | no | no | validation-failed | P1 | AZ-E004-A, AZ-E004-D |
 | E005 | identity | POST | /auth/passkeys/authenticate | anonymous | no | no | unauthenticated | P1 | AZ-E005-A |
+| E151 | identity | POST | /auth/passkeys/authenticate/options | anonymous | no | no | - | P2 | AZ-E151-A |
 | E006 | identity | POST | /auth/logout | authenticated | no | no | - | P1 | AZ-E006-A, AZ-E006-D |
 | E007 | identity | GET | /me | authenticated | no | no | - | P1 | AZ-E007-A, AZ-E007-D |
 | E008 | identity | POST | /internal/sessions/validate | service:gateway | no | no | unauthenticated | P1 | AZ-E008-A, AZ-E008-D, AZ-SVC-01 |

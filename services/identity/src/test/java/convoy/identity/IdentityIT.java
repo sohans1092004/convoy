@@ -112,7 +112,7 @@ class IdentityIT extends ServiceTest {
     }
 
     @Test
-    void consentHistoryIsAppendOnlyAndPasskeysAreNotBuiltYet() throws Exception {
+    void consentHistoryIsAppendOnly() throws Exception {
         String email = "consent-" + UUID.randomUUID() + "@convoy.test";
         send("POST", "/auth/otp/start", anon(), "{\"email\":\"" + email + "\"}", Map.of());
         JsonNode v = JSON.readTree(send("POST", "/auth/otp/verify", anon(), "{\"email\":\"" + email + "\",\"code\":\"" + lastCode(email) + "\"}", Map.of()).body());
@@ -121,7 +121,28 @@ class IdentityIT extends ServiceTest {
         JsonNode h = JSON.readTree(send("PUT", "/me/consents/DEALER_DISCLOSURE", token, "{\"granted\":false,\"notice_version\":\"n1\"}", Map.of()).body());
         assertThat(h.path("history")).hasSize(2);
         assertThat(JSON.readTree(get("/me", token).body()).path("email").asText()).isEqualTo(email);
-        assertThat(JSON.readTree(send("POST", "/auth/passkeys/authenticate", anon(), "{}", Map.of()).body()).path("code").asText()).isEqualTo("NOT_IMPLEMENTED_IN_P1");
+    }
+
+    @Test
+    void passkeyChallengesAreOneTimeScopedAndUnknownCredentialsAreRejected() throws Exception {
+        String email = "pk-" + UUID.randomUUID() + "@convoy.test";
+        send("POST", "/auth/otp/start", anon(), "{\"email\":\"" + email + "\"}", Map.of());
+        JsonNode v = JSON.readTree(send("POST", "/auth/otp/verify", anon(), "{\"email\":\"" + email + "\",\"code\":\"" + lastCode(email) + "\"}", Map.of()).body());
+        String token = TestTokens.buyer("identity", UUID.fromString(v.at("/user/id").asText()));
+        JsonNode reg = JSON.readTree(send("POST", "/auth/passkeys/register/options", token, "{}", Map.of()).body());
+        assertThat(reg.path("rp_id").asText()).isEqualTo("localhost");
+        assertThat(reg.path("user_name").asText()).isEqualTo(email);
+        assertThat(java.util.Base64.getUrlDecoder().decode(reg.path("challenge").asText())).hasSize(32);
+        // A sign-in challenge cannot be used to register, and a registration challenge cannot sign in.
+        JsonNode auth = JSON.readTree(send("POST", "/auth/passkeys/authenticate/options", anon(), "{}", Map.of()).body());
+        String regBody = "{\"challenge_id\":\"" + auth.path("challenge_id").asText() + "\",\"client_data_json\":\"e30\",\"attestation_object\":\"oA\"}";
+        assertThat(send("POST", "/auth/passkeys/register", token, regBody, Map.of()).status()).isEqualTo(400);
+        String authBody = "{\"challenge_id\":\"%s\",\"credential_id\":\"AAAA\",\"client_data_json\":\"e30\",\"authenticator_data\":\"AA\",\"signature\":\"AA\"}";
+        assertThat(send("POST", "/auth/passkeys/authenticate", anon(), authBody.formatted(reg.path("challenge_id").asText()), Map.of()).status()).isEqualTo(401);
+        // Unknown credential -> 401, and the challenge is spent: replaying it is refused too.
+        String fresh = JSON.readTree(send("POST", "/auth/passkeys/authenticate/options", anon(), "{}", Map.of()).body()).path("challenge_id").asText();
+        assertThat(send("POST", "/auth/passkeys/authenticate", anon(), authBody.formatted(fresh), Map.of()).status()).isEqualTo(401);
+        assertThat(JSON.readTree(send("POST", "/auth/passkeys/authenticate", anon(), authBody.formatted(fresh), Map.of()).body()).path("detail").asText()).contains("expired");
     }
 
     @Test

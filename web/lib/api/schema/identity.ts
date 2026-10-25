@@ -48,6 +48,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/passkeys/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/passkeys/register/options": {
         parameters: {
             query?: never;
@@ -57,7 +73,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["passkeys"];
+        post: operations["registerOptions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -73,14 +89,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["passkeys_1"];
+        post: operations["authenticate"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/auth/passkeys/register": {
+    "/auth/passkeys/authenticate/options": {
         parameters: {
             query?: never;
             header?: never;
@@ -89,7 +105,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["passkeys_2"];
+        post: operations["authenticateOptions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -217,10 +233,34 @@ export interface components {
             expires_in: number;
             scope: string[];
         };
-        OtpVerify: {
-            /** Format: email */
-            email: string;
-            code: string;
+        Register: {
+            challenge_id: string;
+            client_data_json: string;
+            attestation_object: string;
+            transports: string[] | null;
+        };
+        PasskeyRegistered: {
+            credential_id: string;
+            created_at: string;
+        };
+        PasskeyRegistrationOptions: {
+            challenge_id: string;
+            challenge: string;
+            rp_id: string;
+            rp_name: string;
+            user_handle: string;
+            user_name: string;
+            /** Format: int64 */
+            timeout_ms: number;
+            exclude_credentials: string[];
+        };
+        Authenticate: {
+            challenge_id: string;
+            credential_id: string;
+            client_data_json: string;
+            authenticator_data: string;
+            signature: string;
+            user_handle: string | null;
         };
         Session: {
             session_id: string;
@@ -230,6 +270,18 @@ export interface components {
         User: {
             id: string;
             roles: string[];
+        };
+        PasskeyAuthenticationOptions: {
+            challenge_id: string;
+            challenge: string;
+            rp_id: string;
+            /** Format: int64 */
+            timeout_ms: number;
+        };
+        OtpVerify: {
+            /** Format: email */
+            email: string;
+            code: string;
         };
         OtpStart: {
             /** Format: email */
@@ -353,25 +405,31 @@ export interface operations {
             };
         };
     };
-    passkeys: {
+    register: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Register"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["PasskeyRegistered"];
+                };
             };
         };
     };
-    passkeys_1: {
+    registerOptions: {
         parameters: {
             query?: never;
             header?: never;
@@ -385,11 +443,37 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["PasskeyRegistrationOptions"];
+                };
             };
         };
     };
-    passkeys_2: {
+    authenticate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Authenticate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Session"];
+                };
+            };
+        };
+    };
+    authenticateOptions: {
         parameters: {
             query?: never;
             header?: never;
@@ -403,7 +487,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["PasskeyAuthenticationOptions"];
+                };
             };
         };
     };

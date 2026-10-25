@@ -33,6 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/" className="text-sm font-medium">{t('cars')}</Link>
                 {signedIn && !dealer ? <Link href="/saved" className="text-sm font-medium">{t('saved')}</Link> : null}
                 {signedIn && !dealer ? <Link href="/orders" className="text-sm font-medium">{t('orders')}</Link> : null}
+                {signedIn ? <Link href="/account" className="text-sm font-medium">{t('account')}</Link> : null}
                 {dealer ? <Link href="/dealer" className="text-sm font-medium">{t('dealer')}</Link> : null}
                 {dealer ? <Link href="/dealer/bookings" className="text-sm font-medium">{t('bookings')}</Link> : null}
                 <span className="ml-auto flex items-center gap-4"><LocaleSwitch />{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>

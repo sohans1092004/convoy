@@ -11,6 +11,7 @@ json-schema-validator = "1.5.9"
 opentelemetry-api = "1.67.0"
 otel-agent = "2.33.0"
 testcontainers = "1.21.4"
+webauthn4j = "0.31.11.RELEASE"
 
 [libraries]
 spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
@@ -19,6 +20,7 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 springdoc-webmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+webauthn4j-core = { module = "com.webauthn4j:webauthn4j-core", version.ref = "webauthn4j" }
 otel-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry-api" }
 
 [plugins]

@@ -194,3 +194,8 @@ Format: question · options · **default chosen** · impact.
 - Added in P1. PLAN.md requires a minimum before quoting (POOL-T01) but states no number.
 - **Default:** a required setting, `pool.min-members`. The demo profile uses 1 so a single test buyer can run the journey. No production value is set; it is a business decision.
 - Impact: forming deadline outcomes (POOL-T11) and dealer interest; set before any real pilot.
+
+### Q-043 — Passkeys: attestation policy and the extra sign-in endpoint — DEFAULTED (P2)
+- Added in P2 (scope F). WebAuthn sign-in needs a server challenge before the assertion, which E005 alone cannot carry, so **E151** `POST /auth/passkeys/authenticate/options` (anonymous) was added to api-outline.md. No existing row changed.
+- **Default:** attestation `none` (no authenticator-vendor check), user verification required, discoverable credentials (sign-in without an email), ES256 + RS256, challenge lifetime 5 min (`identity.passkeys.challenge-minutes`), verified with webauthn4j 0.31.11 (Apache-2.0, no cost).
+- Open: whether dealer staff must use passkeys (stronger than email codes), and whether to require attestation for staff. Needs a security decision before a real pilot.

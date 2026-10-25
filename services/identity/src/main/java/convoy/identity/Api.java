@@ -25,5 +25,14 @@ public final class Api {
 
     public record SessionValidation(String userId, List<String> roles, @Nullable String dealershipId, String sid, String sessionExpiresAt) {}
 
+    /** E003: what navigator.credentials.create needs (binary values base64url). */
+    public record PasskeyRegistrationOptions(String challengeId, String challenge, String rpId, String rpName, String userHandle,
+                                             String userName, long timeoutMs, List<String> excludeCredentials) {}
+
+    /** E005 step 1: what navigator.credentials.get needs (discoverable credential: no allow-list). */
+    public record PasskeyAuthenticationOptions(String challengeId, String challenge, String rpId, long timeoutMs) {}
+
+    public record PasskeyRegistered(String credentialId, String createdAt) {}
+
     public record ServiceToken(String accessToken, String tokenType, long expiresIn, List<String> scope) {}
 }
