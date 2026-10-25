@@ -64,7 +64,7 @@ public class Quotes {
                         + "values (?, ?, ?, ?, ?, ?, ?::uuid[], ?, ?::jsonb, ?) on conflict (round_id) do nothing",
                 UUID.fromString(e.roundId()), UUID.fromString(e.poolId()), e.roundSet(), e.roundNo(), e.kind(), Timestamp.from(e.deadline()),
                 "{" + String.join(",", e.invitedDealershipIds()) + "}", e.stateCode(), write(e.variants()), e.committedCount());
-        if (e.roundNo() == 2) rank(UUID.fromString(e.poolId()), e.roundSet().intValue());
+        if (e.roundNo() == 2) reveal(UUID.fromString(e.poolId()), e.roundSet().intValue());
     }
 
     /** RoundClosed(SEALED): drafts expire (QUO-T09). RoundClosed(FINAL): live quotes become FINAL (QUO-T04, idempotent). */
@@ -73,6 +73,7 @@ public class Quotes {
         jdbc.update("update rounds_replica set state = 'CLOSED' where round_id = ?", roundId);
         Map<String, Object> r = jdbc.queryForMap("select pool_id, round_set from rounds_replica where round_id = ?", roundId);
         if (e.kind().equals("SEALED")) {
+            rankHidden((UUID) r.get("pool_id"), (int) r.get("round_set")); // computed at close, revealed when the final round opens
             for (UUID q : jdbc.queryForList("select id from quotes where pool_id = ? and round_set = ? and state = 'DRAFT' for update", UUID.class, r.get("pool_id"), r.get("round_set"))) {
                 QUOTE.check("DRAFT", "EXPIRED");
                 jdbc.update("update quotes set state = 'EXPIRED', expire_reason = 'NOT_SUBMITTED', version = version + 1 where id = ?", q);
@@ -395,6 +396,32 @@ public class Quotes {
      * opens, at each version commit in it, and at finalisation. The sealed round shows no rank.
      */
     void rank(UUID poolId, int roundSet) {
+        for (Ranking.Ranked k : ranked(poolId, roundSet)) record(poolId, roundSet, k, true);
+    }
+
+    /** At the sealed close: snapshots stored hidden, no events (nothing is visible during or right after the sealed round). */
+    void rankHidden(UUID poolId, int roundSet) {
+        for (Ranking.Ranked k : ranked(poolId, roundSet)) record(poolId, roundSet, k, false);
+    }
+
+    /**
+     * When the final round opens (inside the same inbox transaction that records the open, so a dealer never sees an open
+     * final round without its rank): reveal the ranks computed at the sealed close, or compute them now if there were none.
+     */
+    void reveal(UUID poolId, int roundSet) {
+        List<Map<String, Object>> hidden = jdbc.queryForList("update rank_snapshots set revealed = true where pool_id = ? and round_set = ? and not revealed "
+                + "returning id, quote_id, dealership_id, variant_id, rank, of_n", poolId, roundSet);
+        if (hidden.isEmpty()) {
+            rank(poolId, roundSet);
+            return;
+        }
+        for (Map<String, Object> h : hidden) {
+            outbox.append((UUID) h.get("quote_id"), (long) h.get("id"), new convoy.contracts.events.RankChanged(h.get("quote_id").toString(), poolId.toString(),
+                    h.get("dealership_id").toString(), h.get("variant_id").toString(), ((Number) h.get("rank")).longValue(), ((Number) h.get("of_n")).longValue(), Ranking.RULE_VERSION));
+        }
+    }
+
+    private List<Ranking.Ranked> ranked(UUID poolId, int roundSet) {
         List<Ranking.Entry> entries = new java.util.ArrayList<>();
         for (Map<String, Object> r : jdbc.queryForList("select q.id, q.dealership_id, v.ranking::text as ranking, v.committed_at from quotes q "
                 + "join quote_versions v on v.quote_id = q.id and v.version_no = q.current_version "
@@ -406,16 +433,20 @@ public class Quotes {
                         date == null ? null : java.time.LocalDate.parse(date.toString()), ((Timestamp) r.get("committed_at")).toInstant()));
             }
         }
-        for (Ranking.Ranked k : Ranking.rank(entries)) {
-            List<Map<String, Object>> last = jdbc.queryForList("select rank, of_n from rank_snapshots where quote_id = ?::uuid and variant_id = ?::uuid order by id desc limit 1",
-                    k.quoteId(), k.variantId());
-            Long id = jdbc.queryForObject("insert into rank_snapshots(pool_id, round_set, variant_id, quote_id, dealership_id, rank, of_n, rule_version) "
-                    + "values (?, ?, ?::uuid, ?::uuid, ?::uuid, ?, ?, ?) returning id", Long.class, poolId, roundSet, k.variantId(), k.quoteId(), k.dealershipId(), k.rank(), k.ofN(), Ranking.RULE_VERSION);
-            boolean changed = last.isEmpty() || (int) last.get(0).get("rank") != k.rank() || (int) last.get(0).get("of_n") != k.ofN();
-            if (changed) {
-                outbox.append(UUID.fromString(k.quoteId()), id, new convoy.contracts.events.RankChanged(k.quoteId(), poolId.toString(), k.dealershipId(), k.variantId(),
-                        (long) k.rank(), (long) k.ofN(), Ranking.RULE_VERSION));
-            }
+        return Ranking.rank(entries);
+    }
+
+    /** Appends a snapshot; a revealed one emits RankChanged when the dealer's rank or of_n moved since its last revealed one. */
+    private void record(UUID poolId, int roundSet, Ranking.Ranked k, boolean revealed) {
+        List<Map<String, Object>> last = jdbc.queryForList("select rank, of_n from rank_snapshots where quote_id = ?::uuid and variant_id = ?::uuid and revealed "
+                + "order by id desc limit 1", k.quoteId(), k.variantId());
+        Long id = jdbc.queryForObject("insert into rank_snapshots(pool_id, round_set, variant_id, quote_id, dealership_id, rank, of_n, rule_version, revealed) "
+                + "values (?, ?, ?::uuid, ?::uuid, ?::uuid, ?, ?, ?, ?) returning id", Long.class, poolId, roundSet, k.variantId(), k.quoteId(), k.dealershipId(), k.rank(), k.ofN(),
+                Ranking.RULE_VERSION, revealed);
+        boolean changed = last.isEmpty() || (int) last.get(0).get("rank") != k.rank() || (int) last.get(0).get("of_n") != k.ofN();
+        if (revealed && changed) {
+            outbox.append(UUID.fromString(k.quoteId()), id, new convoy.contracts.events.RankChanged(k.quoteId(), poolId.toString(), k.dealershipId(), k.variantId(),
+                    (long) k.rank(), (long) k.ofN(), Ranking.RULE_VERSION));
         }
     }
 
@@ -425,7 +456,7 @@ public class Quotes {
         own(id, d, false);
         List<Map<String, Object>> ranks = new java.util.ArrayList<>();
         for (Map<String, Object> r : jdbc.queryForList("select distinct on (variant_id) variant_id, rank, of_n, rule_version, computed_at from rank_snapshots "
-                + "where quote_id = ? order by variant_id, id desc", id)) {
+                + "where quote_id = ? and revealed order by variant_id, id desc", id)) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("variant_id", r.get("variant_id").toString());
             m.put("rank", r.get("rank"));

@@ -282,6 +282,29 @@ class QuoteIT extends ServiceTest {
     }
 
     @Test
+    void aDealerWhoNeverRevisesSeesItsRankTheMomentTheFinalRoundOpensAndNotBefore() throws Exception {
+        UUID a = UUID.randomUUID(), b = UUID.randomUUID(), pool = Uuid7.next(), r1 = Uuid7.next();
+        openRoundFor(List.of(a, b), Instant.now().plusSeconds(600), pool, r1);
+        Round ra = new Round(pool, r1, a), rb = new Round(pool, r1, b);
+        String qa = create(ra).path("id").asText(), qb = create(rb).path("id").asText();
+        assertThat(saveAndSubmit(ra, qa, draft(SWIFT, 1000000, 2500000, null)).status()).isEqualTo(200);
+        assertThat(saveAndSubmit(rb, qb, draft(SWIFT, 2000000, 2500000, null)).status()).isEqualTo(200);
+        // Sealed round closes; a gap before the final round opens: ranks are computed but hidden, no event yet.
+        inTx(() -> quotes.roundClosed(new RoundClosed(pool.toString(), r1.toString(), "SEALED", Instant.now(), Instant.now(), 1L)));
+        assertThat(jdbc.queryForObject("select count(*) from rank_snapshots where pool_id = ? and not revealed", Integer.class, pool)).isEqualTo(2);
+        assertThat(JSON.readTree(get("/dealer/quotes/" + qa + "/rank", dealer(a)).body()).path("ranks")).isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'RankChanged' and payload->>'pool_id' = ?", Integer.class, pool.toString())).isZero();
+        // The final round opens: dealer A (never revised) sees its rank at once; the events go out now.
+        inTx(() -> quotes.roundOpened(new QuoteRoundOpened(pool.toString(), Uuid7.next().toString(), 1L, 2L, "FINAL", Instant.now().plusSeconds(600),
+                List.of(a.toString(), b.toString()), List.of(SWIFT), 1L, "MH", List.of(Map.of("id", SWIFT, "code", "swift-lxi-mt", "name", "LXi MT", "fuel", "PETROL", "engine_cc", 1197)))));
+        JsonNode ranks = JSON.readTree(get("/dealer/quotes/" + qa + "/rank", dealer(a)).body()).path("ranks");
+        assertThat(ranks.get(0).path("rank").asInt()).isEqualTo(2);
+        assertThat(ranks.get(0).path("of_n").asInt()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'RankChanged' and payload->>'pool_id' = ?", Integer.class, pool.toString())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from quote_versions where quote_id = ?::uuid", Integer.class, qa)).as("no revision needed").isEqualTo(1);
+    }
+
+    @Test
     void fiftyParallelSubmissionsAroundTheDeadlineKeepEveryEarlyOneAndRejectEveryLateOne() throws Exception {
         // deadline-rule.md: the DB clock at commit decides. 50 dealers submit spread from 0.4 s before to 0.4 s after the deadline.
         List<UUID> dealers = java.util.stream.IntStream.range(0, 50).mapToObj(i -> UUID.randomUUID()).toList();
