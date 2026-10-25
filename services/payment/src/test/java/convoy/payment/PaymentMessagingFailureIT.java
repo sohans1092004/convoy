@@ -50,6 +50,7 @@ import software.amazon.awssdk.services.sns.SnsClient;
         "convoy.messaging.enabled=true", "convoy.messaging.wait-seconds=1", "convoy.messaging.visibility-timeout-seconds=3",
         "payment.razorpay-key-secret=test_key_secret", "payment.razorpay-webhook-secret=test_webhook_secret",
         "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused"})
+@org.junit.jupiter.api.Tag("nightly") // P2.5.B: runs in the nightly workflow
 @Import({ServiceTest.Config.class, PaymentMessagingFailureIT.Stubs.class})
 class PaymentMessagingFailureIT extends ServiceTest {
     static final ObjectMapper JSON = new ObjectMapper();

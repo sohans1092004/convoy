@@ -102,6 +102,28 @@ class RealtimeIT extends ServiceTest {
         }
     }
 
+    @Autowired RealtimeApplication.RealtimeSettings settings;
+
+    @Test
+    void atTheConnectionCapANewStreamIsRefusedWith503AndRetryAfter() throws Exception {
+        // P2.5.B fail fast: fill the instance to realtime.max-connections with idle connections, then ask for one more.
+        java.util.List<Connection> fillers = new java.util.ArrayList<>();
+        try {
+            for (int i = hub.connections(); i < settings.maxConnections(); i++) {
+                Connection f = new Connection("pool:filler", UUID.randomUUID(), UUID.randomUUID(), null, "filler", new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(0L), 4, hub::remove);
+                hub.add(f);
+                fillers.add(f);
+            }
+            Resp refused = get("/realtime/pools/" + UUID.randomUUID() + "/stream", TestTokens.dealer("realtime", UUID.randomUUID(), INVITED));
+            assertThat(refused.status()).isEqualTo(503);
+            assertThat(refused.headers().firstValue("Retry-After")).hasValueSatisfying(v -> assertThat(Integer.parseInt(v)).isBetween(1, 5));
+            assertThat(refused.body()).contains("DEPENDENCY_UNAVAILABLE");
+        } finally {
+            fillers.forEach(hub::remove);
+        }
+        assertThat(hub.connections()).isLessThan(settings.maxConnections()); // capacity back: streams are accepted again
+    }
+
     @Test
     void onlyMembersAndInvitedDealersMayStreamAPoolAndOthersSeeNothing() throws Exception {
         UUID pool = UUID.randomUUID();

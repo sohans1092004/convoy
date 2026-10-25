@@ -33,7 +33,11 @@ subprojects {
 
     tasks.withType<JavaCompile> { options.compilerArgs.addAll(listOf("-parameters", "-Xlint:unchecked")) }
     tasks.withType<Test> {
-        useJUnitPlatform()
+        // P2.5.B: messaging failure tests (MF-1..MF-6) are tagged "nightly": -PskipNightly on push/PR, -PonlyNightly at night.
+        useJUnitPlatform {
+            if (project.hasProperty("skipNightly")) excludeTags("nightly")
+            if (project.hasProperty("onlyNightly")) includeTags("nightly")
+        }
         // Shared spec data (vectors, machines, schemas) lives at the repo root.
         systemProperty("convoy.repoRoot", rootDir.absolutePath)
         testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }

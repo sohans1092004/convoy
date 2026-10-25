@@ -35,7 +35,7 @@ public class RealtimeApplication {
     public static void main(String[] args) { SpringApplication.run(RealtimeApplication.class, args); }
 
     @ConfigurationProperties(prefix = "realtime")
-    public record RealtimeSettings(String instance, String poolUrl, Duration heartbeat, int queueCapacity, Duration revalidate) {}
+    public record RealtimeSettings(String instance, String poolUrl, Duration heartbeat, int queueCapacity, Duration revalidate, int maxConnections) {}
 
     /**
      * Fields a client may see. Everything else (buyer, membership, payment and dealership ids, acceptances,
