@@ -551,8 +551,21 @@
     "error": "invalid-transition",
     "from": [
      "HANDED_TO_ORDER",
-     "LEFT",
      "RELEASED"
+    ]
+   },
+   {
+    "attempt": "any buyer command other than a rejoin (MEM-T01 on the same row)",
+    "error": "invalid-transition",
+    "from": [
+     "LEFT"
+    ]
+   },
+   {
+    "attempt": "rejoin after the second leave (leave_count >= 2)",
+    "error": "rejoin-limit-reached",
+    "from": [
+     "LEFT"
     ]
    },
    {

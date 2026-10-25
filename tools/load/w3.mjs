@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 const VUS = Number(process.argv[2] || 1000);
 const DURATION = process.argv[3] || '5m';
-const PER_VU = Number(process.argv[4] || 4);
+const PER_VU = Number(process.argv[4] || 3);
 const GW = process.env.GATEWAY_URL || 'http://localhost:8080';
 const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const K6_IMAGE = 'grafana/k6:2.3.0';
@@ -82,7 +82,7 @@ function psql(sql) {
 
 const all = await sessions(VUS * PER_VU + 1);
 const observer = all[VUS * PER_VU]; // not a VU buyer: stays a member and holds the stream
-// A pool key never used before, so no buyer already has a membership in it (Q-045: no rejoin).
+// A pool key never used before, so every buyer starts with no membership in it (rejoin limits are per pool, AMENDMENT-008).
 // Pool months are this month + the next six; any catalogue (model, city) with a verified price will do.
 const used = new Set(psql('select model_slug || \'|\' || city || \'|\' || purchase_month from pool.pools').split(/\s+/));
 const combos = psql('select distinct m.slug || \'|\' || vp.city from catalog.variant_prices vp join catalog.variants v on v.id = vp.variant_id '
@@ -146,7 +146,7 @@ ctl.abort();
 const s = JSON.parse(readFileSync(join(OUT, 'w3-summary.json'), 'utf8')).metrics;
 const [row, recount] = [Number(psql(`select interested_count from pool.pools where id = '${pool}'`)),
   Number(psql(`select count(*) from pool.memberships where pool_id = '${pool}' and state = 'INTERESTED'`))];
-const joins = s.buyers_joined?.count ?? 0, leaves = s.buyers_left?.count ?? 0, amb = s.unexpected_responses?.count ?? 0;
+const joins = s.joins_ok?.count ?? 0, leaves = s.leaves_ok?.count ?? 0, amb = s.unexpected_responses?.count ?? 0;
 const lat = [...stream.latencies].sort((a, b) => a - b);
 const pct = (p) => lat.length ? lat[Math.min(lat.length - 1, Math.floor(lat.length * p))] : null;
 const trend = (m) => m && { p50: Math.round(m['p(50)']), p95: Math.round(m['p(95)']), p99: Math.round(m['p(99)']), max: Math.round(m.max) };
@@ -155,7 +155,7 @@ const result = {
   commit: execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT }).toString().trim(),
   env: 'local docker compose (lite) on one laptop; k6 ' + K6_IMAGE + ' in Docker on the compose network; gateway rate limits on (join 20/min/user)',
   vus: VUS, buyers: VUS * PER_VU, duration: DURATION, k6_exit: k6.status, wall_ms: ranMs, pool: '<pool-id>',
-  requests: { buyers_joined: joins, buyers_left: leaves, double_clicks: s.double_clicks?.count ?? 0, unexpected_responses: amb, http_reqs: s.http_reqs?.count ?? null, http_failed_rate: s.http_req_failed?.value ?? null },
+  requests: { joins_ok: joins, leaves_ok: leaves, rejoins_refused: s.rejoins_refused?.count ?? 0, double_clicks: s.double_clicks?.count ?? 0, unexpected_responses: amb, http_reqs: s.http_reqs?.count ?? null, http_failed_rate: s.http_req_failed?.value ?? null },
   latency_ms: { join: trend(s.join_ms), leave: trend(s.leave_ms) },
   counts: { pool_row: row, memberships_recount: recount, stream_last_delivered: stream.last, expected_from_requests: baseline + joins - leaves },
   stream: { events: stream.events, resyncs: stream.resyncs, final_version: finalVersion, last_version_seen: stream.version, catch_up_after_load_ms: drainMs, delivery_p95_ms: pct(0.95), delivery_p99_ms: pct(0.99) },
@@ -163,6 +163,6 @@ const result = {
 // Integrity: the four counts agree. Refused/failed requests are reported separately (a failure that still took effect
 // would break the last equality).
 result.counts_exact = row === recount && recount === stream.last && recount === baseline + joins - leaves;
-writeFileSync(join(ROOT, 'reports', 'p2', 'w3.json'), JSON.stringify(result, null, 2) + '\n');
+writeFileSync(join(ROOT, 'reports', process.env.REPORT_DIR || 'p2.5', 'w3.json'), JSON.stringify(result, null, 2) + '\n');
 console.log(JSON.stringify({ counts: result.counts, exact: result.counts_exact, latency: result.latency_ms, stream: result.stream, requests: result.requests }));
 process.exit(result.counts_exact ? 0 : 1);

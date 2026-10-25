@@ -1,0 +1,59 @@
+{
+  "what": "AZ-T6 after AMENDMENT-008 (Q-044), three runs, laptop only (not production capacity)",
+  "runs": [
+    {
+      "measured_at": "2026-10-25T11:58:10.543Z",
+      "commit": "e5f62d4",
+      "env": "local docker compose (lite) on one laptop; AMENDMENT-008: sessions deleted on revoke, SessionRevoked relayed by realtime on Redis; gateway cache 25 s and realtime re-check 15 s as fallback; API polled every 1 s (resolution 1 s)",
+      "api_first_rejection_ms": 2029,
+      "api_rejection_status": 401,
+      "api_successes_after_first_rejection": 0,
+      "stream_closed_ms": 627,
+      "stream_last_event": null,
+      "polls_total": 11,
+      "pass": true
+    },
+    {
+      "measured_at": "2026-10-25T11:59:08.368Z",
+      "commit": "e5f62d4",
+      "env": "local docker compose (lite) on one laptop; AMENDMENT-008: sessions deleted on revoke, SessionRevoked relayed by realtime on Redis; gateway cache 25 s and realtime re-check 15 s as fallback; API polled every 1 s (resolution 1 s)",
+      "api_first_rejection_ms": 2022,
+      "api_rejection_status": 401,
+      "api_successes_after_first_rejection": 0,
+      "stream_closed_ms": 1398,
+      "stream_last_event": null,
+      "polls_total": 11,
+      "pass": true
+    },
+    {
+      "measured_at": "2026-10-25T12:00:03.910Z",
+      "commit": "e5f62d4",
+      "env": "local docker compose (lite) on one laptop; AMENDMENT-008: sessions deleted on revoke, SessionRevoked relayed by realtime on Redis; gateway cache 25 s and realtime re-check 15 s as fallback; API polled every 1 s (resolution 1 s)",
+      "api_first_rejection_ms": 1014,
+      "api_rejection_status": 401,
+      "api_successes_after_first_rejection": 0,
+      "stream_closed_ms": 948,
+      "stream_last_event": null,
+      "polls_total": 10,
+      "pass": true
+    }
+  ],
+  "summary": {
+    "api_first_rejection_ms": [
+      2029,
+      2022,
+      1014
+    ],
+    "stream_closed_ms": [
+      627,
+      1398,
+      948
+    ],
+    "successes_after_rejection": [
+      0,
+      0,
+      0
+    ],
+    "all_pass": true
+  }
+}

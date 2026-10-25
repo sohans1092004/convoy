@@ -48,7 +48,7 @@ public class InternalController {
         String hash = Crypto.sha256(body.sessionId());
         // A read on the hot path; last_seen is written only when over a minute old (an unconditional UPDATE wrote the row on
         // every request and made identity the W3 bottleneck).
-        List<Map<String, Object>> rows = jdbc.queryForList("select user_id, expires_at from sessions where id_hash = ? and revoked_at is null "
+        List<Map<String, Object>> rows = jdbc.queryForList("select user_id, expires_at, auth_method from sessions where id_hash = ? and revoked_at is null "
                 + "and expires_at > clock_timestamp()", hash);
         if (!rows.isEmpty()) jdbc.update("update sessions set last_seen_at = clock_timestamp() where id_hash = ? and last_seen_at < clock_timestamp() - interval '1 minute'", hash);
         if (rows.isEmpty()) throw ApiProblem.of(ProblemType.UNAUTHENTICATED, "Session is not valid.");
@@ -56,7 +56,7 @@ public class InternalController {
         Users.User u = users.find(userId).orElseThrow(() -> ApiProblem.of(ProblemType.UNAUTHENTICATED, "Account not active."));
         Map<String, Object> out = new HashMap<>();
         out.put("user_id", u.id().toString());
-        out.put("roles", u.roles());
+        out.put("roles", AuthController.sessionRoles(u.roles(), (String) rows.get(0).get("auth_method")));
         out.put("dealership_id", u.dealershipId() == null ? null : u.dealershipId().toString());
         out.put("sid", hash);
         out.put("session_expires_at", ((java.sql.Timestamp) rows.get(0).get("expires_at")).toInstant().toString());

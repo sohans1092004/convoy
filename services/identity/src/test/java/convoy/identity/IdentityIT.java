@@ -123,6 +123,47 @@ class IdentityIT extends ServiceTest {
         assertThat(JSON.readTree(get("/me", token).body()).path("email").asText()).isEqualTo(email);
     }
 
+    @Autowired Users users;
+
+    String otpSession(String email) throws Exception {
+        send("POST", "/auth/otp/start", anon(), "{\"email\":\"" + email + "\"}", Map.of());
+        return send("POST", "/auth/otp/verify", anon(), "{\"email\":\"" + email + "\",\"code\":\"" + lastCode(email) + "\"}", Map.of()).body();
+    }
+
+    @Test
+    void anEmailCodeSessionNeverCarriesPlatformAdmin() throws Exception {
+        // AMENDMENT-008 (Q-043): admin powers need a passkey sign-in.
+        String email = "admin-" + UUID.randomUUID() + "@convoy.test";
+        users.seed(email, List.of("platform_admin"), null);
+        JsonNode v = JSON.readTree(otpSession(email));
+        assertThat(v.at("/user/roles").toString()).doesNotContain("platform_admin");
+        String sid = Crypto.sha256(v.path("session_id").asText());
+        assertThat(jdbc.queryForObject("select auth_method from sessions where id_hash = ?", String.class, sid)).isEqualTo("otp");
+        assertThat(AuthController.sessionRoles(List.of("buyer", "platform_admin"), "otp")).containsExactly("buyer");
+        assertThat(AuthController.sessionRoles(List.of("buyer", "platform_admin"), "passkey")).containsExactly("buyer", "platform_admin");
+    }
+
+    @Test
+    void revokingStaffDeletesAllTheirSessionsAndEmitsSessionRevokedForEach() throws Exception {
+        // AMENDMENT-008 (Q-044).
+        UUID dealership = UUID.randomUUID();
+        String email = "staff-" + UUID.randomUUID() + "@convoy.test";
+        UUID staff = users.seed(email, List.of("dealer_staff"), dealership);
+        otpSession(email);
+        otpSession(email);
+        assertThat(jdbc.queryForObject("select count(*) from sessions where user_id = ?", Integer.class, staff)).isEqualTo(2);
+        String admin = TestTokens.user("identity", UUID.randomUUID(), List.of("dealer_admin"), dealership);
+        Resp r = send("DELETE", "/dealerships/" + dealership + "/staff/" + staff, admin, null, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+        assertThat(r.status()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("select count(*) from sessions where user_id = ?", Integer.class, staff)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'SessionRevoked' and payload->>'user_id' = ? and payload->>'reason' = 'STAFF_REVOKED'",
+                Integer.class, staff.toString())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'StaffRevoked' and payload->>'user_id' = ?", Integer.class, staff.toString())).isEqualTo(1);
+        // Another dealership's admin sees 404 (no existence leak).
+        String other = TestTokens.user("identity", UUID.randomUUID(), List.of("dealer_admin"), UUID.randomUUID());
+        assertThat(send("DELETE", "/dealerships/" + dealership + "/staff/" + staff, other, null, Map.of("Idempotency-Key", UUID.randomUUID().toString())).status()).isEqualTo(404);
+    }
+
     @Test
     void passkeyChallengesAreOneTimeScopedAndUnknownCredentialsAreRejected() throws Exception {
         String email = "pk-" + UUID.randomUUID() + "@convoy.test";

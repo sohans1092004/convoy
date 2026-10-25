@@ -35,6 +35,21 @@ public class GatewayApplication {
 
     @Bean GatewayKeys gatewayKeys(GatewaySettings s) { return new GatewayKeys(Path.of(s.keyDir())); }
 
+    /**
+     * AMENDMENT-008 (Q-044): a revoked session's cache entry is dropped as soon as realtime relays SessionRevoked on the
+     * Redis channel, so the next request re-validates with identity (refused). The 25 s TTL stays the fallback.
+     */
+    @Bean(destroyMethod = "dispose")
+    reactor.core.Disposable sessionEviction(org.springframework.data.redis.connection.ReactiveRedisConnectionFactory factory,
+                                            org.springframework.data.redis.core.ReactiveStringRedisTemplate redis) {
+        // Deferred: the container connects on creation, and the gateway must start (and keep serving) while Redis is down.
+        return reactor.core.publisher.Flux.defer(() -> new org.springframework.data.redis.listener.ReactiveRedisMessageListenerContainer(factory)
+                        .receive(org.springframework.data.redis.listener.ChannelTopic.of("sessions:revoked")))
+                .flatMap(m -> redis.delete("sess:" + m.getMessage()).onErrorResume(e -> reactor.core.publisher.Mono.just(0L)))
+                .retryWhen(reactor.util.retry.Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(2))) // Redis restarts: resubscribe
+                .subscribe();
+    }
+
     /** Routes, most specific first. Every /api route carries the audience of the internal JWT minted for it. */
     @Bean
     RouteLocator routes(RouteLocatorBuilder b, GatewaySettings s) {

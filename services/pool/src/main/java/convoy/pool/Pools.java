@@ -198,6 +198,7 @@ public class Pools {
         Caller c = buyer();
         Map<String, Object> pool = lockPool(poolId);
         Optional<Map<String, Object>> existing = membership(poolId, c.userId(), false);
+        if (existing.isPresent() && "LEFT".equals(existing.get().get("state"))) return rejoin(pool, existing.get());
         if (existing.isPresent()) throw ApiProblem.of(ProblemType.ALREADY_MEMBER, "You are already in this pool.").with("membership", view(existing.get()));
         MEMBERSHIP.check("(none)", "INTERESTED");
         requireJoinable(pool, "new members");
@@ -207,6 +208,22 @@ public class Pools {
                 + "returning interested_count, committed_count, version", poolId);
         outbox.append(poolId, (long) p.get("version"), new MemberJoined(poolId.toString(), mid.toString(), num(p, "interested_count"), num(p, "committed_count")));
         return view(membership(poolId, c.userId(), false).orElseThrow());
+    }
+
+    /** MEM-T01 on a LEFT row (AMENDMENT-008): a new membership episode as INTERESTED, refused after 2 leaves; a new commitment needs a new deposit. */
+    private Map<String, Object> rejoin(Map<String, Object> pool, Map<String, Object> m) {
+        UUID poolId = (UUID) pool.get("id");
+        MEMBERSHIP.check("(none)", "INTERESTED");
+        if ((int) m.get("leave_count") >= 2) {
+            throw ApiProblem.of(ProblemType.REJOIN_LIMIT_REACHED, "You have left this pool twice, so you cannot rejoin it. You can join another pool for this car.");
+        }
+        requireJoinable(pool, "members rejoining");
+        jdbc.update("update memberships set state = 'INTERESTED', release_reason = null, current_payment_id = null, accepted_quote_id = null, "
+                + "accepted_variant_id = null, version = version + 1 where id = ?", m.get("id"));
+        Map<String, Object> p = jdbc.queryForMap("update pools set interested_count = interested_count + 1, version = version + 1 where id = ? "
+                + "returning interested_count, committed_count, version", poolId);
+        outbox.append(poolId, (long) p.get("version"), new MemberJoined(poolId.toString(), m.get("id").toString(), num(p, "interested_count"), num(p, "committed_count")));
+        return view(membership(poolId, (UUID) m.get("buyer_id"), false).orElseThrow());
     }
 
     // ------------------------------------------------------------------ MEM-T02 commit
@@ -347,7 +364,7 @@ public class Pools {
         if (state.equals("DECISION_OPEN") && !before(pool, (Timestamp) pool.get("decision_deadline"))) {
             throw deadlinePassed((Timestamp) pool.get("decision_deadline"), pool, "The decision deadline has passed.");
         }
-        jdbc.update("update memberships set state = 'LEFT', release_reason = 'BUYER_LEFT', version = version + 1 where id = ?", m.get("id"));
+        jdbc.update("update memberships set state = 'LEFT', release_reason = 'BUYER_LEFT', leave_count = leave_count + 1, version = version + 1 where id = ?", m.get("id"));
         boolean committed = Set.of("COMMITTED", "ACCEPTED").contains(from);
         if (from.equals("ACCEPTED")) jdbc.update("update quote_acceptance_counts set count = count - 1 where pool_id = ? and quote_id = ?", poolId, m.get("accepted_quote_id"));
         Map<String, Object> p = jdbc.queryForMap("update pools set interested_count = interested_count - 1, committed_count = committed_count - ?, version = version + 1 "

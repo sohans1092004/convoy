@@ -95,7 +95,29 @@ public class Hub implements MessageListener {
     }
 
     @Override
-    public void onMessage(Message message, byte[] pattern) { deliver(new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8)); }
+    public void onMessage(Message message, byte[] pattern) {
+        String body = new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8);
+        if (REVOKED.equals(new String(message.getChannel(), java.nio.charset.StandardCharsets.UTF_8))) closeSession(body);
+        else deliver(body);
+    }
+
+    /** Redis channel carrying revoked session hashes (AMENDMENT-008, Q-044); the gateway drops its cache entry on it too. */
+    static final String REVOKED = "sessions:revoked";
+
+    /** SessionRevoked (one realtime instance consumes it from SQS): every instance closes the session's streams. */
+    void revokeSession(String sessionHash) {
+        try {
+            redis.convertAndSend(REVOKED, sessionHash);
+        } catch (RuntimeException e) {
+            redisFailures.increment();
+            log.warn("redis publish failed ({}); closing revoked streams on this instance only", e.toString());
+            closeSession(sessionHash);
+        }
+    }
+
+    void closeSession(String sessionHash) {
+        for (Connection c : all()) if (sessionHash.equals(c.sessionHash)) c.close("session revoked");
+    }
 
     @SuppressWarnings("unchecked")
     void deliver(String json) {

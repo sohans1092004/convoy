@@ -92,17 +92,22 @@ public class AuthController {
             throw ApiProblem.of(ProblemType.UNAUTHENTICATED, "That code is not right. Check the email and try again.");
         }
         jdbc.update("update otp_challenges set used_at = clock_timestamp() where id = ?", cid);
-        return session(users.findOrRegister(email));
+        return session(users.findOrRegister(email), "otp");
     }
 
     /** A new session for the user (OTP or passkey sign-in). Only SHA-256 of the id is stored. */
-    Api.Session session(UUID userId) {
+    Api.Session session(UUID userId, String authMethod) {
         String sessionId = Crypto.randomToken();
-        OffsetDateTime expires = jdbc.queryForObject("insert into sessions(id_hash, user_id, expires_at) values (?, ?, clock_timestamp() + make_interval(days => ?)) "
-                + "returning expires_at", OffsetDateTime.class, Crypto.sha256(sessionId), userId, settings.sessionDays());
+        OffsetDateTime expires = jdbc.queryForObject("insert into sessions(id_hash, user_id, expires_at, auth_method) values (?, ?, clock_timestamp() + make_interval(days => ?), ?) "
+                + "returning expires_at", OffsetDateTime.class, Crypto.sha256(sessionId), userId, settings.sessionDays(), authMethod);
         Users.User u = users.find(userId).orElseThrow();
         return convoy.platform.web.Dto.as(Map.of("session_id", sessionId, "session_expires_at", expires.toInstant().toString(),
-                "user", Map.of("id", u.id().toString(), "roles", u.roles())), Api.Session.class);
+                "user", Map.of("id", u.id().toString(), "roles", sessionRoles(u.roles(), authMethod))), Api.Session.class);
+    }
+
+    /** AMENDMENT-008 (Q-043): platform_admin needs a passkey sign-in; an email-code session never carries it. */
+    static List<String> sessionRoles(List<String> roles, String authMethod) {
+        return "passkey".equals(authMethod) ? roles : roles.stream().filter(r -> !r.equals("platform_admin")).toList();
     }
 
     /** E006. Revokes the caller's session; the gateway cache entry expires within 30 s (or on SessionRevoked). */

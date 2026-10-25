@@ -14,6 +14,7 @@ public enum ProblemType {
     DEADLINE_PASSED("deadline-passed", 409, "The database clock at commit time was at or past the deadline"),
     ROUND_NOT_OPEN("round-not-open", 409, "No quote round is open for this pool yet"),
     ALREADY_MEMBER("already-member", 409, "Buyer already has a membership in this pool"),
+    REJOIN_LIMIT_REACHED("rejoin-limit-reached", 409, "Buyer has left this pool twice and cannot rejoin it"),
     ACTIVE_COMMITMENT_EXISTS("active-commitment-exists", 409, "Buyer already holds an active commitment for this model"),
     NOT_A_MEMBER("not-a-member", 409, "Buyer is not a committed member of this pool"),
     CAPACITY_REACHED("capacity-reached", 409, "The quote's max_units confirmations are already taken"),
