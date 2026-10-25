@@ -17,7 +17,10 @@ class DealerIT extends ServiceTest {
     @Test
     void eligibilityFindsTheSyntheticDealershipForItsBrandAndCityOnly() {
         String pool = TestTokens.service("dealer", "pool", List.of("eligibility:read"));
-        assertThat(get("/internal/eligibility?brand=Maruti%20Suzuki&city=Pune", pool).body()).contains("\"count\":1");
+        // The P1 synthetic dealership plus the three simulator dealerships (P3.F, dealer V5), all verified, Maruti Suzuki, Pune.
+        String pune = get("/internal/eligibility?brand=Maruti%20Suzuki&city=Pune", pool).body();
+        assertThat(pune).contains("\"count\":4");
+        for (String d : List.of("d001", "d002", "d003", "d004")) assertThat(pune).contains("0190f3a0-0000-7000-8000-00000000" + d);
         assertThat(get("/internal/eligibility?brand=Hyundai&city=Pune", pool).body()).contains("\"count\":0");
         assertThat(get("/internal/eligibility?brand=Maruti%20Suzuki&city=Delhi", pool).body()).contains("\"count\":0");
         assertThat(get("/dealerships/0190f3a0-0000-7000-8000-00000000d001", TestTokens.anonymous("dealer")).body()).contains("\"synthetic\":true");
