@@ -9,6 +9,7 @@ public record DealershipSuspended(
         @JsonProperty("reason") String reason) implements EventPayload {
     public static final String TYPE = "DealershipSuspended";
     public static final String PRODUCER = "dealer";
+    public static final String AGGREGATE = "dealership";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

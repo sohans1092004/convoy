@@ -35,8 +35,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/WebhookAck"
                 }
               }
             }
@@ -77,8 +76,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PaymentView"
                 }
               }
             }
@@ -108,11 +106,89 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PaymentView"
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/admin/refunds/{id}/retry": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "adminRetry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundAttempt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/refunds/{id}/approve": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "manualResolution",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/refunds/{id}/resolve-manually": {
+      "post": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "manualResolution_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -140,8 +216,27 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/PaymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/refunds": {
+      "get": {
+        "tags": [
+          "payment-application"
+        ],
+        "operationId": "adminRefunds",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundQueue"
                 }
               }
             }
@@ -152,6 +247,16 @@
   },
   "components": {
     "schemas": {
+      "WebhookAck": {
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "CallbackBody": {
         "properties": {
           "razorpay_payment_id": {
@@ -171,6 +276,44 @@
           "razorpay_order_id",
           "razorpay_payment_id",
           "razorpay_signature"
+        ]
+      },
+      "PaymentView": {
+        "properties": {
+          "payment_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "razorpay_order_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "razorpay_key_id": {
+            "type": "string"
+          },
+          "test_mode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "amount_paise",
+          "currency",
+          "payment_id",
+          "razorpay_key_id",
+          "razorpay_order_id",
+          "state",
+          "test_mode"
         ]
       },
       "DepositBody": {
@@ -197,6 +340,111 @@
           "buyer_id",
           "pool_id",
           "round_set"
+        ]
+      },
+      "RefundAttempt": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "razorpay_refund_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "attempts",
+          "failure_reason",
+          "id",
+          "razorpay_refund_id",
+          "state"
+        ]
+      },
+      "QueuedRefund": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "payment_id": {
+            "type": "string"
+          },
+          "buyer_id": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "reason_code": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next_attempt_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount_paise",
+          "attempts",
+          "buyer_id",
+          "created_at",
+          "failure_reason",
+          "id",
+          "kind",
+          "next_attempt_at",
+          "payment_id",
+          "pool_id",
+          "reason_code",
+          "state"
+        ]
+      },
+      "RefundQueue": {
+        "properties": {
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueuedRefund"
+            }
+          }
+        },
+        "required": [
+          "refunds"
         ]
       }
     }

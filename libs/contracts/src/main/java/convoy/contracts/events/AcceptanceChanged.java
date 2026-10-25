@@ -13,6 +13,7 @@ public record AcceptanceChanged(
         @JsonProperty("acceptance_counts") Map<String, Object> acceptanceCounts) implements EventPayload {
     public static final String TYPE = "AcceptanceChanged";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 

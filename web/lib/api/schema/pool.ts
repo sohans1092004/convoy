@@ -32,6 +32,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["preferences"];
+        put: operations["savePreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pools": {
         parameters: {
             query?: never;
@@ -112,6 +128,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/pool-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/pools/{id}/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["version"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/pools/{id}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["access"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -122,13 +186,129 @@ export interface components {
             /** Format: uuid */
             variant_id: string;
         };
+        Membership: {
+            id: string;
+            pool_id: string;
+            state: string;
+            current_payment_id: string | null;
+            terms_version: string | null;
+            accepted_quote_id: string | null;
+            accepted_variant_id: string | null;
+            release_reason: string | null;
+            /** Format: int64 */
+            version: number;
+        };
+        Preferences: {
+            city: string | null;
+            purchase_month: string | null;
+            variant_ids: string[];
+            colours: string[];
+            fuels: string[];
+            transmissions: string[];
+        };
         CreateBody: {
             model_slug: string;
             city: string;
             purchase_month: string;
         };
+        Pool: {
+            id: string;
+            model_slug: string;
+            brand: string;
+            city: string;
+            state_code: string;
+            accepted_variant_ids: string[];
+            /** Format: int32 */
+            min_members: number;
+            state: string;
+            end_reason: string | null;
+            /** Format: int32 */
+            round_set: number;
+            purchase_month: string;
+            forming_deadline: string | null;
+            decision_deadline: string | null;
+            confirmation_deadline: string | null;
+            purchase_window_end: string | null;
+            /** Format: int64 */
+            interested_count: number;
+            /** Format: int64 */
+            committed_count: number;
+            /** Format: int64 */
+            version: number;
+            server_time: string;
+            rounds: components["schemas"]["Round"][];
+            /** Format: int64 */
+            deposit_amount_paise: number;
+            terms_version: string;
+            my_membership?: components["schemas"]["Membership"];
+            acceptance_counts?: {
+                [key: string]: number;
+            };
+        };
+        PoolCreated: {
+            created: boolean;
+            pool: components["schemas"]["Pool"];
+        };
+        Round: {
+            id: string;
+            /** Format: int32 */
+            round_set: number;
+            /** Format: int32 */
+            round_no: number;
+            kind: string;
+            state: string;
+            deadline: string;
+            closed_at: string | null;
+        };
         CommitBody: {
             terms_version: string;
+        };
+        Commitment: {
+            membership: components["schemas"]["Membership"];
+            deposit: components["schemas"]["Deposit"];
+        };
+        Deposit: {
+            payment_id: string;
+            state: string;
+            /** Format: int64 */
+            amount_paise: number;
+            currency: string;
+            razorpay_order_id: string | null;
+            razorpay_key_id: string;
+            test_mode: boolean;
+        };
+        Result: {
+            model_slug: string;
+            pools: components["schemas"]["Suggestion"][];
+            start: components["schemas"]["Start"] | null;
+            note: string | null;
+        };
+        Start: {
+            model_slug: string;
+            city: string;
+            purchase_month: string;
+        };
+        Suggestion: {
+            pool_id: string;
+            status: string;
+            matching_variant_ids: string[];
+            /** Format: int32 */
+            committed_count: number;
+            /** Format: int32 */
+            min_members: number;
+            /** Format: date-time */
+            join_deadline: string | null;
+        };
+        Suggestions: {
+            results: components["schemas"]["Result"][];
+            server_time: string;
+        };
+        PoolVersion: {
+            /** Format: int64 */
+            version: number;
+        };
+        StreamAccess: {
+            allowed: boolean;
         };
     };
     responses: never;
@@ -182,9 +362,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Membership"];
                 };
             };
         };
@@ -208,9 +386,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Preferences"];
+                };
+            };
+        };
+    };
+    savePreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Preferences"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Preferences"];
                 };
             };
         };
@@ -234,9 +454,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["PoolCreated"];
                 };
             };
         };
@@ -258,9 +476,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Membership"];
                 };
             };
         };
@@ -286,9 +502,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Commitment"];
                 };
             };
         };
@@ -310,9 +524,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Pool"];
                 };
             };
         };
@@ -334,9 +546,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Membership"];
                 };
             };
         };
@@ -360,9 +570,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    suggestions: {
+        parameters: {
+            query?: {
+                model?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Suggestions"];
+                };
+            };
+        };
+    };
+    version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PoolVersion"];
+                };
+            };
+        };
+    };
+    access: {
+        parameters: {
+            query?: {
+                buyer_id?: string;
+                dealership_id?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StreamAccess"];
                 };
             };
         };

@@ -46,4 +46,7 @@ class CatalogIT extends ServiceTest {
         assertThat(get("/internal/models/maruti-swift", TestTokens.service("catalog", "pool", List.of("other"))).status()).isEqualTo(403);
         assertThat(AuthzDenyChecks.run("catalog", this::send, (m, p) -> null)).isEmpty();
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("catalog"); }
 }

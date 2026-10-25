@@ -40,3 +40,9 @@ payment:
   razorpay-key-secret: ${RAZORPAY_KEY_SECRET}
   razorpay-webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
   deposit-amount-paise: ${DEPOSIT_AMOUNT_PAISE:99900}
+  # AMENDMENT-007 (Q-041): flat Rs 2,500 per delivered booking, a dealer receivable (J-FEE), never from a buyer deposit. 0 = off.
+  success-fee-paise: ${SUCCESS_FEE_PAISE:250000}
+  # refund.yaml: retry at 1 min, 5 min, 30 min, 2 h, 12 h, then REFUND_STUCK alarm + admin queue.
+  refund-retry-schedule: ${REFUND_RETRY_SCHEDULE:1m,5m,30m,2h,12h}
+  # PAY-T05: unpaid deposits are voided after this (a later capture is refunded, PAY-T10).
+  void-unpaid-after: ${VOID_UNPAID_AFTER:24h}

@@ -1,5 +1,7 @@
 import createClient, { type Middleware } from 'openapi-fetch';
-import type { paths } from './api/schema';
+import type { paths, Schemas } from './api/schema';
+
+export type { Schemas };
 import { recordServerTime } from './server-clock';
 
 // Typed client generated from the services' OpenAPI documents (scripts/gen-api.mjs). It calls the BFF
@@ -45,14 +47,14 @@ const middleware: Middleware = {
 export const api = createClient<paths>({ baseUrl: '/api' });
 api.use(middleware);
 
-/** Unwrap an openapi-fetch result: data, or throw ApiError with the problem body. */
-export async function call<T>(p: Promise<{ data?: unknown; error?: unknown; response: Response }>): Promise<{ data: T; response: Response }> {
+/** Unwrap an openapi-fetch result: data (typed from the OpenAPI schema), or throw ApiError with the problem body. */
+export async function call<D>(p: Promise<{ data?: D; error?: unknown; response: Response }>): Promise<{ data: NonNullable<D>; response: Response }> {
   const r = await p;
   if (r.error !== undefined || !r.response.ok) {
     const body = (r.error ?? {}) as Partial<Problem>;
     throw new ApiError({ status: r.response.status, ...body } as Problem);
   }
-  return { data: r.data as T, response: r.response };
+  return { data: r.data as NonNullable<D>, response: r.response };
 }
 
 /** ETag "<version>" -> version number for If-Match. */

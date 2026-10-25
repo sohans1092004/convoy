@@ -17,6 +17,7 @@ public record PoolCreated(
         @JsonProperty("accepted_variant_ids") List<String> acceptedVariantIds) implements EventPayload {
     public static final String TYPE = "PoolCreated";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 

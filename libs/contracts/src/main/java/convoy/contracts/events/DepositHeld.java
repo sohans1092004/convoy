@@ -9,6 +9,7 @@ public record DepositHeld(
         @JsonProperty("booking_id") String bookingId) implements EventPayload {
     public static final String TYPE = "DepositHeld";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "payment";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

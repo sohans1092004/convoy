@@ -37,21 +37,50 @@ public class CatalogController {
 
     /** E020: models with the lowest seeded ex-showroom price (catalogue estimate) per model. */
     @GetMapping("/catalog/models")
-    public Map<String, Object> models(@RequestParam(required = false) String city) {
+    public Api.ModelList models(@RequestParam(required = false) String city) {
         String c = city(city);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                select m.slug, m.name, b.name as brand, m.body_type, count(distinct v.id) as variant_count,
+                select m.id::text as id, m.slug, m.name, b.name as brand, m.body_type, count(distinct v.id) as variant_count,
                        min(p.ex_showroom_paise) as from_ex_showroom_paise, bool_or(p.city_confirmed) as any_city_confirmed
                 from models m join brands b on b.id = m.brand_id join variants v on v.model_id = m.id
                 join variant_prices p on p.variant_id = v.id and (cast(? as text) is null or p.city = ?)
-                group by m.slug, m.name, b.name, m.body_type order by b.name, m.name""", c, c);
+                group by m.id, m.slug, m.name, b.name, m.body_type order by b.name, m.name""", c, c);
         rows.forEach(r -> r.put("evidence", "CATALOGUE_ESTIMATE"));
-        return Map.of("models", rows, "cities", CITIES, "ruleset_version", ruleset.version());
+        return convoy.platform.web.Dto.as(Map.of("models", rows, "cities", CITIES, "ruleset_version", ruleset.version()), Api.ModelList.class);
+    }
+
+    // ------------------------------------------------------------------ saved cars (E024-E026), buyers only
+
+    @GetMapping("/me/saved-cars")
+    public Api.SavedCars savedCars() {
+        UUID buyer = convoy.platform.security.Caller.current().require("buyer").userId();
+        return convoy.platform.web.Dto.as(Map.of("cars", jdbc.queryForList("""
+                select m.id::text as model_id, m.slug, m.name, b.name as brand, s.saved_at from saved_cars s join models m on m.id = s.model_id
+                join brands b on b.id = m.brand_id where s.buyer_id = ? order by s.saved_at""", buyer).stream().map(r -> {
+            Map<String, Object> x = new LinkedHashMap<>(r);
+            x.put("saved_at", ((Timestamp) r.get("saved_at")).toInstant().toString());
+            return x;
+        }).toList()), Api.SavedCars.class);
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/me/saved-cars/{modelId}")
+    public Api.SavedCars saveCar(@PathVariable UUID modelId) {
+        UUID buyer = convoy.platform.security.Caller.current().require("buyer").userId();
+        if (jdbc.queryForObject("select count(*) from models where id = ?", Integer.class, modelId) == 0) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such model.");
+        jdbc.update("insert into saved_cars(buyer_id, model_id) values (?, ?) on conflict do nothing", buyer, modelId);
+        return savedCars();
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/me/saved-cars/{modelId}")
+    public Api.SavedCars unsaveCar(@PathVariable UUID modelId) {
+        UUID buyer = convoy.platform.security.Caller.current().require("buyer").userId();
+        jdbc.update("delete from saved_cars where buyer_id = ? and model_id = ?", buyer, modelId);
+        return savedCars();
     }
 
     /** E021: one model with variants and per-city prices (each with source, access date and evidence). */
     @GetMapping("/catalog/models/{slug}")
-    public Map<String, Object> model(@PathVariable String slug) {
+    public Api.Model model(@PathVariable String slug) {
         List<Map<String, Object>> m = jdbc.queryForList("""
                 select m.id, m.slug, m.name, b.name as brand, m.body_type, m.source_url, m.source_title, m.accessed_on::text as accessed_on,
                        m.price_label, m.city_basis from models m join brands b on b.id = m.brand_id where m.slug = ?""", slug);
@@ -64,7 +93,7 @@ public class CatalogController {
                     + "from variant_prices where variant_id = ? order by city", v.get("id")));
         }
         out.put("variants", variants);
-        return out;
+        return convoy.platform.web.Dto.as(out, Api.Model.class);
     }
 
     /**
@@ -73,7 +102,7 @@ public class CatalogController {
      */
     @GetMapping("/internal/models/{slug}")
     @convoy.platform.security.RequiresScope("models:read")
-    public Map<String, Object> internalModel(@PathVariable String slug, @RequestParam(required = false) String city) {
+    public Api.InternalModel internalModel(@PathVariable String slug, @RequestParam(required = false) String city) {
         convoy.platform.security.Caller.current().requireScope("models:read");
         String c = city(city);
         List<Map<String, Object>> m = jdbc.queryForList("select m.id, m.slug, m.name, b.name as brand from models m join brands b on b.id = m.brand_id where m.slug = ?", slug);
@@ -84,12 +113,12 @@ public class CatalogController {
                 select v.id::text as id, v.code, v.name, v.fuel, v.transmission, v.engine_cc, p.ex_showroom_paise as catalogue_ex_showroom_paise,
                        p.evidence as catalogue_evidence, p.city_confirmed from variants v
                 left join variant_prices p on p.variant_id = v.id and p.city = ? where v.model_id = ? order by v.name""", c, out.get("id")));
-        return out;
+        return convoy.platform.web.Dto.as(out, Api.InternalModel.class);
     }
 
     /** E022: variants side by side. */
     @GetMapping("/catalog/variants/compare")
-    public Map<String, Object> compare(@RequestParam List<UUID> ids, @RequestParam(required = false) String city) {
+    public Api.Comparison compare(@RequestParam List<UUID> ids, @RequestParam(required = false) String city) {
         if (ids.isEmpty() || ids.size() > 4) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Compare 1 to 4 variants.");
         String c = city(city);
         List<Map<String, Object>> out = new ArrayList<>();
@@ -103,12 +132,12 @@ public class CatalogController {
                     + "and (cast(? as text) is null or city = ?) order by city", id, c, c));
             out.add(row);
         }
-        return Map.of("variants", out);
+        return convoy.platform.web.Dto.as(Map.of("variants", out), Api.Comparison.class);
     }
 
     /** E023: on-road estimate for a variant in a city. The engine output and its inputs are stored as a snapshot. */
     @GetMapping("/catalog/variants/{id}/price-estimate")
-    public Map<String, Object> estimate(@PathVariable UUID id, @RequestParam String city) {
+    public Api.Estimate estimate(@PathVariable UUID id, @RequestParam String city) {
         String c = city(city);
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 select v.id, v.code, v.name, v.fuel, v.engine_cc, p.state_code, p.ex_showroom_paise, p.evidence, p.city_confirmed, p.source_url,
@@ -135,7 +164,7 @@ public class CatalogController {
         out.put("city_confirmed", r.get("city_confirmed"));
         out.put("source", Map.of("url", r.get("source_url"), "accessed_on", r.get("accessed_on")));
         out.put("snapshot", snapshot);
-        return out;
+        return convoy.platform.web.Dto.as(out, Api.Estimate.class);
     }
 
     /** Buyer configuration with catalogue figures only: registration and insurance are estimated by the engine. */

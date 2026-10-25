@@ -5,50 +5,36 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 
 /**
- * idempotency_keys(key, caller) UNIQUE in the service's own schema. A request claims the key with an
- * INSERT; the first completed (non-5xx) response is stored and replayed for later requests with that key.
- *
- * ponytail: the response is stored after the business transaction commits, not inside it. A crash in
- * between leaves the claim IN_PROGRESS; claims older than 60 s are treated as abandoned and re-run, and
- * business uniqueness (e.g. one membership per pool and buyer) keeps the re-run safe. Store the response
- * in the business transaction if that window ever matters.
+ * idempotency_keys(key, caller) in the service's own schema. A row is written only inside the business
+ * transaction, together with the response it produced, so "changed but not recorded" cannot happen: after a
+ * crash between commit and response, a retry with the same key replays the stored response.
  */
 public class IdempotencyStore {
-    public record Claim(String key, String caller) {}
+    public record Key(String key, String caller, String requestSha256) {}
 
-    public record Stored(String requestSha256, Integer status, String contentType, byte[] body, boolean abandoned) {}
+    public record Stored(String requestSha256, int status, String contentType, byte[] body) {}
 
     private final JdbcTemplate jdbc;
 
     public IdempotencyStore(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    /** True if this request now owns the key. */
-    public boolean claim(Claim c, String requestSha256) {
-        return jdbc.update("insert into idempotency_keys(key, caller, request_sha256) values (?, ?, ?) on conflict do nothing",
-                c.key(), c.caller(), requestSha256) == 1;
+    public Optional<Stored> find(String key, String caller) {
+        return jdbc.query("select request_sha256, status, content_type, response from idempotency_keys where key = ? and caller = ?",
+                (rs, i) -> new Stored(rs.getString(1), rs.getInt(2), rs.getString(3), rs.getBytes(4)), key, caller).stream().findFirst();
     }
 
-    public Optional<Stored> find(Claim c) {
-        return jdbc.query("select request_sha256, status, content_type, response, created_at < clock_timestamp() - interval '60 seconds' as abandoned "
-                        + "from idempotency_keys where key = ? and caller = ?",
-                (rs, i) -> new Stored(rs.getString(1), (Integer) rs.getObject(2), rs.getString(3), rs.getBytes(4), rs.getBoolean(5)),
-                c.key(), c.caller()).stream().findFirst();
+    /**
+     * First statement of the business transaction. A concurrent request with the same key blocks here until the
+     * first one commits (then fails with DuplicateKeyException and replays) or rolls back (then proceeds).
+     */
+    public void begin(Key k) {
+        jdbc.update("insert into idempotency_keys(key, caller, request_sha256) values (?, ?, ?)", k.key(), k.caller(), k.requestSha256());
     }
 
-    /** Abandoned in-progress claim: take it over (only one taker wins). */
-    public boolean takeOver(Claim c, String requestSha256) {
-        return jdbc.update("update idempotency_keys set created_at = clock_timestamp() where key = ? and caller = ? and status is null "
-                + "and request_sha256 = ? and created_at < clock_timestamp() - interval '60 seconds'", c.key(), c.caller(), requestSha256) == 1;
-    }
-
-    public void complete(Claim c, int status, String contentType, byte[] body) {
-        if (status >= 500) {
-            // Server failure: release the key so the client can retry with it.
-            jdbc.update("delete from idempotency_keys where key = ? and caller = ? and status is null", c.key(), c.caller());
-        } else {
-            jdbc.update("update idempotency_keys set status = ?, content_type = ?, response = ?, completed_at = clock_timestamp() "
-                    + "where key = ? and caller = ?", status, contentType, body, c.key(), c.caller());
-        }
+    /** Last statement of the business transaction. */
+    public void complete(Key k, int status, String contentType, byte[] body) {
+        jdbc.update("update idempotency_keys set status = ?, content_type = ?, response = ?, completed_at = clock_timestamp() where key = ? and caller = ?",
+                status, contentType, body, k.key(), k.caller());
     }
 
     /** Retention 24 h (deposit-contract.md §2). */

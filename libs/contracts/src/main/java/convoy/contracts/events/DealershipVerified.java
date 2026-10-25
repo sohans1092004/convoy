@@ -12,6 +12,7 @@ public record DealershipVerified(
         @JsonProperty("verified_by") String verifiedBy) implements EventPayload {
     public static final String TYPE = "DealershipVerified";
     public static final String PRODUCER = "dealer";
+    public static final String AGGREGATE = "dealership";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

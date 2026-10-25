@@ -12,7 +12,8 @@ const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:8080';
 const SECURE = process.env.COOKIE_SECURE !== 'false';
 const FORWARD_REQ = ['content-type', 'accept', 'idempotency-key', 'if-match', 'x-correlation-id'];
 const FORWARD_RES = ['content-type', 'etag', 'server-time', 'idempotent-replayed', 'x-correlation-id', 'retry-after'];
-const NO_SESSION_NEEDED = new Set(['auth/otp/start', 'auth/otp/verify']);
+const NO_SESSION_NEEDED = new Set(['auth/otp/start', 'auth/otp/verify', 'auth/passkeys/authenticate/options', 'auth/passkeys/authenticate']);
+const SIGN_IN = new Set(['auth/otp/verify', 'auth/passkeys/authenticate']); // responses carry a session id: set the cookie, never echo it
 const SESSION_DAYS = 30;
 
 function problem(status: number, slug: string, code: string, title: string, detail: string) {
@@ -53,9 +54,21 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     try {
       upstream = await fetch(`${GATEWAY}/api/${route}${req.nextUrl.search}`, {
         method: req.method, headers, body: mutating ? await req.arrayBuffer() : undefined, cache: 'no-store', redirect: 'manual',
+        signal: route.startsWith('stream/') ? req.signal : undefined, // the browser leaving closes the upstream SSE connection
       });
     } catch {
       return problem(503, 'dependency-unavailable', 'DEPENDENCY_UNAVAILABLE', 'A required downstream dependency is unavailable', 'Convoy is unreachable right now. Try again shortly.');
+    }
+    // An expired or revoked session must not break public reads: retry a GET once without it and drop the dead cookies.
+    let sessionExpired = false;
+    if (upstream.status === 401 && sid && req.method === 'GET' && !route.startsWith('stream/')) {
+      sessionExpired = true;
+      headers.delete('X-Convoy-Session');
+      try {
+        upstream = await fetch(`${GATEWAY}/api/${route}${req.nextUrl.search}`, { method: 'GET', headers, cache: 'no-store', redirect: 'manual' });
+      } catch {
+        return problem(503, 'dependency-unavailable', 'DEPENDENCY_UNAVAILABLE', 'A required downstream dependency is unavailable', 'Convoy is unreachable right now. Try again shortly.');
+      }
     }
     span.setAttribute('http.status_code', upstream.status);
     const out = new Headers();
@@ -63,9 +76,15 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       const v = upstream.headers.get(h);
       if (v) out.set(h, v);
     }
+    // SSE (realtime E120): stream through unbuffered; never read the whole body.
+    if (route.startsWith('stream/') && upstream.ok && upstream.body) {
+      out.set('cache-control', 'no-cache, no-transform');
+      out.set('x-accel-buffering', 'no');
+      return new Response(upstream.body, { status: upstream.status, headers: out });
+    }
     let body: BodyInit | null = upstream.status === 204 ? null : await upstream.arrayBuffer();
 
-    if (route === 'auth/otp/verify' && upstream.ok) {
+    if (SIGN_IN.has(route) && upstream.ok) {
       const data = JSON.parse(new TextDecoder().decode(body as ArrayBuffer));
       const res = NextResponse.json({ user: data.user }, { status: 200 });
       const opts = { httpOnly: true, secure: SECURE, sameSite: 'lax' as const, path: '/', maxAge: SESSION_DAYS * 86400 };
@@ -87,7 +106,12 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       return res;
     }
     body = body && (body as ArrayBuffer).byteLength === 0 ? null : body;
-    return new NextResponse(body, { status: upstream.status, headers: out });
+    const res = new NextResponse(body, { status: upstream.status, headers: out });
+    if (sessionExpired) {
+      res.cookies.delete('cv_sid');
+      res.cookies.delete('cv_roles');
+    }
+    return res;
   });
 }
 

@@ -7,7 +7,7 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/convoy}
     username: identity
     password: ${DB_PASSWORD}
-    hikari.maximum-pool-size: 5
+    hikari.maximum-pool-size: ${DB_POOL_SIZE:12}
     hikari.schema: identity
   flyway:
     schemas: identity
@@ -42,8 +42,16 @@ identity:
   otp-minutes: 10
   session-days: 30
   seed-users-file: ${SEED_USERS_FILE:}
+  passkeys:
+    rp-id: ${PASSKEY_RP_ID:localhost}
+    rp-name: Convoy
+    origins: ${PASSKEY_ORIGINS:http://localhost:3000}
+    challenge-minutes: 5
   clients:
     gateway: { secret: "${CLIENT_SECRET_GATEWAY}", scopes: { identity: [sessions:validate] } }
     pool:
       secret: "${CLIENT_SECRET_POOL}"
       scopes: { payment: [deposits:create], quote: [rounds:summary], dealer: [eligibility:read], order: [resolution:read], catalog: [models:read] }
+    realtime:
+      secret: "${CLIENT_SECRET_REALTIME}"
+      scopes: { pool: [pools:access], identity: [sessions:check] }

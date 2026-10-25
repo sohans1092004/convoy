@@ -17,6 +17,7 @@ public record BookingIssued(
         @JsonProperty("dealer_confirm_deadline") Instant dealerConfirmDeadline) implements EventPayload {
     public static final String TYPE = "BookingIssued";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "booking";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

@@ -9,25 +9,19 @@ import { Card, CardText, CardTitle } from '@/components/ui/card';
 import { Countdown } from '@/components/ui/countdown';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, call, etagVersion } from '@/lib/api';
+import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
-interface Tier { min: number; max: number | null; cash_payable_paise: number; is_ceiling: boolean }
-interface OfferVariant {
-  variant_id: string; variant_code: string;
-  ceiling: { tier_index: number; cash_payable_paise: number; output: EngineOutput; snapshot_sha256: string };
-  projection: { label: string; count: number; guaranteed: false; cash_payable_paise: number | null; note: string };
-  tiers: Tier[]; stock: { units: number; colours?: string[]; delivery_date?: string };
-}
-interface Offer { quote_id: string; dealership_id: string; state: string; version_no: number; committed_at: string; min_fulfilment: number; variants: OfferVariant[] }
-interface Pool { state: string; decision_deadline: string | null; my_membership: { state: string; accepted_quote_id: string | null } | null }
+type Tier = Schemas['quote']['TierView'];
+type OfferVariant = Schemas['quote']['OfferVariant'];
+type Offer = Schemas['quote']['Offer'];
 
 function useDealerName(id: string) {
   const [name, setName] = React.useState<string>('Dealer');
   React.useEffect(() => {
-    call<{ trade_name: string }>(api.GET('/dealerships/{id}', { params: { path: { id } } })).then((r) => setName(r.data.trade_name)).catch(() => {});
+    call(api.GET('/dealerships/{id}', { params: { path: { id } } })).then((r) => setName(r.data.trade_name)).catch(() => {});
   }, [id]);
   return name;
 }
@@ -87,8 +81,8 @@ function OfferCard({ offer, poolId, accepted, canAccept, onAccepted }: { offer: 
 }
 
 export function CompareView({ poolId }: { poolId: string }) {
-  const pool = useSnapshot(() => call<Pool>(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
-  const offers = useSnapshot(() => call<{ quotes: Offer[]; ranking_rule: string }>(api.GET('/pools/{poolId}/quotes', { params: { path: { poolId } } })), [poolId]);
+  const pool = useSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
+  const offers = useSnapshot(() => call(api.GET('/pools/{poolId}/quotes', { params: { path: { poolId } } })), [poolId]);
   if ((pool.loading && !pool.data) || (offers.loading && !offers.data)) return <Skeleton className="h-96" label="Loading offers" />;
   if (!offers.data) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{offers.problem?.detail ?? 'Offers could not be loaded.'}</p>;
   const p = pool.data;

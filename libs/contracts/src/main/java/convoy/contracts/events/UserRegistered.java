@@ -11,6 +11,7 @@ public record UserRegistered(
         @JsonProperty("locale") String locale) implements EventPayload {
     public static final String TYPE = "UserRegistered";
     public static final String PRODUCER = "identity";
+    public static final String AGGREGATE = "user";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

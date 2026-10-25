@@ -3,6 +3,7 @@ package convoy.pool;
 import convoy.contracts.events.AcceptancesFrozen;
 import convoy.contracts.events.DecisionOpened;
 import convoy.contracts.events.FinalRoundOpened;
+import convoy.contracts.events.PoolClosed;
 import convoy.contracts.events.QuoteRoundOpened;
 import convoy.contracts.events.RoundClosed;
 import convoy.platform.messaging.Outbox;
@@ -22,7 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Deadline and system transitions (POOL-T02, T03, T05, T07; RND-T01/T02). The sweeper is the wake-up;
+ * Deadline and system transitions (POOL-T02..T07, T11, T12; RND-T01/T02). The sweeper is the wake-up;
  * each transition re-reads the pool under lock and checks state, version and the DB clock itself
  * (deadline-rule.md). Sync calls to dealer/quote happen before the transaction; failures retry next tick.
  */
@@ -49,7 +50,9 @@ public class PoolSweeper {
 
     public void sweep() {
         try {
+            for (UUID id : jdbc.queryForList("select id from pools where state = 'FORMING' and forming_deadline <= clock_timestamp()", UUID.class)) guarded(id, this::expireForming);
             for (UUID id : jdbc.queryForList("select id from pools where state = 'READY_FOR_QUOTES'", UUID.class)) guarded(id, this::openSealedRound);
+            for (UUID id : jdbc.queryForList("select id from pools where state = 'READY_FOR_QUOTES' and dealer_wait_deadline <= clock_timestamp()", UUID.class)) guarded(id, this::noEligibleDealer);
             for (UUID id : jdbc.queryForList("select p.id from pools p join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 1 "
                     + "where p.state = 'QUOTE_OPEN' and r.state = 'OPEN' and r.deadline <= clock_timestamp()", UUID.class)) guarded(id, this::closeSealedRound);
             for (UUID id : jdbc.queryForList("select p.id from pools p join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 2 "
@@ -81,7 +84,7 @@ public class PoolSweeper {
             return;
         }
         List<String> invited = ((List<Object>) elig.get("dealership_ids")).stream().map(String::valueOf).toList();
-        if (invited.isEmpty()) return; // re-checked until dealer_wait_deadline; POOL-T12 (NO_QUOTES) is not built in P1
+        if (invited.isEmpty()) return; // re-checked every tick until dealer_wait_deadline, then POOL-T12
         tx.executeWithoutResult(s -> {
             Map<String, Object> pool = pools.lockPool(poolId);
             if (!"READY_FOR_QUOTES".equals(pool.get("state"))) return;
@@ -108,8 +111,9 @@ public class PoolSweeper {
         tx.executeWithoutResult(s -> {
             Map<String, Object> pool = pools.lockPool(poolId);
             if (!"QUOTE_OPEN".equals(pool.get("state")) || Pools.before(pool, (Timestamp) r1.get("deadline"))) return;
-            if (valid == 0) {
-                Pools.POOL.check("QUOTE_OPEN", "NO_QUOTES"); // POOL-T04: 501 in P1
+            if (valid == 0) { // POOL-T04
+                closeRound(poolId, r1, "SEALED", 0);
+                closePool(poolId, "QUOTE_OPEN", "NO_QUOTES", "NO_VALID_QUOTES");
                 return;
             }
             Pools.POOL.check("QUOTE_OPEN", "FINAL_ROUND");
@@ -141,8 +145,9 @@ public class PoolSweeper {
         tx.executeWithoutResult(s -> {
             Map<String, Object> pool = pools.lockPool(poolId);
             if (!"FINAL_ROUND".equals(pool.get("state")) || Pools.before(pool, (Timestamp) r2.get("deadline"))) return;
-            if (finals == 0) {
-                Pools.POOL.check("FINAL_ROUND", "NO_QUOTES"); // POOL-T06: 501 in P1
+            if (finals == 0) { // POOL-T06
+                closeRound(poolId, r2, "FINAL", 0);
+                closePool(poolId, "FINAL_ROUND", "NO_QUOTES", "ALL_WITHDRAWN");
                 return;
             }
             Pools.POOL.check("FINAL_ROUND", "DECISION_OPEN");
@@ -197,6 +202,50 @@ public class PoolSweeper {
             outbox.append(poolId, v, new AcceptancesFrozen(poolId.toString(), ((Number) pool.get("round_set")).longValue(), conf.toInstant(),
                     acceptances, pools.acceptanceCounts(poolId), released));
         });
+    }
+
+    // POOL-T11: the minimum was not reached by the forming deadline.
+    void expireForming(UUID poolId) {
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> pool = pools.lockPool(poolId);
+            if (!"FORMING".equals(pool.get("state")) || Pools.before(pool, (Timestamp) pool.get("forming_deadline"))) return;
+            if ((int) pool.get("committed_count") >= (int) pool.get("min_members")) return; // POOL-T01 handles it
+            closePool(poolId, "FORMING", "EXPIRED", "MINIMUM_NOT_REACHED");
+        });
+    }
+
+    // POOL-T12: no eligible dealer by the dealer-wait deadline.
+    void noEligibleDealer(UUID poolId) {
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> pool = pools.lockPool(poolId);
+            if (!"READY_FOR_QUOTES".equals(pool.get("state")) || Pools.before(pool, (Timestamp) pool.get("dealer_wait_deadline"))) return;
+            closePool(poolId, "READY_FOR_QUOTES", "NO_QUOTES", "NO_ELIGIBLE_DEALER");
+        });
+    }
+
+    /** RND-T02 for a round that closes without moving on (POOL-T04 / T06). */
+    private void closeRound(UUID poolId, Map<String, Object> round, String kind, long validCount) {
+        Pools.ROUND.check("OPEN", "CLOSED");
+        Timestamp closedAt = jdbc.queryForObject("update rounds set state = 'CLOSED', closed_at = clock_timestamp(), version = version + 1 where id = ? returning closed_at",
+                Timestamp.class, round.get("id"));
+        outbox.append(poolId, nextVersion(poolId), new RoundClosed(poolId.toString(), round.get("id").toString(), kind,
+                ((Timestamp) round.get("deadline")).toInstant(), closedAt.toInstant(), validCount));
+    }
+
+    /**
+     * Ends a pool (POOL-T04/T06/T11/T12) with MEM-T10 for committed members, in the caller's transaction. Refunds are driven
+     * by PoolClosed, which payment consumes: captured deposits are refunded, unpaid ones voided (one event per pool, not per member).
+     */
+    private void closePool(UUID poolId, String from, String endState, String endReason) {
+        Pools.POOL.check(from, endState);
+        for (String st : jdbc.queryForList("select distinct state from memberships where pool_id = ? and state in ('COMMITTED', 'REROUND_CHOICE')", String.class, poolId)) {
+            Pools.MEMBERSHIP.check(st, "RELEASED");
+        }
+        jdbc.update("update memberships set state = 'RELEASED', release_reason = ?, version = version + 1 where pool_id = ? and state in ('COMMITTED', 'REROUND_CHOICE')",
+                "POOL_" + endReason, poolId);
+        long v = jdbc.queryForObject("update pools set state = ?, end_reason = ?, version = version + 1 where id = ? returning version", Long.class, endState, endReason, poolId);
+        outbox.append(poolId, v, new PoolClosed(poolId.toString(), endState, endReason));
+        log.info("pool {} closed: {} ({})", poolId, endState, endReason);
     }
 
     private long nextVersion(UUID poolId) {

@@ -10,6 +10,7 @@ public record OrderCancelled(
         @JsonProperty("reason") String reason) implements EventPayload {
     public static final String TYPE = "OrderCancelled";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "order";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

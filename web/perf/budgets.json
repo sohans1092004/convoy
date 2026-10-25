@@ -1,0 +1,55 @@
+{
+  "_note": "gzip KB of first-load JS per route; budget = baseline x 1.10 (P2, Q-037); starting caps from frontend-quality.md §3 kept for reference. Raising a budget needs a PR note.",
+  "measured": "2026-10-25",
+  "routes": {
+    "/": {
+      "route": "discover",
+      "baseline_kb": 185.5,
+      "budget_kb": 204.1,
+      "starting_cap_kb": 170,
+      "over_starting_cap": true
+    },
+    "/models/maruti-swift": {
+      "route": "join (model page)",
+      "baseline_kb": 189.4,
+      "budget_kb": 208.3,
+      "starting_cap_kb": 150,
+      "over_starting_cap": true
+    },
+    "/pools/p1": {
+      "route": "pool",
+      "baseline_kb": 189.3,
+      "budget_kb": 208.2,
+      "starting_cap_kb": 170,
+      "over_starting_cap": true
+    },
+    "/pools/p1/compare": {
+      "route": "compare",
+      "baseline_kb": 185.3,
+      "budget_kb": 203.8,
+      "starting_cap_kb": 190,
+      "over_starting_cap": false
+    },
+    "/orders/o1": {
+      "route": "confirm (order)",
+      "baseline_kb": 194.1,
+      "budget_kb": 213.5,
+      "starting_cap_kb": 150,
+      "over_starting_cap": true
+    },
+    "/saved": {
+      "route": "my cars",
+      "baseline_kb": 184.5,
+      "budget_kb": 203,
+      "starting_cap_kb": 170,
+      "over_starting_cap": true
+    },
+    "/dealer/quotes/q1": {
+      "route": "quote builder",
+      "baseline_kb": 200.9,
+      "budget_kb": 221,
+      "starting_cap_kb": 230,
+      "over_starting_cap": false
+    }
+  }
+}

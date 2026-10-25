@@ -27,7 +27,12 @@ const payments = new Map(); // id -> payment
 const refunds = new Map();  // id -> refund
 const sent = new Map();     // event_id -> {body, signature}
 
-const id = (prefix) => `${prefix}_${randomBytes(7).toString('base64url').replace(/[-_]/g, 'x').slice(0, 14)}`;
+const rand14 = () => randomBytes(10).toString('base64url').replace(/[-_]/g, 'x').slice(0, 14);
+const id = (prefix) => `${prefix}_${rand14()}`;
+// Real webhook event ids are 14 bare characters (e.g. TrnK4ZJPmFnrnq), no prefix (real run 2026-10-24).
+const eventIdOf = () => rand14();
+// Real test accounts can have refunds disabled: every refund call then returns this generic 400.
+const refundsDisabled = () => process.env.FAKE_REFUNDS_DISABLED === 'true';
 const now = () => Math.floor(Date.now() / 1000);
 export const hmac = (secret, data) => createHmac('sha256', secret).update(data).digest('hex');
 
@@ -56,7 +61,7 @@ async function body(req) {
 }
 
 async function webhook(event, entityName, entity) {
-  const eventId = id('evt');
+  const eventId = eventIdOf();
   const payload = { entity: 'event', account_id: ACCOUNT, event, contains: [entityName],
     payload: { [entityName]: { entity } }, created_at: now() };
   const raw = JSON.stringify(payload);
@@ -174,6 +179,7 @@ export const server = createServer(async (req, res) => {
       return json(res, 200, { entity: 'collection', count: items.length, items });
     }
     if (req.method === 'POST' && (m = p.match(/^\/v1\/payments\/([^/]+)\/refund$/))) {
+      if (refundsDisabled()) return json(res, 400, { error: { code: 'BAD_REQUEST_ERROR', description: 'invalid request sent', metadata: {}, reason: 'NA', source: 'NA', step: 'NA' } });
       const payment = payments.get(m[1]);
       if (!payment || payment.status !== 'captured') return error(res, 400, 'The payment has not been captured');
       const b = await body(req);

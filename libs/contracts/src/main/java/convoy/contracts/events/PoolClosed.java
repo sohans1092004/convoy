@@ -10,6 +10,7 @@ public record PoolClosed(
         @JsonProperty("end_reason") String endReason) implements EventPayload {
     public static final String TYPE = "PoolClosed";
     public static final String PRODUCER = "pool";
+    public static final String AGGREGATE = "pool";
     public static final boolean FIFO = true;
     public static final int SCHEMA_VERSION = 1;
 

@@ -14,17 +14,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingResponseWrapper;
 
-/**
- * Buffers mutating requests (so the interceptor can hash the body before the handler reads it) and
- * responses (so the interceptor can store the first completed response for replay).
- */
+/** Buffers the body of mutating requests that carry an Idempotency-Key, so it can be hashed before binding. */
 public class IdempotencyFilter extends OncePerRequestFilter {
     private static final Set<String> MUTATING = Set.of("POST", "PUT", "PATCH", "DELETE");
-    private final IdempotencyStore store;
-
-    public IdempotencyFilter(IdempotencyStore store) { this.store = store; }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
@@ -33,15 +26,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
-        CachedBodyRequest wrapped = new CachedBodyRequest(req);
-        ContentCachingResponseWrapper out = new ContentCachingResponseWrapper(res);
-        try {
-            chain.doFilter(wrapped, out);
-        } finally {
-            IdempotencyStore.Claim claim = (IdempotencyStore.Claim) wrapped.getAttribute(IdempotencyInterceptor.CLAIM_ATTR);
-            if (claim != null) store.complete(claim, out.getStatus(), out.getContentType(), out.getContentAsByteArray());
-            out.copyBodyToResponse();
-        }
+        chain.doFilter(new CachedBodyRequest(req), res);
     }
 
     /** Request whose body can be read more than once. */

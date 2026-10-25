@@ -16,7 +16,7 @@ export function ist(iso: string | null | undefined, withSeconds = false): string
   }).format(new Date(iso)) + ' IST';
 }
 
-export type Evidence = 'DEALER_CONFIRMED' | 'CATALOGUE_ESTIMATE' | 'UNVERIFIED';
+export type Evidence = import('./api').Schemas['catalog']['Line']['evidence'];
 
 export const EVIDENCE_LABEL: Record<Evidence, string> = {
   DEALER_CONFIRMED: 'Dealer-confirmed',

@@ -173,4 +173,7 @@ class QuoteIT extends ServiceTest {
                     .isInstanceOfSatisfying(ApiProblem.class, e -> assertThat(e.type().slug).isEqualTo("invalid-transition"));
         }
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("quote"); }
 }

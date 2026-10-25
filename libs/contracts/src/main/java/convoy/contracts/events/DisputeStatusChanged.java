@@ -10,6 +10,7 @@ public record DisputeStatusChanged(
         @JsonProperty("to_state") String toState) implements EventPayload {
     public static final String TYPE = "DisputeStatusChanged";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "dispute";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

@@ -10,6 +10,7 @@ public record PaymentVoided(
         @JsonProperty("pool_id") String poolId) implements EventPayload {
     public static final String TYPE = "PaymentVoided";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "payment";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

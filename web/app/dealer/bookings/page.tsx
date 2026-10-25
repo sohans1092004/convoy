@@ -1,9 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ist, rupees } from '@/lib/format';
+import type { Schemas } from '@/lib/api';
 import { gatewayGet } from '@/lib/gateway';
 
-interface Booking { id: string; order_id: string; state: string; promised_delivery_date: string | null; dealer_confirm_deadline: string; final_cash_payable_paise: number }
+type Booking = Schemas['order']['DealerBooking'];
 
 export default async function DealerBookings() {
   const { data } = await gatewayGet<{ bookings: Booking[] }>('/dealer/bookings');

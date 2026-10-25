@@ -80,7 +80,7 @@ Gateway fees are not modelled in test mode (Q-033); a live system would add `510
 | J-REFUND | REF-T03 / REF-T05 (refund.processed, kind REFUND) | 2100 if refunded from CAPTURED, 2200 if from HELD_FOR_BOOKING (stored as `refund.source_account`) | 1100 |
 | J-RELEASE | REF-T03 / REF-T05 (refund.processed, kind RELEASE) | 2200 | 1100 |
 | J-REFUND-MANUAL | REF-T06 (after second-admin approval) | source account | 1200 |
-| J-FEE | PAY-T09 (booking delivered), only if `success_fee_paise` is configured (Q-041) | 1300 | 4100 |
+| J-FEE | PAY-T09 (booking delivered), `success_fee_paise` = 250000 (₹2,500, AMENDMENT-007; 0 turns it off) | 1300 | 4100 |
 
 J-FEE is the dealer's debt to the platform. It is settled outside the deposit flow (invoicing the dealer is not in MVP scope) and never touches accounts 2100/2200.
 

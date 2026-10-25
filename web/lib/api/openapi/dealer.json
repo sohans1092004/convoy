@@ -35,8 +35,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Eligibility"
                 }
               }
             }
@@ -67,8 +66,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Dealership"
                 }
               }
             }
@@ -77,5 +75,78 @@
       }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "Eligibility": {
+        "properties": {
+          "brand": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "dealership_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "brand",
+          "city",
+          "count",
+          "dealership_ids"
+        ]
+      },
+      "Dealership": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trade_name": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state_code": {
+            "type": "string"
+          },
+          "brands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "synthetic": {
+            "type": "boolean"
+          },
+          "verified_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "brands",
+          "city",
+          "id",
+          "state_code",
+          "status",
+          "synthetic",
+          "trade_name",
+          "verified_at"
+        ]
+      }
+    }
+  }
 }

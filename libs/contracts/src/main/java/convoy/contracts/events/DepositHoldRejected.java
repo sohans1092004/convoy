@@ -10,6 +10,7 @@ public record DepositHoldRejected(
         @JsonProperty("reason") String reason) implements EventPayload {
     public static final String TYPE = "DepositHoldRejected";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "payment";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

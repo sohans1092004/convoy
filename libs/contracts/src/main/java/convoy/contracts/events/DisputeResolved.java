@@ -10,6 +10,7 @@ public record DisputeResolved(
         @JsonProperty("resolved_by") String resolvedBy) implements EventPayload {
     public static final String TYPE = "DisputeResolved";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "dispute";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

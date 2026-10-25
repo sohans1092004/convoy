@@ -11,14 +11,14 @@ import { Countdown } from '@/components/ui/countdown';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, call, etagVersion } from '@/lib/api';
+import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 
 // Functional quote form for P1 (the full builder is P3). Amounts are typed in rupees and stored in paise.
 interface Line { variant_id: string; include: boolean; ex: string; reg: string; insMode: 'estimate' | 'dealer'; od: string; tp: string; gst: string; binding: boolean; units: string; colour: string; delivery: string }
 interface TierRow { min: string; max: string; discount: string }
-interface Quote { id: string; pool_id: string; state: string; version: number; draft: Record<string, unknown>; snapshots?: Record<string, { cash_payable_paise: number }[]> }
+type Quote = Schemas['quote']['DealerQuote'];
 
 const paise = (rupeesText: string) => (rupeesText.trim() === '' ? null : Math.round(Number(rupeesText.replace(/,/g, '')) * 100));
 const inDays = (d: number) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
@@ -28,11 +28,11 @@ function toDraft(lines: Line[], tiers: TierRow[], minF: string, maxUnits: string
     variants: lines.filter((l) => l.include).map((l) => ({
       variant_id: l.variant_id, ex_showroom_paise: paise(l.ex), registration_paise: paise(l.reg),
       insurance: l.insMode === 'dealer' ? { od_paise: paise(l.od), tp_paise: paise(l.tp), gst_paise: paise(l.gst), binding: l.binding, declared_cover: l.binding ? { idv_bp: 9500, addons: [] } : null } : null,
-      accessories: [], fees: [], other_charges: [], stock: { units: Number(l.units || 0), colours: l.colour ? [l.colour] : [], delivery_date: l.delivery || null },
+      insurance_addons: [], accessories: [], fees: [], extended_warranty: null, other_charges: [], stock: { units: Number(l.units || 0), colours: l.colour ? [l.colour] : [], delivery_date: l.delivery || null },
     })),
     tiers: tiers.map((t) => ({ min: Number(t.min), max: t.max.trim() === '' ? null : Number(t.max), discount_paise: paise(t.discount) ?? 0 })),
     min_fulfilment: Number(minF), max_units: maxUnits.trim() === '' ? null : Number(maxUnits), valid_until: inDays(30),
-  };
+  } satisfies Schemas['quote']['QuoteDraft'];
 }
 
 function previewPrices(v: RoundVariant, line: Line, state: string, tiers: TierRow[]) {
@@ -61,8 +61,8 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
-    const q = await call<Quote>(api.GET('/dealer/quotes/{id}', { params: { path: { id: quoteId } } }));
-    const inbox = await call<{ requests: Request[] }>(api.GET('/dealer/inbox'));
+    const q = await call(api.GET('/dealer/quotes/{id}', { params: { path: { id: quoteId } } }));
+    const inbox = await call(api.GET('/dealer/inbox'));
     const r = inbox.data.requests.find((x) => x.pool_id === q.data.pool_id && x.kind === 'SEALED') ?? inbox.data.requests.find((x) => x.pool_id === q.data.pool_id)!;
     setQuote({ ...q.data, version: etagVersion(q.response) ?? q.data.version });
     setRequest(r);
@@ -74,16 +74,20 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
   React.useEffect(() => { load().catch(() => {}); }, [load]);
 
   const save = useCommand(async () => {
-    const r = await call<Quote>(api.PUT('/dealer/quotes/{id}/draft', { params: { path: { id: quoteId } }, body: toDraft(lines, tiers, minF, maxUnits) as never, headers: { 'If-Match': `"${quote!.version}"` } }));
+    const r = await call(api.PUT('/dealer/quotes/{id}/draft', { params: { path: { id: quoteId } }, body: toDraft(lines, tiers, minF, maxUnits), headers: { 'If-Match': `"${quote!.version}"` } }));
     setQuote(r.data);
     return r.data;
   });
   const submit = useCommand(async (key: string) => {
     const saved = quote!.state === 'DRAFT' ? await save.execute() : quote;
     if (!saved) throw new Error('save failed');
-    const r = await call<Quote>(api.POST('/dealer/quotes/{id}/submit', { params: { path: { id: quoteId } }, headers: { 'Idempotency-Key': key, 'If-Match': `"${saved.version}"` } }));
+    const r = await call(api.POST('/dealer/quotes/{id}/submit', { params: { path: { id: quoteId } }, headers: { 'Idempotency-Key': key, 'If-Match': `"${saved.version}"` } }));
     setQuote(r.data);
   });
+
+  // Revision (QUO-T03) and withdrawal (QUO-T05) are specified but still answer 501; the attempt explains that honestly.
+  const revise = useCommand(async () => call(api.POST('/dealer/quotes/{id}/revisions', { params: { path: { id: quoteId } } })));
+  const withdraw = useCommand(async () => call(api.POST('/dealer/quotes/{id}/withdraw', { params: { path: { id: quoteId } } })));
 
   if (!quote || !request) return <Skeleton className="h-96" label="Loading the quote" />;
   const editable = quote.state === 'DRAFT';
@@ -163,6 +167,14 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
           <Button onClick={() => setConfirmOpen(true)}>Submit sealed quote</Button>
         </div>
       ) : null}
+      {quote.state === 'SUBMITTED' ? (
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" loading={revise.state.kind === 'loading'} onClick={() => revise.execute()}>Revise (new version)</Button>
+          <Button variant="secondary" loading={withdraw.state.kind === 'loading'} onClick={() => withdraw.execute()}>Withdraw quote</Button>
+        </div>
+      ) : null}
+      <CommandStatus state={revise.state} />
+      <CommandStatus state={withdraw.state} />
       <CommandStatus state={save.state} successText="Draft saved." />
       <CommandStatus state={submit.state} successText="Quote submitted. It is sealed from other dealers." />
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

@@ -1,8 +1,9 @@
 import { EvidenceBadge } from '@/components/ui/badge';
-import { lineLabel, rupees, type Evidence } from '@/lib/format';
+import type { Schemas } from '@/lib/api';
+import { lineLabel, rupees } from '@/lib/format';
 
-export interface EngineLine { code: string; amount_paise: number; evidence: Evidence; in_cash_payable: boolean; flags: string[] }
-export interface EngineOutput { status: string; lines: EngineLine[]; cash_payable_paise: number; tcs_paise: number; estimated_net_cost_paise: number; warnings: string[] }
+export type EngineOutput = Schemas['catalog']['PriceOutput'];
+export type EngineLine = EngineOutput['lines'][number];
 
 /** Itemised price-engine output: mandatory lines, then optional items (not in cash payable), each with evidence. */
 export function Breakdown({ output, caption }: { output: EngineOutput; caption: string }) {

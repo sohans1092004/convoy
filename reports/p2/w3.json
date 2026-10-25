@@ -1,0 +1,50 @@
+{
+  "measured_at": "2026-10-25T08:58:42.375Z",
+  "commit": "4788f54",
+  "env": "local docker compose (lite) on one laptop; k6 grafana/k6:2.3.0 in Docker on the compose network; gateway rate limits on (join 20/min/user)",
+  "vus": 1000,
+  "buyers": 4000,
+  "duration": "5m",
+  "k6_exit": 0,
+  "wall_ms": 190569,
+  "pool": "<pool-id>",
+  "requests": {
+    "buyers_joined": 2704,
+    "buyers_left": 1333,
+    "double_clicks": 1184,
+    "unexpected_responses": 1358,
+    "http_reqs": 6579,
+    "http_failed_rate": 0.27572579419364646
+  },
+  "latency_ms": {
+    "join": {
+      "p50": 1998,
+      "p95": 40977,
+      "p99": 52124,
+      "max": 58519
+    },
+    "leave": {
+      "p50": 27,
+      "p95": 36893,
+      "p99": 45655,
+      "max": 51608
+    }
+  },
+  "counts": {
+    "pool_row": 1372,
+    "memberships_recount": 1372,
+    "stream_last_delivered": 1372,
+    "expected_from_requests": 1372
+  },
+  "stream": {
+    "events": 4037,
+    "resyncs": 0,
+    "final_version": 4039,
+    "last_version_seen": 4039,
+    "catch_up_after_load_ms": 0,
+    "delivery_p95_ms": 35819,
+    "delivery_p99_ms": 36215
+  },
+  "counts_exact": true,
+  "note": "counts_exact recomputed with the corrected definition (request failures reported separately in requests.*); gateway logged 1,566 connect timeouts to pool (1 s) and identity 586 Hikari timeouts during the run."
+}

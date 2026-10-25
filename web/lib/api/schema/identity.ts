@@ -32,6 +32,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/sessions/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/oauth/token": {
         parameters: {
             query?: never;
@@ -48,6 +64,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/passkeys/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/passkeys/register/options": {
         parameters: {
             query?: never;
@@ -57,7 +89,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["passkeys"];
+        post: operations["registerOptions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -73,14 +105,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["passkeys_1"];
+        post: operations["authenticate"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/auth/passkeys/register": {
+    "/auth/passkeys/authenticate/options": {
         parameters: {
             query?: never;
             header?: never;
@@ -89,7 +121,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["passkeys_2"];
+        post: operations["authenticateOptions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -176,6 +208,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dealerships/{id}/staff/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -184,14 +232,93 @@ export interface components {
             granted: boolean;
             notice_version: string;
         };
+        ConsentEntry: {
+            granted: boolean;
+            notice_version: string;
+            at: string;
+        };
+        ConsentHistory: {
+            purpose: string;
+            granted: boolean;
+            history: components["schemas"]["ConsentEntry"][];
+        };
         ValidateBody: {
             session_id: string;
         };
+        SessionValidation: {
+            user_id: string;
+            roles: string[];
+            dealership_id: string | null;
+            sid: string;
+            session_expires_at: string;
+        };
+        CheckBody: {
+            sessions: components["schemas"]["SessionRef"][];
+        };
+        SessionRef: {
+            sid: string;
+            dealership_id: string | null;
+        };
+        SessionCheck: {
+            invalid: string[];
+        };
         TokenBody: {
-            grant_type?: string;
+            grant_type: string;
             client_id: string;
             client_secret: string;
             audience: string;
+        };
+        ServiceToken: {
+            access_token: string;
+            token_type: string;
+            /** Format: int64 */
+            expires_in: number;
+            scope: string[];
+        };
+        Register: {
+            challenge_id: string;
+            client_data_json: string;
+            attestation_object: string;
+            transports: string[] | null;
+        };
+        PasskeyRegistered: {
+            credential_id: string;
+            created_at: string;
+        };
+        PasskeyRegistrationOptions: {
+            challenge_id: string;
+            challenge: string;
+            rp_id: string;
+            rp_name: string;
+            user_handle: string;
+            user_name: string;
+            /** Format: int64 */
+            timeout_ms: number;
+            exclude_credentials: string[];
+        };
+        Authenticate: {
+            challenge_id: string;
+            credential_id: string;
+            client_data_json: string;
+            authenticator_data: string;
+            signature: string;
+            user_handle: string | null;
+        };
+        Session: {
+            session_id: string;
+            session_expires_at: string;
+            user: components["schemas"]["User"];
+        };
+        User: {
+            id: string;
+            roles: string[];
+        };
+        PasskeyAuthenticationOptions: {
+            challenge_id: string;
+            challenge: string;
+            rp_id: string;
+            /** Format: int64 */
+            timeout_ms: number;
         };
         OtpVerify: {
             /** Format: email */
@@ -201,6 +328,41 @@ export interface components {
         OtpStart: {
             /** Format: email */
             email: string;
+        };
+        OtpStarted: {
+            status: string;
+            /** Format: int32 */
+            expires_in_seconds: number;
+        };
+        Status: {
+            status: string;
+        };
+        Consent: {
+            purpose: string;
+            granted: boolean;
+            notice_version: string;
+            at: string;
+        };
+        Me: {
+            id: string;
+            email: string;
+            roles: string[];
+            dealership_id: string | null;
+            consents: components["schemas"]["Consent"][];
+        };
+        Jwks: {
+            keys: components["schemas"]["Key"][];
+        };
+        Key: {
+            kty: string;
+            crv: string;
+            x: string;
+            y: string;
+            kid: string;
+            use: string;
+            alg: string;
+            /** Format: int64 */
+            nbf: number;
         };
     };
     responses: never;
@@ -232,9 +394,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["ConsentHistory"];
                 };
             };
         };
@@ -258,9 +418,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["SessionValidation"];
+                };
+            };
+        };
+    };
+    check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SessionCheck"];
                 };
             };
         };
@@ -284,14 +466,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["ServiceToken"];
                 };
             };
         };
     };
-    passkeys: {
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Register"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PasskeyRegistered"];
+                };
+            };
+        };
+    };
+    registerOptions: {
         parameters: {
             query?: never;
             header?: never;
@@ -305,11 +509,37 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["PasskeyRegistrationOptions"];
+                };
             };
         };
     };
-    passkeys_1: {
+    authenticate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Authenticate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Session"];
+                };
+            };
+        };
+    };
+    authenticateOptions: {
         parameters: {
             query?: never;
             header?: never;
@@ -323,25 +553,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-        };
-    };
-    passkeys_2: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "*/*": components["schemas"]["PasskeyAuthenticationOptions"];
                 };
-                content?: never;
             };
         };
     };
@@ -364,9 +578,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Session"];
                 };
             };
         };
@@ -390,9 +602,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["OtpStarted"];
                 };
             };
         };
@@ -412,9 +622,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Status"];
                 };
             };
         };
@@ -434,9 +642,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Me"];
                 };
             };
         };
@@ -456,9 +662,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Jwks"];
+                };
+            };
+        };
+    };
+    revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Status"];
                 };
             };
         };

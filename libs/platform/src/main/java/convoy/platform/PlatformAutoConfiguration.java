@@ -70,9 +70,39 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 .setPropertyNamingStrategy(com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE));
     }
 
+    /**
+     * Platform migrations (db/platform, V0_x) and each service's own (db/migration, V1+) are independent tracks; a new platform
+     * migration sorts below the service's applied versions, so it must be allowed to apply out of order.
+     */
+    @Bean
+    org.springframework.boot.autoconfigure.flyway.FlywayConfigurationCustomizer platformMigrationsOutOfOrder() {
+        return c -> c.outOfOrder(true);
+    }
+
+    /** Every subscription must be listed in event-catalogue.yaml (checked at startup, messaging on or off). */
+    @Bean
+    org.springframework.beans.factory.SmartInitializingSingleton subscriptionsMatchCatalogue(ConvoyProperties p, ObjectProvider<Subscriptions> subs) {
+        return () -> subs.ifAvailable(s -> s.all().forEach(x -> Subscriptions.Kind.of(p.serviceName(), x.aggregate())));
+    }
+
+    /** Required / nullable markers from record components (see RecordSchemas). */
+    @Bean convoy.platform.web.RecordSchemas recordSchemas() { return new convoy.platform.web.RecordSchemas(); }
+
     @Bean DbClock dbClock(JdbcTemplate jdbc) { return new DbClock(jdbc); }
 
     @Bean IdempotencyStore idempotencyStore(JdbcTemplate jdbc) { return new IdempotencyStore(jdbc); }
+
+    /** @Idempotent handlers run in one transaction with their idempotency record (IdempotentHandlerAdapter). */
+    @Bean
+    static org.springframework.boot.autoconfigure.web.servlet.WebMvcRegistrations idempotentHandlers(ObjectProvider<IdempotencyStore> store,
+            ObjectProvider<TransactionTemplate> tx, ObjectProvider<ObjectMapper> json) {
+        return new org.springframework.boot.autoconfigure.web.servlet.WebMvcRegistrations() {
+            @Override
+            public org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter getRequestMappingHandlerAdapter() {
+                return new convoy.platform.idempotency.IdempotentHandlerAdapter(store, tx, json);
+            }
+        };
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -83,6 +113,8 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
                 if (handler instanceof org.springframework.web.method.HandlerMethod hm) {
                     convoy.platform.security.RequiresScope s = hm.getMethodAnnotation(convoy.platform.security.RequiresScope.class);
                     if (s != null) convoy.platform.security.Caller.current().requireScope(s.value());
+                    convoy.platform.security.RequiresRole r = hm.getMethodAnnotation(convoy.platform.security.RequiresRole.class);
+                    if (r != null) convoy.platform.security.Caller.current().require(r.value());
                 }
                 return true;
             }
@@ -116,8 +148,8 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     }
 
     @Bean
-    FilterRegistrationBean<IdempotencyFilter> idempotencyFilter(IdempotencyStore store) {
-        FilterRegistrationBean<IdempotencyFilter> r = new FilterRegistrationBean<>(new IdempotencyFilter(store));
+    FilterRegistrationBean<IdempotencyFilter> idempotencyFilter() {
+        FilterRegistrationBean<IdempotencyFilter> r = new FilterRegistrationBean<>(new IdempotencyFilter());
         r.setOrder(Ordered.HIGHEST_PRECEDENCE + 40);
         return r;
     }
@@ -171,7 +203,21 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
 
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
-    Topology topology(SnsClient sns, SqsClient sqs, ObjectMapper json) { return new Topology(sns, sqs, json); }
+    Topology topology(SnsClient sns, SqsClient sqs, ObjectMapper json, ConvoyProperties p) {
+        return new Topology(sns, sqs, json, p.messaging().visibilityTimeoutSeconds());
+    }
+
+    /**
+     * Consumer and DLQ metrics (messaging-failure-tests.md): inbox_duplicates_total, stale_events_total, parked_events_total,
+     * snapshot_fallbacks_total per consumer; dlq_depth per DLQ, checked every 30 s with an ALARM DLQ_NOT_EMPTY log line
+     * (a CloudWatch alarm on ApproximateNumberOfMessagesVisible in AWS).
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
+    convoy.platform.messaging.MessagingMetrics messagingMetrics(ObjectProvider<InboxConsumer> consumer, Topology topology,
+            ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters, TaskScheduler scheduler) {
+        return new convoy.platform.messaging.MessagingMetrics(consumer.getIfAvailable(), topology, meters.getIfAvailable(), scheduler);
+    }
 
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -187,6 +233,6 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     InboxConsumer inboxConsumer(ConvoyProperties p, SqsClient sqs, Topology topology, JdbcTemplate jdbc, TransactionTemplate tx,
                                 ObjectMapper json, ObjectProvider<Subscriptions> subscriptions) {
         return new InboxConsumer(p.serviceName(), sqs, topology, jdbc, tx, json,
-                subscriptions.getIfAvailable(Subscriptions::new), p.messaging().waitSeconds());
+                subscriptions.getIfAvailable(Subscriptions::new), p.messaging().waitSeconds(), p.messaging().gapSnapshotAfter());
     }
 }

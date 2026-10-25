@@ -53,16 +53,16 @@ public class QuoteApplication {
     @Bean
     static Subscriptions subscriptions(Quotes q) {
         return new Subscriptions()
-                .on(QuoteRoundOpened.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundOpened(p))
-                .on(FinalRoundOpened.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundOpened(new QuoteRoundOpened(p.poolId(), p.roundId(), p.roundSet(),
+                .on(QuoteRoundOpened.class, (e, p) -> q.roundOpened(p))
+                .on(FinalRoundOpened.class, (e, p) -> q.roundOpened(new QuoteRoundOpened(p.poolId(), p.roundId(), p.roundSet(),
                         p.roundNo(), p.kind(), p.deadline(), p.invitedDealershipIds(), p.acceptedVariantIds(), p.committedCount(), p.stateCode(), p.variants())))
-                .on(RoundClosed.class, Subscriptions.Ordering.NONE, (e, p) -> q.roundClosed(p))
-                .on(MemberCommitted.class, Subscriptions.Ordering.NONE, (e, p) -> q.memberCommitted(p))
-                .on(MemberLeft.class, Subscriptions.Ordering.NONE, (e, p) -> q.memberLeft(p))
-                .on(AcceptanceChanged.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> q.acceptanceChanged(p))
-                .on(AcceptancesFrozen.class, Subscriptions.Ordering.NONE, (e, p) -> q.acceptancesFrozen(p))
-                .on(ConfirmationRecorded.class, Subscriptions.Ordering.NONE, (e, p) -> q.confirmationRecorded(p))
-                .on(StockReservationRequested.class, Subscriptions.Ordering.NONE, (e, p) -> q.reserveStock(p));
+                .on(RoundClosed.class, (e, p) -> q.roundClosed(p))
+                .on(MemberCommitted.class, (e, p) -> q.memberCommitted(p))
+                .on(MemberLeft.class, (e, p) -> q.memberLeft(p))
+                .on(AcceptanceChanged.class, (e, p) -> q.acceptanceChanged(p))
+                .on(AcceptancesFrozen.class, (e, p) -> q.acceptancesFrozen(p))
+                .on(ConfirmationRecorded.class, (e, p) -> q.confirmationRecorded(p))
+                .on(StockReservationRequested.class, (e, p) -> q.reserveStock(p));
     }
 
     private final Quotes quotes;
@@ -72,29 +72,29 @@ public class QuoteApplication {
     // ------------------------------------------------------------------ dealer (E060-E063, E067)
 
     @GetMapping("/dealer/inbox")
-    public Map<String, Object> inbox() { return quotes.inbox(); }
+    public Api.Inbox inbox() { return convoy.platform.web.Dto.as(quotes.inbox(), Api.Inbox.class); }
 
     @PostMapping("/dealer/pools/{poolId}/quotes")
     @Idempotent
-    public ResponseEntity<Map<String, Object>> create(@PathVariable UUID poolId) {
-        return ResponseEntity.status(201).body(quotes.createDraft(poolId));
+    public ResponseEntity<Api.DealerQuote> create(@PathVariable UUID poolId) {
+        return ResponseEntity.status(201).body(convoy.platform.web.Dto.as(quotes.createDraft(poolId), Api.DealerQuote.class));
     }
 
     @PutMapping("/dealer/quotes/{id}/draft")
-    public Map<String, Object> draft(@PathVariable UUID id, @RequestBody Map<String, Object> draft, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return quotes.saveDraft(id, draft, version(ifMatch));
+    public Api.DealerQuote draft(@PathVariable UUID id, @RequestBody Api.QuoteDraft draft, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(quotes.saveDraft(id, convoy.platform.web.Dto.map(draft), version(ifMatch)), Api.DealerQuote.class);
     }
 
     @PostMapping("/dealer/quotes/{id}/submit")
     @Idempotent
-    public Map<String, Object> submit(@PathVariable UUID id, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return quotes.submit(id, version(ifMatch));
+    public Api.DealerQuote submit(@PathVariable UUID id, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(quotes.submit(id, version(ifMatch)), Api.DealerQuote.class);
     }
 
     @GetMapping("/dealer/quotes/{id}")
-    public ResponseEntity<Map<String, Object>> get(@PathVariable UUID id) {
+    public ResponseEntity<Api.DealerQuote> get(@PathVariable UUID id) {
         Map<String, Object> q = quotes.dealerView(id, Quotes.dealership(Caller.current()));
-        return ResponseEntity.ok().eTag("\"" + q.get("version") + "\"").body(q);
+        return ResponseEntity.ok().eTag("\"" + q.get("version") + "\"").body(convoy.platform.web.Dto.as(q, Api.DealerQuote.class));
     }
 
     @PostMapping({"/dealer/quotes/{id}/revisions", "/dealer/quotes/{id}/withdraw", "/dealer/quotes/{id}/cancel"})
@@ -106,30 +106,30 @@ public class QuoteApplication {
 
     @GetMapping("/internal/rounds/{id}/summary")
     @convoy.platform.security.RequiresScope("rounds:summary")
-    public Map<String, Object> summary(@PathVariable UUID id) {
+    public Api.RoundSummary summary(@PathVariable UUID id) {
         Caller.current().requireScope("rounds:summary");
-        return quotes.summary(id);
+        return convoy.platform.web.Dto.as(quotes.summary(id), Api.RoundSummary.class);
     }
 
     // ------------------------------------------------------------------ buyer comparison (E069, E070)
 
     /** Live quotes of a pool for its committed members: ceiling price plus a labelled projection (AMENDMENT-005). */
     @GetMapping("/pools/{poolId}/quotes")
-    public Map<String, Object> compare(@PathVariable UUID poolId) {
+    public Api.Offers compare(@PathVariable UUID poolId) {
         UUID buyer = Caller.current().require("buyer").userId();
         if (quotes.member(poolId, buyer).isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "Offers are shown to committed members of this pool.");
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> q : quotes.jdbc().queryForList("select id from quotes where pool_id = ? and state in ('SUBMITTED', 'REVISED', 'FINAL') order by submitted_at", poolId)) {
             out.add(buyerView(poolId, (UUID) q.get("id")));
         }
-        return Map.of("pool_id", poolId.toString(), "quotes", out, "ranking_rule", "Cash payable at the ceiling price for mandatory items and baseline insurance (ranking-rule.md).");
+        return convoy.platform.web.Dto.as(Map.of("pool_id", poolId.toString(), "quotes", out, "ranking_rule", "Cash payable at the ceiling price for mandatory items and baseline insurance (ranking-rule.md)."), Api.Offers.class);
     }
 
     @GetMapping("/pools/{poolId}/quotes/{quoteId}")
-    public Map<String, Object> one(@PathVariable UUID poolId, @PathVariable UUID quoteId) {
+    public Api.Offer one(@PathVariable UUID poolId, @PathVariable UUID quoteId) {
         UUID buyer = Caller.current().require("buyer").userId();
         if (quotes.member(poolId, buyer).isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "Offers are shown to committed members of this pool.");
-        return buyerView(poolId, quoteId);
+        return convoy.platform.web.Dto.as(buyerView(poolId, quoteId), Api.Offer.class);
     }
 
     @SuppressWarnings("unchecked")

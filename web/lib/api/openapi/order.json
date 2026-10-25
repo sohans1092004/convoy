@@ -94,8 +94,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Order"
                 }
               }
             }
@@ -134,8 +133,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/DealerBooking"
                 }
               }
             }
@@ -166,8 +164,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Order"
                 }
               }
             }
@@ -198,8 +195,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Voucher"
                 }
               }
             }
@@ -219,8 +215,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/OrderList"
                 }
               }
             }
@@ -240,8 +235,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/DealerBookings"
                 }
               }
             }
@@ -261,6 +255,368 @@
         },
         "required": [
           "ceiling_snapshot_hash"
+        ]
+      },
+      "BookingRef": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "promised_delivery_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dealer_confirm_deadline": {
+            "type": "string"
+          },
+          "dealership_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dealer_confirm_deadline",
+          "dealership_id",
+          "id",
+          "promised_delivery_date",
+          "state"
+        ]
+      },
+      "Line": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "DEALER_CONFIRMED",
+              "CATALOGUE_ESTIMATE",
+              "UNVERIFIED"
+            ]
+          },
+          "in_cash_payable": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "amount_paise",
+          "code",
+          "evidence",
+          "flags",
+          "in_cash_payable"
+        ]
+      },
+      "Order": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          },
+          "round_set": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "buyer_id": {
+            "type": "string"
+          },
+          "quote_id": {
+            "type": "string"
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "confirmation_deadline": {
+            "type": "string"
+          },
+          "confirmed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelled_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decline_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancel_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "snapshots": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Snapshot"
+            }
+          },
+          "booking": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BookingRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "server_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "booking",
+          "buyer_id",
+          "cancel_reason",
+          "cancelled_at",
+          "confirmation_deadline",
+          "confirmed_at",
+          "created_at",
+          "decline_reason",
+          "id",
+          "pool_id",
+          "quote_id",
+          "round_set",
+          "server_time",
+          "snapshots",
+          "state",
+          "variant_id",
+          "version"
+        ]
+      },
+      "PriceOutput": {
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "vehicle_price_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Line"
+            }
+          },
+          "cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tcs_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estimated_net_cost_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "estimated_net_cost_paise",
+          "lines",
+          "status",
+          "tcs_paise",
+          "vehicle_price_paise",
+          "warnings"
+        ]
+      },
+      "Snapshot": {
+        "properties": {
+          "tier_index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "output": {
+            "$ref": "#/components/schemas/PriceOutput"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "computed_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "computed_at",
+          "output",
+          "sha256",
+          "tier_index"
+        ]
+      },
+      "DealerBooking": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "promised_delivery_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dealer_confirm_deadline": {
+            "type": "string"
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "final_cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "dealer_confirm_deadline",
+          "final_cash_payable_paise",
+          "id",
+          "order_id",
+          "promised_delivery_date",
+          "state",
+          "variant_id",
+          "version"
+        ]
+      },
+      "Voucher": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "qr_payload": {
+            "type": "string"
+          },
+          "promised_delivery_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dealership_id": {
+            "type": "string"
+          },
+          "verification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dealership_id",
+          "id",
+          "promised_delivery_date",
+          "qr_payload",
+          "state",
+          "verification"
+        ]
+      },
+      "OrderList": {
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderRow"
+            }
+          }
+        },
+        "required": [
+          "orders"
+        ]
+      },
+      "OrderRow": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          },
+          "quote_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "confirmation_deadline": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "confirmation_deadline",
+          "id",
+          "pool_id",
+          "quote_id",
+          "state",
+          "version"
+        ]
+      },
+      "DealerBookings": {
+        "properties": {
+          "bookings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DealerBooking"
+            }
+          }
+        },
+        "required": [
+          "bookings"
         ]
       }
     }

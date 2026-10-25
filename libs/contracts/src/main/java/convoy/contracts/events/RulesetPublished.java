@@ -11,6 +11,7 @@ public record RulesetPublished(
         @JsonProperty("sha256") String sha256) implements EventPayload {
     public static final String TYPE = "RulesetPublished";
     public static final String PRODUCER = "catalog";
+    public static final String AGGREGATE = "ruleset";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

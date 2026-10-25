@@ -56,8 +56,9 @@ public class PoolApplication {
     @Bean
     Subscriptions subscriptions(Pools pools) {
         return new Subscriptions()
-                .on(PaymentCaptured.class, Subscriptions.Ordering.NONE, (e, p) -> pools.paymentCaptured(e, p))
-                .on(PaymentFailed.class, Subscriptions.Ordering.NONE, (e, p) -> pools.paymentFailed(p))
-                .on(BookingsIssued.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> pools.bookingsIssued(e, p));
+                .on(PaymentCaptured.class, (e, p) -> pools.paymentCaptured(e, p))
+                .on(PaymentFailed.class, (e, p) -> pools.paymentFailed(p.paymentId()))
+                .on(convoy.contracts.events.PaymentVoided.class, (e, p) -> pools.paymentFailed(p.paymentId()))
+                .on(BookingsIssued.class, (e, p) -> pools.bookingsIssued(e, p));
     }
 }

@@ -164,6 +164,11 @@ Format: question · options · **default chosen** · impact.
 ### Q-037 — What are the starting route JS budget caps?
 - **Default:** caps in frontend-quality.md §3, revised once P1 sets the measured baseline.
 - Impact: CI gate values.
+- **P2 (2026-10-25):** baseline measured (gzip first-load JS, `web/perf/budgets.json`): discover 185.5 KB, join 189.4,
+  pool 189.3, compare 185.3, confirm 194.1, my cars 184.5, quote builder 200.9. Per the P2 prompt the CI budget is
+  baseline × 1.10. Five routes exceed the starting caps (discover 170, join 150, pool 170, confirm 150, my cars 170): about
+  180 KB of every route is the shared runtime (React 19, Next.js, next-intl, TanStack Query, Radix). Still open: whether to
+  cut that (e.g. drop a dependency, split providers) to meet the caps, or raise the caps.
 
 ### Q-038 — Which AWS account plan do full runs need?
 - **Default:** assume the paid plan. Whether the free plan restricts Fargate, WAF or Multi-AZ RDS was not verified.
@@ -178,12 +183,29 @@ Format: question · options · **default chosen** · impact.
 - **Default: ₹5,000**, configurable. Deposit refunds (₹999) are below it; money outcomes of disputes above it need a second admin.
 - Impact: AZ-INT-08.
 
-### Q-041 — How much is the platform success fee, and when is it charged?
+### Q-041 — How much is the platform success fee, and when is it charged? — RESOLVED (AMENDMENT-007)
+- **Resolved 2026-10-24:** flat ₹2,500 (250000 paise) per delivered booking, a dealer receivable (J-FEE in PAY-T09), configurable, never from a buyer deposit.
 - Added in P1 by AMENDMENT-003, which makes the fee a separate receivable from the dealer. PLAN.md does not state an amount.
 - **Default:** `success_fee_paise` is unset, so no J-FEE entry is posted. When set, J-FEE (Dr 1300 / Cr 4100) is posted when a booking is delivered (PAY-T09).
 - Impact: none for the P1 journey, which ends at the booking voucher. Needs a business decision before any dealer agreement.
 
-### Q-042 — What is the default pool minimum (`min_members`)?
+### Q-042 — What is the default pool minimum (`min_members`)? — RESOLVED (AMENDMENT-007)
+- **Resolved 2026-10-24:** 5 in production, 1 in the local demo stack.
 - Added in P1. PLAN.md requires a minimum before quoting (POOL-T01) but states no number.
 - **Default:** a required setting, `pool.min-members`. The demo profile uses 1 so a single test buyer can run the journey. No production value is set; it is a business decision.
 - Impact: forming deadline outcomes (POOL-T11) and dealer interest; set before any real pilot.
+
+### Q-043 — Passkeys: attestation policy and the extra sign-in endpoint — DEFAULTED (P2)
+- Added in P2 (scope F). WebAuthn sign-in needs a server challenge before the assertion, which E005 alone cannot carry, so **E151** `POST /auth/passkeys/authenticate/options` (anonymous) was added to api-outline.md. No existing row changed.
+- **Default:** attestation `none` (no authenticator-vendor check), user verification required, discoverable credentials (sign-in without an email), ES256 + RS256, challenge lifetime 5 min (`identity.passkeys.challenge-minutes`), verified with webauthn4j 0.31.11 (Apache-2.0, no cost).
+- Open: whether dealer staff must use passkeys (stronger than email codes), and whether to require attestation for staff. Needs a security decision before a real pilot.
+
+### Q-044 — Staff revocation within 30 s (AZ-T6): what was pulled forward — DEFAULTED (P2)
+- Added in P2 (scope F). Measuring AZ-T6 needs a revoke action, so **E012** (revoke staff) moved from P3 to P2; E010/E011 (invites) stay in P3. **E152** `POST /internal/sessions/check` (service:realtime) was added: realtime sends one batch per cycle and closes streams whose session was revoked or whose staff membership ended.
+- **Default:** gateway session cache 25 s (contract: ≤ 30 s; 5 s margin for polling), realtime re-check every 15 s. Revocation removes the dealer role and keeps the user's buyer access and session.
+- Measured locally: reports/p2/revocation.json. Open: whether revocation should also end all the staff member's sessions (stricter), and event-driven cache eviction on StaffRevoked (would make it near-instant; the TTL remains the guarantee).
+
+### Q-045 — Can a buyer rejoin a pool after leaving it? — OPEN (P2)
+- Found by the W3 load test. Today LEFT is terminal (membership state machine) and memberships are unique per (pool, buyer), so a second join returns 409 ALREADY_MEMBER. The spec does not say whether rejoining should be allowed.
+- **Default:** keep current behaviour (no rejoin). W3 was shaped around it: each buyer joins once and may leave once.
+- Impact: a buyer who leaves by mistake cannot come back to the same pool before it closes. Needs a product decision.

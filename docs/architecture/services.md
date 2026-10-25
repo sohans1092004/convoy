@@ -75,7 +75,7 @@ Endpoints: see [api-outline.md](api-outline.md). Events: see [event-catalogue.ya
 
 ## realtime
 - **Wave 2** (polling fallback before). SSE fan-out; holds no business state.
-- **Owns:** no PostgreSQL tables. In-memory per-connection bounded queues; Redis Pub/Sub for cross-instance fan-out.
+- **Owns:** no business tables. Its schema holds only the platform tables (`inbox`, `aggregate_versions`, `parked_events`): two or more realtime tasks share one SQS queue, and the stale/gap rule for its FULL pool subscription needs shared state that Redis may lose (P2). In-memory per-connection bounded queues; Redis Pub/Sub for cross-instance fan-out.
 - **API:** `GET /realtime/pools/{id}/stream`, `GET /realtime/dealer/stream`, `GET /realtime/me/stream` (SSE, auth via gateway JWT).
 - **Events consumed:** pool, quote, order, payment events listed in the catalogue (to push version-stamped deltas), `SessionRevoked`, `StaffRevoked` (drop connections). Produces none.
 - **Scaling signal:** open connections per task (target ≤ 5,000), fan-out lag.

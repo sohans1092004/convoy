@@ -30,7 +30,8 @@ convoy:
     endpoint: ${AWS_ENDPOINT:}
     region: ${AWS_REGION:ap-south-1}
 pool:
-  min-members: ${POOL_MIN_MEMBERS:1}
+  # AMENDMENT-007 (Q-042): 5 in production; the local demo stack sets 1 so one test buyer can run the journey.
+  min-members: ${POOL_MIN_MEMBERS:5}
   sweeper-interval: ${POOL_SWEEPER_INTERVAL:5s}
   durations:
     forming: ${POOL_FORMING:P7D}

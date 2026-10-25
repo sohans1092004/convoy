@@ -11,6 +11,7 @@ public record StockUnavailable(
         @JsonProperty("colour") String colour) implements EventPayload {
     public static final String TYPE = "StockUnavailable";
     public static final String PRODUCER = "quote";
+    public static final String AGGREGATE = "quote";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

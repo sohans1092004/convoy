@@ -11,6 +11,7 @@ public record ReconciliationMismatchFound(
         @JsonProperty("refund_id") String refundId) implements EventPayload {
     public static final String TYPE = "ReconciliationMismatchFound";
     public static final String PRODUCER = "payment";
+    public static final String AGGREGATE = "reconciliation_run";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 

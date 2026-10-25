@@ -59,7 +59,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
         this.keys = keys;
         this.settings = settings;
         this.redis = redis;
-        this.identity = web.baseUrl(settings.services().get("identity")).build();
+        // Idle connections are dropped before Tomcat's 20 s keep-alive closes them: reusing a server-closed connection failed
+        // the first burst after a quiet spell ("Connection prematurely closed", found by W3).
+        reactor.netty.resources.ConnectionProvider pool = reactor.netty.resources.ConnectionProvider.builder("identity")
+                .maxConnections(500).maxIdleTime(java.time.Duration.ofSeconds(15)).evictInBackground(java.time.Duration.ofSeconds(30)).build();
+        this.identity = web.baseUrl(settings.services().get("identity"))
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(reactor.netty.http.client.HttpClient.create(pool))).build();
     }
 
     @Override

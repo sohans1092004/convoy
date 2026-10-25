@@ -40,10 +40,14 @@ class PaymentIT extends ServiceTest {
     static final ObjectMapper JSON = new ObjectMapper();
     static final AtomicInteger ORDERS = new AtomicInteger();
     static final Map<String, String> REFUNDS = new ConcurrentHashMap<>();
+    static volatile String REFUND_MODE = "ok";
     static final StubServer RAZORPAY = new StubServer()
             .on("/v1/orders", r -> StubServer.Reply.json("{\"id\":\"order_" + ORDERS.incrementAndGet() + "\",\"entity\":\"order\",\"amount\":99900,\"currency\":\"INR\",\"status\":\"created\",\"receipt\":\"x\"}"))
             .on("/v1/payments/.*/refunds", r -> StubServer.Reply.json("{\"entity\":\"collection\",\"count\":0,\"items\":[]}"))
             .on("/v1/payments/.*/refund", r -> {
+                // What the real test account did on 2026-10-24 with refunds disabled (reports/p2/razorpay-real-run.md).
+                if (REFUND_MODE.equals("400")) return new StubServer.Reply(400, "{\"error\":{\"code\":\"BAD_REQUEST_ERROR\",\"description\":\"invalid request sent\"}}", 0);
+                if (REFUND_MODE.equals("500")) return new StubServer.Reply(500, "{\"error\":{\"code\":\"SERVER_ERROR\"}}", 0);
                 String id = "rfnd_" + UUID.randomUUID().toString().substring(0, 8);
                 REFUNDS.put(id, r.body());
                 return StubServer.Reply.json("{\"id\":\"" + id + "\",\"entity\":\"refund\",\"amount\":99900,\"payment_id\":\"pay_x\",\"receipt\":\"x\",\"status\":\"pending\"}");
@@ -161,6 +165,169 @@ class PaymentIT extends ServiceTest {
     }
 
     @Test
+    void deliveryReleasesTheDepositInFullAndBooksTheSuccessFeeAsADealerReceivable() throws Exception {
+        UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID(), booking = Uuid7.next();
+        Map<String, Object> d = deposit(buyer, pool);
+        String pid = (String) d.get("payment_id");
+        captured((String) d.get("razorpay_order_id"), "evt_c_" + pid);
+        inTx(() -> payments.hold(buyer, pool, booking));
+        inTx(() -> payments.bookingDelivered(booking)); // PAY-T09
+        inTx(() -> payments.bookingDelivered(booking)); // repeat: the existing refund wins, no second fee
+        assertThat(state(pid)).isEqualTo("REFUND_PENDING");
+        Map<String, Object> rf = jdbc.queryForMap("select kind, reason_code, amount_paise, source_account from refunds where payment_id = ?::uuid", pid);
+        assertThat(rf).containsEntry("kind", "RELEASE").containsEntry("reason_code", "DELIVERY_RELEASE").containsEntry("amount_paise", 99900L).containsEntry("source_account", "2200");
+        // AMENDMENT-007: flat Rs 2,500, Dr 1300 / Cr 4100, never a deposit account.
+        List<Map<String, Object>> fee = jdbc.queryForList("select l.account, l.dr, l.cr from journal_lines l join journal_entries e on e.id = l.entry_id "
+                + "where e.payment_id = ?::uuid and e.kind = 'J-FEE' order by l.line_no", pid);
+        assertThat(fee).containsExactly(Map.of("account", "1300", "dr", 250000L, "cr", 0L), Map.of("account", "4100", "dr", 0L, "cr", 250000L));
+        assertThat(jdbc.queryForObject("select count(*) from journal_lines l join journal_entries e on e.id = l.entry_id where e.kind = 'J-FEE' "
+                + "and l.account in ('2100', '2200')", Integer.class)).isZero();
+    }
+
+    void dueNow(Object paymentId) { jdbc.update("update refunds set next_attempt_at = clock_timestamp() - interval '1 second' where payment_id = ?::uuid", paymentId); }
+
+    Map<String, Object> refund(Object paymentId) {
+        return jdbc.queryForMap("select id::text as id, state, attempts, reason_code, razorpay_refund_id, failure_reason, "
+                + "extract(epoch from next_attempt_at - clock_timestamp()) as wait_s from refunds where payment_id = ?::uuid", paymentId);
+    }
+
+    void processed(Map<String, Object> rf, String eventId) throws Exception {
+        webhook("refund.processed", "refund", Map.of("id", rf.get("razorpay_refund_id"), "receipt", rf.get("id"), "amount", 99900, "status", "processed"), eventId, "test_webhook_secret");
+    }
+
+    @Test
+    void poolClosedRefundsCapturedDepositsAndVoidsUnpaidOnesThenALateCaptureIsRefundedAutomatically() throws Exception {
+        UUID pool = UUID.randomUUID(), paid = UUID.randomUUID(), unpaid = UUID.randomUUID();
+        Map<String, Object> d1 = deposit(paid, pool);
+        Map<String, Object> d2 = deposit(unpaid, pool);
+        String p1 = (String) d1.get("payment_id"), p2 = (String) d2.get("payment_id");
+        captured((String) d1.get("razorpay_order_id"), "evt_c_" + p1);
+        inTx(() -> payments.poolClosed(pool, "MINIMUM_NOT_REACHED"));
+        inTx(() -> payments.poolClosed(pool, "MINIMUM_NOT_REACHED")); // redelivery: no second refund, no second void
+        assertThat(state(p1)).isEqualTo("REFUND_PENDING");
+        assertThat(refund(p1)).containsEntry("reason_code", "POOL_MINIMUM_NOT_REACHED");
+        assertThat(state(p2)).isEqualTo("VOIDED_UNPAID");
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ?::uuid and event_type = 'PaymentVoided'", Integer.class, p2)).isEqualTo(1);
+        // The unpaid buyer's payment completes after the pool closed: PAY-T10, refunded in full with reason LATE_CAPTURE.
+        captured((String) d2.get("razorpay_order_id"), "evt_late_" + p2);
+        captured((String) d2.get("razorpay_order_id"), "evt_late_" + p2); // duplicate webhook: no effect
+        assertThat(state(p2)).isEqualTo("REFUND_PENDING");
+        assertThat(refund(p2)).containsEntry("reason_code", "LATE_CAPTURE");
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ?::uuid and event_type = 'PaymentCaptured' and (payload->>'late')::boolean",
+                Integer.class, p2)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(distinct aggregate_version) = count(*) from outbox where aggregate_id = ?::uuid", Boolean.class, p2)).isTrue();
+        // The refund worker completes both; every deposit nets to zero and every entry balances.
+        dueNow(p1);
+        dueNow(p2);
+        payments.refundWorker();
+        processed(refund(p1), "evt_rp_" + p1);
+        processed(refund(p2), "evt_rp_" + p2);
+        assertThat(state(p1)).isEqualTo("REFUNDED");
+        assertThat(state(p2)).isEqualTo("REFUNDED");
+        for (String pid : List.of(p1, p2)) {
+            assertThat(jdbc.queryForObject("select coalesce(sum(dr - cr), 0) from journal_lines l join journal_entries e on e.id = l.entry_id where e.payment_id = ?::uuid "
+                    + "and l.account in ('1100', '2100', '2200')", Long.class, pid)).isZero();
+        }
+    }
+
+    @Test
+    void refundFailedIsRetriedOnTheScheduleAndALateProcessedWebhookStillCompletesIt() throws Exception {
+        UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID();
+        Map<String, Object> d = deposit(buyer, pool);
+        String pid = (String) d.get("payment_id");
+        captured((String) d.get("razorpay_order_id"), "evt_c_" + pid);
+        inTx(() -> payments.requestRefund(buyer, pool, "BUYER_LEFT"));
+        dueNow(pid);
+        payments.refundWorker();
+        Map<String, Object> rf = refund(pid);
+        assertThat(rf).containsEntry("state", "REFUND_INITIATED").containsEntry("attempts", 1);
+        // REF-T04: Razorpay reports failure -> REFUND_FAILED, next attempt after 1 minute (schedule[0]), RefundFailed emitted.
+        webhook("refund.failed", "refund", Map.of("id", rf.get("razorpay_refund_id"), "receipt", rf.get("id"), "status", "failed"), "evt_rf_" + pid, "test_webhook_secret");
+        rf = refund(pid);
+        assertThat(rf.get("state")).isEqualTo("REFUND_FAILED");
+        assertThat(((Number) rf.get("wait_s")).doubleValue()).isBetween(50.0, 61.0);
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ?::uuid and event_type = 'RefundFailed'", Integer.class, pid)).isEqualTo(1);
+        // REF-T02 from REFUND_FAILED once due, then REF-T03.
+        dueNow(pid);
+        payments.refundWorker();
+        rf = refund(pid);
+        assertThat(rf).containsEntry("state", "REFUND_INITIATED").containsEntry("attempts", 2);
+        processed(rf, "evt_rp_" + pid);
+        assertThat(state(pid)).isEqualTo("REFUNDED");
+        // REF-T05: a refund.processed that arrives while REFUND_FAILED also completes it.
+        UUID b2 = UUID.randomUUID(), pool2 = UUID.randomUUID();
+        Map<String, Object> d2 = deposit(b2, pool2);
+        String p2 = (String) d2.get("payment_id");
+        captured((String) d2.get("razorpay_order_id"), "evt_c_" + p2);
+        inTx(() -> payments.requestRefund(b2, pool2, "BUYER_LEFT"));
+        dueNow(p2);
+        payments.refundWorker();
+        Map<String, Object> r2 = refund(p2);
+        webhook("refund.failed", "refund", Map.of("id", r2.get("razorpay_refund_id"), "receipt", r2.get("id"), "status", "failed"), "evt_rf_" + p2, "test_webhook_secret");
+        processed(r2, "evt_rp_" + p2);
+        assertThat(state(p2)).isEqualTo("REFUNDED");
+    }
+
+    @Test
+    void aRefundRazorpayRejectsGoesStraightToTheAdminQueueAndAnAdminCanRetryIt() throws Exception {
+        UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID();
+        Map<String, Object> d = deposit(buyer, pool);
+        String pid = (String) d.get("payment_id");
+        captured((String) d.get("razorpay_order_id"), "evt_c_" + pid);
+        inTx(() -> payments.requestRefund(buyer, pool, "BUYER_LEFT"));
+        try {
+            REFUND_MODE = "500"; // retryable: attempts + 1, next attempt per schedule
+            dueNow(pid);
+            payments.refundWorker();
+            Map<String, Object> rf = refund(pid);
+            assertThat(rf).containsEntry("state", "REFUND_REQUESTED").containsEntry("attempts", 1);
+            assertThat(((Number) rf.get("wait_s")).doubleValue()).isBetween(50.0, 61.0);
+            REFUND_MODE = "400"; // refunds disabled on the account: retrying will not help
+            dueNow(pid);
+            payments.refundWorker();
+            rf = refund(pid);
+            assertThat(rf).containsEntry("state", "REFUND_REQUESTED").containsEntry("attempts", 5);
+            assertThat((String) rf.get("failure_reason")).contains("400");
+            dueNow(pid);
+            payments.refundWorker(); // out of attempts: the worker leaves it alone
+            assertThat(refund(pid)).containsEntry("attempts", 5);
+        } finally {
+            REFUND_MODE = "ok";
+        }
+        // E114 queue: platform_admin only.
+        String admin = TestTokens.admin("payment", UUID.randomUUID());
+        Resp q = get("/admin/refunds", admin);
+        assertThat(q.status()).as(q.body()).isEqualTo(200);
+        assertThat(q.body()).contains(pid).contains("invalid request sent");
+        assertThat(get("/admin/refunds", TestTokens.buyer("payment", buyer)).status()).isEqualTo(403);
+        // E115: once the account is fixed, an admin retries now.
+        String refundId = (String) refund(pid).get("id");
+        Resp retry = send("POST", "/admin/refunds/" + refundId + "/retry", admin, null, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+        assertThat(retry.status()).as(retry.body()).isEqualTo(200);
+        assertThat(JSON.readTree(retry.body()).path("state").asText()).isEqualTo("REFUND_INITIATED");
+        assertThat(get("/admin/refunds", admin).body()).doesNotContain(pid);
+        // E116/E117 are honest 501s until second-admin approval is built.
+        assertThat(send("POST", "/admin/refunds/" + refundId + "/resolve-manually", admin, "{}", Map.of()).status()).isEqualTo(501);
+    }
+
+    @Test
+    void unpaidDepositsAreVoidedAfterTheConfiguredLimitAndLeavingVoidsThem() throws Exception {
+        UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID();
+        String pid = (String) deposit(buyer, pool).get("payment_id");
+        payments.voidStaleUnpaid();
+        assertThat(state(pid)).as("younger than 24 h").isEqualTo("INITIATED");
+        jdbc.update("update payments set created_at = clock_timestamp() - interval '25 hours' where id = ?::uuid", pid);
+        payments.voidStaleUnpaid();
+        assertThat(state(pid)).isEqualTo("VOIDED_UNPAID");
+        // Leaving before paying voids the deposit too (PAY-T05 via MemberLeft): nothing was taken, nothing to refund.
+        UUID b2 = UUID.randomUUID(), pool2 = UUID.randomUUID();
+        String p2 = (String) deposit(b2, pool2).get("payment_id");
+        inTx(() -> payments.requestRefund(b2, pool2, "BUYER_LEFT"));
+        assertThat(state(p2)).isEqualTo("VOIDED_UNPAID");
+        assertThat(jdbc.queryForObject("select count(*) from refunds where payment_id = ?::uuid", Integer.class, p2)).isZero();
+    }
+
+    @Test
     void ledgerRowsAreImmutableAndEntriesMustBalance() {
         UUID payment = UUID.fromString((String) deposit0().get("payment_id"));
         assertThatThrownBy(() -> jdbc.update("update journal_lines set dr = dr + 1")).hasMessageContaining("immutable");
@@ -228,4 +395,7 @@ class PaymentIT extends ServiceTest {
             EventContext.clear();
         }
     }
+
+    @Test
+    void openApiMatchesTheCommittedWebClient() { assertOpenApiMatchesWebClient("payment"); }
 }

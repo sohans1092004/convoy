@@ -41,9 +41,17 @@ public class GatewayApplication {
         Map<String, String> u = s.services();
         return b.routes()
                 .route("webhook", r -> r.path("/webhooks/razorpay").uri(u.get("payment")))
+                // E120 pool stream (SSE), balanced across the realtime instances.
+                .route("stream-pool", r -> r.path("/api/stream/pools/*").filters(f -> f.rewritePath("/api/stream/pools/(?<id>[^/]+)", "/realtime/pools/${id}/stream")
+                                // A refused connect (instance down) is retried; the load balancer then picks the other instance.
+                                .retry(c -> c.setRetries(2).setMethods(org.springframework.http.HttpMethod.GET).setSeries()
+                                        .setExceptions(java.net.ConnectException.class, java.io.IOException.class)))
+                        .metadata(AUDIENCE, "realtime").uri(u.get("realtime")))
                 .route("me-orders", r -> r.path("/api/me/orders", "/api/me/orders/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("me-payments", r -> r.path("/api/me/payments/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
-                .route("identity", r -> r.path("/api/auth/**", "/api/me", "/api/me/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "identity").uri(u.get("identity")))
+                .route("me-saved-cars", r -> r.path("/api/me/saved-cars", "/api/me/saved-cars/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "catalog").uri(u.get("catalog")))
+                .route("me-matching", r -> r.path("/api/me/preferences", "/api/me/pool-suggestions").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "pool").uri(u.get("pool")))
+                .route("identity", r -> r.path("/api/auth/**", "/api/me", "/api/me/**", "/api/dealerships/*/staff/**", "/api/staff-invites/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "identity").uri(u.get("identity")))
                 .route("catalog", r -> r.path("/api/catalog/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "catalog").uri(u.get("catalog")))
                 .route("pool-quotes", r -> r.path("/api/pools/*/quotes", "/api/pools/*/quotes/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "quote").uri(u.get("quote")))
                 .route("pool", r -> r.path("/api/pools", "/api/pools/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "pool").uri(u.get("pool")))

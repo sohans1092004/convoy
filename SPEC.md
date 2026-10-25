@@ -111,6 +111,11 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Rule: ordering consumers (quote, order, realtime; payment for membership events) use FIFO queues on pool-events.fifo; notification and audit use standard queues. Source: [AWS, 2023-09-14](https://aws.amazon.com/about-aws/whats-new/2023/09/amazon-sns-fifo-topics-message-delivery-sqs-standard-queues/), accessed 2026-10-24.
 - Files: event-catalogue.yaml header, ADR-002. LocalStack behaviour: recorded in reports/P1_REPORT.md. Phase: P1.
 
+**AMENDMENT-007 — Pool minimum and success fee set by the owner (closes Q-041, Q-042).**
+- Rule (Q-042): `min_members` = 5 in production; the local demo stack uses 1 so one test buyer can run the journey (`POOL_MIN_MEMBERS`).
+- Rule (Q-041): the success fee is a flat ₹2,500 (250000 paise) per *delivered* booking, recorded as a dealer receivable (J-FEE, Dr 1300 / Cr 4100) inside PAY-T09. It is configurable (`SUCCESS_FEE_PAISE`, 0 = off) and never taken from a buyer deposit.
+- Source: the owner's Phase 2 instructions (2026-10-24). Files: OPEN_QUESTIONS.md, deposit-contract.md §5, pool and payment application.yml. Phase: P2.
+
 ### Contract additions in P1 (no business-rule change)
 Interface additions made while building the walking skeleton. None changes a rule above; each is reflected in the linked spec file and validated by `validate_spec.py`.
 
@@ -123,6 +128,16 @@ Interface additions made while building the walking skeleton. None changes a rul
 | New consumers: quote ← `MemberCommitted`, `MemberLeft`, `AcceptanceChanged`, `ConfirmationRecorded`; order ← `AcceptanceChanged` | quote shows offers only to committed members and needs N for the AMENDMENT-005 projection; order builds the acceptance read model named in the P1 prompt. | event-catalogue.yaml |
 | E014 consent and E052 dealership profile built in P1 (outline phases P5/P3) | The P1 prompt asks for dealer-disclosure consent records and a dealer read API. | api-outline.md (phase column unchanged) |
 | Pre-commit copy aligned with AMENDMENT-002 | Step 0 missed the VOID line of the copy. | cancellation-rules.md |
+
+### Contract additions in P2 (no business-rule change)
+
+| Addition | Why | Files |
+|---|---|---|
+| `subscriptions:` section: one kind per (consumer, aggregate), FULL or PARTIAL | P2 step 0.4: every consumer ignores stale versions; only FULL subscriptions (they receive every event type of the aggregate) treat a version gap as real (park, retry, owner snapshot after 5 min). Generated into `SubscriptionKinds`; services cannot pick their own ordering, and a subscription missing from the catalogue fails at startup. | event-catalogue.yaml, validate_spec.py |
+| realtime ← `MemberReleased`; `MemberReleased` carries `interested_count`, `committed_count` | realtime must see every pool event to be a FULL subscriber (its clients apply deltas only when `version == local + 1`), and a release changes the counts it shows. | event-catalogue.yaml |
+| E043 `GET /me/preferences`; E044/E045 pool internal access and version for realtime (`pools:access`); E030 takes `?model=` | The preferences form needs to read what it saved; realtime must authorise a pool stream and resync after a gap without holding pool data; suggestions are for the buyer's saved models (catalog) without a pool -> catalog call. | api-outline.md, auth-contract.md §5 |
+| Heartbeat is a named SSE event; 20 s client watchdog; graceful close on shutdown | `EventSource` cannot read SSE comments; a killed instance leaves silent streams. E121/E122 answer 501 in P2 (they need quote/order/payment events). | realtime-recovery.md §2 |
+| Every endpoint answers with a declared record (OpenAPI required/nullable per field) | P2 step 0.2: the web client is generated, never hand-written; CI fails if it drifts. | services/*/Api.java, web/lib/api |
 
 ### PLAN.md edits log
 _None. PLAN.md is unchanged in P0._

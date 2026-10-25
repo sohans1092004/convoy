@@ -157,6 +157,31 @@ def _(errs):
                 errs.append(f'{e["name"]}.{k}: bad type {v}')
 
 
+@check('event catalogue: one subscription kind per (consumer, aggregate); FULL iff the consumer gets every event of it')
+def _(errs):
+    total, got = {}, {}
+    for e in catalogue['events']:
+        total.setdefault(e['aggregate'], set()).add(e['name'])
+        for c in e['consumers']:
+            got.setdefault((c, e['aggregate']), set()).add(e['name'])
+    declared = {}
+    for s in catalogue.get('subscriptions') or []:
+        k = (s['consumer'], s['aggregate'])
+        if k in declared:
+            errs.append(f'subscription {k} declared twice')
+        declared[k] = s['kind']
+        if s['kind'] not in ('FULL', 'PARTIAL'):
+            errs.append(f'subscription {k}: kind must be FULL or PARTIAL, got {s["kind"]}')
+    for k, names in got.items():
+        want = 'FULL' if names == total[k[1]] else 'PARTIAL'
+        if k not in declared:
+            errs.append(f'subscription {k} missing (should be {want})')
+        elif declared[k] != want:
+            errs.append(f'subscription {k} is {declared[k]} but the consumer receives {len(names)}/{len(total[k[1]])} event types: {want}')
+    for k in set(declared) - set(got):
+        errs.append(f'subscription {k} declared but {k[0]} consumes no {k[1]} event')
+
+
 @check('every event emitted by a state machine exists, owned by the machine owner')
 def _(errs):
     for name, m in machines.items():

@@ -4,7 +4,7 @@ name: ci
 # against docker compose on every PR. The spec checks stay in spec.yml.
 on:
   push:
-    branches: [main]
+    branches: [main, "p*/**"] # phase branches get CI before their PR opens
   pull_request:
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
         env:
           CHANGES: ${{ steps.filter.outputs.changes }}
         run: |
-          all='[":libs:price-engine",":libs:platform",":services:identity",":services:gateway",":services:catalog",":services:dealer",":services:pool",":services:quote",":services:order",":services:payment"]'
+          all='[":libs:price-engine",":libs:platform",":services:identity",":services:gateway",":services:catalog",":services:dealer",":services:pool",":services:quote",":services:order",":services:payment",":services:realtime"]'
           if echo "$CHANGES" | grep -q shared || [ "${{ github.event_name }}" = push ]; then echo "modules=$all" >> "$GITHUB_OUTPUT"; exit 0; fi
           mods=$(echo "$CHANGES" | python3 -c 'import json,sys; print(json.dumps([":services:"+m for m in json.load(sys.stdin) if m!="shared"]))')
           echo "modules=$mods" >> "$GITHUB_OUTPUT"
@@ -81,11 +81,26 @@ jobs:
         run: pnpm --filter @convoy/price-engine test && pnpm --filter @convoy/price-engine typecheck
       - name: Razorpay fake contract
         run: pnpm --filter @convoy/razorpay-fake test
+      - name: Web unit tests
+        run: pnpm --filter web test
       - name: Web typecheck, build, Storybook
         run: |
           pnpm --filter @convoy/web typecheck
           pnpm --filter @convoy/web build
           pnpm --filter @convoy/web build-storybook --quiet
+      - name: Storybook page states (24) and visual regression (light/dark, 360 px/desktop)
+        working-directory: web
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright test -c playwright.storybook.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          # On the first run (no committed baselines) this holds the Linux-rendered baselines to commit.
+          name: visual-baselines
+          path: |
+            web/e2e-stories/__screenshots__
+            web/playwright-report-stories
 
   e2e:
     if: github.event_name == 'pull_request'
@@ -112,6 +127,14 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           cd web && npx playwright install --with-deps chromium && npx playwright test
+      - name: Route JS budgets (baseline + 10 %, Q-037)
+        working-directory: web
+        run: node scripts/js-budgets.mjs
+      - name: Lighthouse (mobile, simulated 4G) on discover, model and pool pages
+        working-directory: web
+        run: node scripts/lighthouse.mjs
+      - name: Realtime across two instances (fan-out, FLUSHALL, Redis down, stop and kill)
+        run: node tools/realtime/two-instances.mjs
       - name: Runner memory headroom and container memory
         if: always()
         run: |
@@ -124,6 +147,7 @@ jobs:
           path: |
             web/playwright-report
             web/test-results
+            reports/p2/lighthouse.json
       - name: Stack logs on failure
         if: failure()
         run: docker compose logs --no-color --tail 200

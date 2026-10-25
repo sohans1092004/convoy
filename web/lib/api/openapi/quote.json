@@ -34,8 +34,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": {}
+                "$ref": "#/components/schemas/QuoteDraft"
               }
             }
           },
@@ -47,8 +46,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -87,8 +85,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -191,8 +188,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -223,8 +219,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Offers"
                 }
               }
             }
@@ -264,8 +259,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Offer"
                 }
               }
             }
@@ -296,8 +290,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/RoundSummary"
                 }
               }
             }
@@ -328,8 +321,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -349,8 +341,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/Inbox"
                 }
               }
             }
@@ -359,5 +350,872 @@
       }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "DeclaredCover": {
+        "properties": {
+          "idv_bp": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "addons": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "addons",
+          "idv_bp"
+        ]
+      },
+      "DraftLine": {
+        "properties": {
+          "variant_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ex_showroom_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "registration_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "insurance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Insurance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "insurance_addons": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "fees": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "accessories": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "extended_warranty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Item"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "other_charges": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Stock"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accessories",
+          "ex_showroom_paise",
+          "extended_warranty",
+          "fees",
+          "insurance",
+          "insurance_addons",
+          "other_charges",
+          "registration_paise",
+          "stock",
+          "variant_id"
+        ]
+      },
+      "DraftTier": {
+        "properties": {
+          "min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "discount_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        },
+        "required": [
+          "discount_paise",
+          "max",
+          "min"
+        ]
+      },
+      "Insurance": {
+        "properties": {
+          "od_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "tp_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "gst_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "binding": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "declared_cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeclaredCover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "binding",
+          "declared_cover",
+          "gst_paise",
+          "od_paise",
+          "tp_paise"
+        ]
+      },
+      "Item": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "basis": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      },
+      "QuoteDraft": {
+        "properties": {
+          "variants": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DraftLine"
+            }
+          },
+          "tiers": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DraftTier"
+            }
+          },
+          "min_fulfilment": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "max_units": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "max_units",
+          "min_fulfilment",
+          "tiers",
+          "valid_until",
+          "variants"
+        ]
+      },
+      "Stock": {
+        "properties": {
+          "units": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "colours": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "delivery_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "colours",
+          "delivery_date",
+          "units"
+        ]
+      },
+      "DealerQuote": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/QuoteDraft"
+          },
+          "current_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "snapshots": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TierSnapshot"
+              }
+            }
+          }
+        },
+        "required": [
+          "current_version",
+          "draft",
+          "id",
+          "pool_id",
+          "state",
+          "submitted_at",
+          "version"
+        ]
+      },
+      "Line": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "amount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "DEALER_CONFIRMED",
+              "CATALOGUE_ESTIMATE",
+              "UNVERIFIED"
+            ]
+          },
+          "in_cash_payable": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "amount_paise",
+          "code",
+          "evidence",
+          "flags",
+          "in_cash_payable"
+        ]
+      },
+      "PriceOutput": {
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "vehicle_price_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Line"
+            }
+          },
+          "cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tcs_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estimated_net_cost_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "estimated_net_cost_paise",
+          "lines",
+          "status",
+          "tcs_paise",
+          "vehicle_price_paise",
+          "warnings"
+        ]
+      },
+      "TierSnapshot": {
+        "properties": {
+          "tier_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "discount_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/PriceOutput"
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "discount_paise",
+          "output",
+          "sha256",
+          "tier_index"
+        ]
+      },
+      "Ceiling": {
+        "properties": {
+          "tier_index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "output": {
+            "$ref": "#/components/schemas/PriceOutput"
+          },
+          "snapshot_sha256": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "output",
+          "snapshot_sha256",
+          "tier_index"
+        ]
+      },
+      "Offer": {
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "dealership_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version_no": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "committed_at": {
+            "type": "string"
+          },
+          "min_fulfilment": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_units": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "snapshot_sha256": {
+            "type": "string"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfferVariant"
+            }
+          }
+        },
+        "required": [
+          "committed_at",
+          "dealership_id",
+          "max_units",
+          "min_fulfilment",
+          "quote_id",
+          "snapshot_sha256",
+          "state",
+          "variants",
+          "version_no"
+        ]
+      },
+      "OfferVariant": {
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "variant_code": {
+            "type": "string"
+          },
+          "ceiling": {
+            "$ref": "#/components/schemas/Ceiling"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/Projection"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TierView"
+            }
+          },
+          "stock": {
+            "$ref": "#/components/schemas/Stock"
+          }
+        },
+        "required": [
+          "ceiling",
+          "projection",
+          "stock",
+          "tiers",
+          "variant_code",
+          "variant_id"
+        ]
+      },
+      "Offers": {
+        "properties": {
+          "pool_id": {
+            "type": "string"
+          },
+          "quotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Offer"
+            }
+          },
+          "ranking_rule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool_id",
+          "quotes",
+          "ranking_rule"
+        ]
+      },
+      "Projection": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "guaranteed": {
+            "type": "boolean"
+          },
+          "cash_payable_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "count",
+          "guaranteed",
+          "label",
+          "note"
+        ]
+      },
+      "TierView": {
+        "properties": {
+          "min": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "cash_payable_paise": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "is_ceiling": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cash_payable_paise",
+          "is_ceiling",
+          "max",
+          "min"
+        ]
+      },
+      "RoundSummary": {
+        "properties": {
+          "round_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "valid_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "final_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryQuote"
+            }
+          }
+        },
+        "required": [
+          "final_count",
+          "kind",
+          "quotes",
+          "round_id",
+          "valid_count"
+        ]
+      },
+      "SummaryQuote": {
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "dealership_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "variant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "dealership_id",
+          "quote_id",
+          "state",
+          "variant_ids"
+        ]
+      },
+      "Inbox": {
+        "properties": {
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Request"
+            }
+          }
+        },
+        "required": [
+          "requests"
+        ]
+      },
+      "Request": {
+        "properties": {
+          "round_id": {
+            "type": "string"
+          },
+          "pool_id": {
+            "type": "string"
+          },
+          "round_set": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "round_no": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "state_code": {
+            "type": "string"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoundVariant"
+            }
+          },
+          "committed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quote_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "server_time": {
+            "type": "string"
+          },
+          "ruleset_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "committed_count",
+          "deadline",
+          "kind",
+          "pool_id",
+          "quote_id",
+          "quote_state",
+          "quote_version",
+          "round_id",
+          "round_no",
+          "round_set",
+          "ruleset_version",
+          "server_time",
+          "state",
+          "state_code",
+          "variants"
+        ]
+      },
+      "RoundVariant": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fuel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transmission": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine_cc": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "catalogue_ex_showroom_paise": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "catalogue_evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city_confirmed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "catalogue_evidence",
+          "catalogue_ex_showroom_paise",
+          "city_confirmed",
+          "code",
+          "engine_cc",
+          "fuel",
+          "id",
+          "name",
+          "transmission"
+        ]
+      }
+    }
+  }
 }

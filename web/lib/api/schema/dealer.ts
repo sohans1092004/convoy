@@ -35,7 +35,25 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        Eligibility: {
+            brand: string;
+            city: string;
+            dealership_ids: string[];
+            /** Format: int32 */
+            count: number;
+        };
+        Dealership: {
+            id: string;
+            trade_name: string;
+            city: string;
+            state_code: string;
+            brands: string[];
+            status: string;
+            synthetic: boolean;
+            verified_at: string | null;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -62,9 +80,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Eligibility"];
                 };
             };
         };
@@ -86,9 +102,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
+                    "*/*": components["schemas"]["Dealership"];
                 };
             };
         };

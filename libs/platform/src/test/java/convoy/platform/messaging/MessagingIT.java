@@ -52,6 +52,10 @@ class MessagingIT {
     static final List<Envelope> ordered = new CopyOnWriteArrayList<>(), unordered = new CopyOnWriteArrayList<>();
     static InboxConsumer orderedConsumer, unorderedConsumer;
 
+    static final long SNAPSHOT_VERSION = 5;
+    static final List<UUID> snapshotLoads = new java.util.concurrent.CopyOnWriteArrayList<>();
+    static final java.util.Set<UUID> snapshotPools = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     @BeforeAll
     static void setUp() {
         DriverManagerDataSource ds = new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
@@ -63,12 +67,19 @@ class MessagingIT {
         sns = SnsClient.builder().endpointOverride(endpoint).region(Region.of(LS.getRegion())).credentialsProvider(creds).build();
         sqs = SqsClient.builder().endpointOverride(endpoint).region(Region.of(LS.getRegion())).credentialsProvider(creds).build();
         topology = new Topology(sns, sqs, JSON);
-        // "quote" consumes pool events through a FIFO queue; "audit" through a standard queue (AMENDMENT-006).
-        orderedConsumer = new InboxConsumer("quote", sqs, topology, jdbc, tx, JSON, new Subscriptions()
-                .on(MemberJoined.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> ordered.add(e))
-                .on(PoolReady.class, Subscriptions.Ordering.MONOTONIC, (e, p) -> ordered.add(e)), 1);
+        // "realtime" consumes pool events through a FIFO queue (a FULL subscription in the catalogue: gaps park);
+        // "audit" through a standard queue (AMENDMENT-006). Gap snapshot timeout shortened to 3 s for the test.
+        orderedConsumer = new InboxConsumer("realtime", sqs, topology, jdbc, tx, JSON, new Subscriptions()
+                .on(MemberJoined.class, (e, p) -> ordered.add(e))
+                .on(PoolReady.class, (e, p) -> ordered.add(e))
+                .snapshot("pool", id -> {
+                    // Only the snapshot test's pool has a snapshot; elsewhere a slow run must keep waiting for the real event.
+                    if (!snapshotPools.contains(id)) throw new IllegalStateException("no snapshot for " + id);
+                    snapshotLoads.add(id);
+                    return SNAPSHOT_VERSION;
+                }), 1, java.time.Duration.ofSeconds(3));
         unorderedConsumer = new InboxConsumer("audit", sqs, topology, jdbc, tx, JSON, new Subscriptions()
-                .onUnordered(MemberJoined.class, (e, p) -> unordered.add(e)), 1);
+                .onUnordered(MemberJoined.class, (e, p) -> unordered.add(e)), 1, java.time.Duration.ofMinutes(5));
         orderedConsumer.start();
         unorderedConsumer.start();
     }
@@ -80,7 +91,7 @@ class MessagingIT {
     }
 
     static void await(BooleanSupplier cond, String what) throws InterruptedException {
-        long until = System.currentTimeMillis() + 20_000;
+        long until = System.currentTimeMillis() + 60_000; // LocalStack FIFO-to-standard delivery is slow on CI runners
         while (!cond.getAsBoolean()) {
             if (System.currentTimeMillis() > until) throw new AssertionError("timed out waiting for " + what);
             Thread.sleep(100);
@@ -106,7 +117,7 @@ class MessagingIT {
         await(() -> ordered.stream().anyMatch(e -> e.eventId().equals(eventId)), "FIFO queue delivery");
         await(() -> unordered.stream().anyMatch(e -> e.eventId().equals(eventId)), "standard queue delivery from FIFO topic");
         assertNotNull(jdbc.queryForObject("select delivered_at from outbox where event_id = ?", Object.class, eventId));
-        assertEquals(1, jdbc.queryForObject("select count(*) from inbox where consumer = 'quote' and event_id = ?", Integer.class, eventId));
+        assertEquals(1, jdbc.queryForObject("select count(*) from inbox where consumer = 'realtime' and event_id = ?", Integer.class, eventId));
         assertEquals(1, jdbc.queryForObject("select count(*) from inbox where consumer = 'audit' and event_id = ?", Integer.class, eventId));
 
         Envelope got = ordered.stream().filter(e -> e.eventId().equals(eventId)).findFirst().orElseThrow();
@@ -139,6 +150,39 @@ class MessagingIT {
         new OutboxRelay(jdbc, tx, sns, topology, JSON, "pool").tick();
         await(() -> orderedConsumer.stale.get() == staleBefore + 1, "stale v1 after v2");
         assertTrue(ordered.stream().noneMatch(e -> e.eventId().equals(older)));
+    }
+
+    @Test
+    void fullSubscriberParksAGapAndAppliesInVersionOrderWhenTheMissingEventArrives() throws Exception {
+        UUID pool = Uuid7.next();
+        UUID v1 = appendJoined(pool, 1);
+        UUID v3 = appendJoined(pool, 3);
+        new OutboxRelay(jdbc, tx, sns, topology, JSON, "pool").tick();
+        await(() -> jdbc.queryForObject("select count(*) from parked_events where consumer = 'realtime' and event_id = ?", Integer.class, v3) == 1, "v3 parked");
+        assertTrue(ordered.stream().anyMatch(e -> e.eventId().equals(v1)));
+        assertTrue(ordered.stream().noneMatch(e -> e.eventId().equals(v3)), "v3 must wait for v2");
+        // Outlive the 3 s gap timeout: this pool has no snapshot (the loader throws), so v3 must stay parked without blocking the FIFO group.
+        Thread.sleep(4500);
+        UUID v2 = appendJoined(pool, 2);
+        new OutboxRelay(jdbc, tx, sns, topology, JSON, "pool").tick();
+        await(() -> ordered.stream().anyMatch(e -> e.eventId().equals(v3)), "v3 applied after v2");
+        List<UUID> order = ordered.stream().filter(e -> e.aggregateId().equals(pool)).map(Envelope::eventId).toList();
+        assertEquals(List.of(v1, v2, v3), order);
+        await(() -> jdbc.queryForObject("select count(*) from parked_events where aggregate_id = ?", Integer.class, pool) == 0, "parked rows cleared");
+        assertTrue(snapshotLoads.stream().noneMatch(pool::equals), "no snapshot needed when the gap closes");
+    }
+
+    @Test
+    void gapOlderThanTheTimeoutFallsBackToTheOwnerSnapshot() throws Exception {
+        UUID pool = Uuid7.next();
+        snapshotPools.add(pool);
+        appendJoined(pool, 1);
+        UUID v3 = appendJoined(pool, SNAPSHOT_VERSION + 1); // v2..v{snapshot} are never published
+        new OutboxRelay(jdbc, tx, sns, topology, JSON, "pool").tick();
+        await(() -> ordered.stream().anyMatch(e -> e.eventId().equals(v3)), "v3 applied after the snapshot fallback");
+        assertTrue(snapshotLoads.contains(pool));
+        await(() -> jdbc.queryForObject("select last_version from aggregate_versions where consumer = 'realtime' and aggregate_id = ?", Long.class, pool) == SNAPSHOT_VERSION + 1, "version advanced");
+        await(() -> jdbc.queryForObject("select count(*) from parked_events where consumer = 'realtime' and aggregate_id = ?", Integer.class, pool) == 0, "parked rows cleared");
     }
 
     static String write(Object o) {

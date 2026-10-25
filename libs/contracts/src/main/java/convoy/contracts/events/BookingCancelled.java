@@ -11,6 +11,7 @@ public record BookingCancelled(
         @JsonProperty("reason") String reason) implements EventPayload {
     public static final String TYPE = "BookingCancelled";
     public static final String PRODUCER = "order";
+    public static final String AGGREGATE = "booking";
     public static final boolean FIFO = false;
     public static final int SCHEMA_VERSION = 1;
 
