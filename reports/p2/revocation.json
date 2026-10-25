@@ -1,12 +1,12 @@
 {
-  "measured_at": "2026-10-25T08:05:36.175Z",
-  "commit": "c23bbaa",
+  "measured_at": "2026-10-25T09:37:35.936Z",
+  "commit": "fda7cd2",
   "env": "local docker compose (lite), gateway session cache TTL 25 s, realtime revalidate 15 s",
-  "api_first_rejection_ms": 22268,
+  "api_first_rejection_ms": 21234,
   "api_rejection_status": 403,
   "api_successes_after_first_rejection": 0,
-  "stream_closed_ms": 11157,
+  "stream_closed_ms": 8627,
   "stream_last_event": null,
-  "polls_total": 31,
+  "polls_total": 30,
   "pass": true
 }

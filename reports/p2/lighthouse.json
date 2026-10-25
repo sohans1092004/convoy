@@ -1,36 +1,36 @@
 {
-  "measured_at": "2026-10-25T04:01:00.669Z",
-  "commit": "2ff3699",
+  "measured_at": "2026-10-25T09:40:45.874Z",
+  "commit": "fda7cd2",
   "lighthouse_cli": "@lhci/cli 0.15.1",
   "results": {
     "discover": {
       "url": "http://localhost:3000/",
-      "runs": 1,
+      "runs": 3,
       "form_factor": "mobile",
       "throttling": "simulate",
-      "lcp_ms": 2874,
+      "lcp_ms": 2789,
       "cls": 0,
-      "tbt_ms": 444,
-      "performance": 84
+      "tbt_ms": 92,
+      "performance": 91
     },
     "model": {
       "url": "http://localhost:3000/models/maruti-swift",
-      "runs": 1,
+      "runs": 3,
       "form_factor": "mobile",
       "throttling": "simulate",
-      "lcp_ms": 2837,
+      "lcp_ms": 2607,
       "cls": 0,
-      "tbt_ms": 658,
-      "performance": 79
+      "tbt_ms": 136,
+      "performance": 96
     },
     "pool": {
       "url": "http://localhost:3000/pools/<pool-id>",
-      "runs": 1,
+      "runs": 3,
       "form_factor": "mobile",
       "throttling": "simulate",
-      "lcp_ms": 2635,
+      "lcp_ms": 2745,
       "cls": 0,
-      "tbt_ms": 165,
+      "tbt_ms": 129,
       "performance": 95
     }
   }
