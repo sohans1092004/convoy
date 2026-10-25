@@ -12,15 +12,15 @@ states:
   - {name: ACCEPTED, terminal: false, description: "Committed and has a non-binding acceptance of one FINAL quote + variant"}
   - {name: HANDED_TO_ORDER, terminal: false, description: "Acceptances frozen; order service owns the buyer's journey from here. Left only if the pool re-rounds (MEM-T12, MEM-T16)"}
   - {name: REROUND_CHOICE, terminal: false, description: "Accepted quote went VOID and the pool re-rounds; deposit still held; buyer has until choice_deadline (48 h) to keep the commitment or take a refund (AMENDMENT-002)"}
-  - {name: LEFT, terminal: true, description: "Buyer left before CONFIRMATION; deposit (if any) refunded"}
+  - {name: LEFT, terminal: true, description: "Buyer left before CONFIRMATION; deposit (if any) refunded. Terminal for this membership episode; a rejoin (AMENDMENT-008) starts a new episode on the same row through MEM-T01"}
   - {name: RELEASED, terminal: false, description: "Released by the system (pool closed, no acceptance, late capture, re-round refund); deposit refunded. Left only if the pool re-rounds (MEM-T16)"}
 transitions:
   - id: MEM-T01
     from: "(none)"
     to: INTERESTED
     trigger: {kind: actor, by: buyer, via: "POST /pools/{id}/members (Idempotency-Key)"}
-    guard: "pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND (pool.state <> 'QUOTE_OPEN' OR now_db() < rounds[1].deadline) AND no row for (pool, buyer) AND caller has role buyer and no dealer-staff role"
-    effects: ["INSERT pool.memberships(state='INTERESTED')", "UPDATE pool.pools SET interested_count=interested_count+1, version=version+1", "INSERT pool.outbox(MemberJoined)"]
+    guard: "pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND (pool.state <> 'QUOTE_OPEN' OR now_db() < rounds[1].deadline) AND (no row for (pool, buyer) OR a LEFT row with leave_count < 2: a rejoin reuses the row as a new episode, AMENDMENT-008) AND caller has role buyer and no dealer-staff role"
+    effects: ["INSERT pool.memberships(state='INTERESTED') (rejoin: UPDATE the LEFT row to INTERESTED, clearing release_reason, current_payment_id and the acceptance; leave_count is kept)", "UPDATE pool.pools SET interested_count=interested_count+1, version=version+1", "INSERT pool.outbox(MemberJoined)"]
     emits: [MemberJoined]
     idempotent_repeat: "IDEMPOTENCY_KEY; a different key for an existing membership returns 409 already-member with the membership in the body"
     late_arrival: "Committing after the sealed-round deadline -> 409 deadline-passed."
@@ -211,7 +211,9 @@ transitions:
     timeout: "As POOL-T09."
     detected_by: "POOL-T09"
 invalid_transitions:
-  - {from: [HANDED_TO_ORDER, LEFT, RELEASED], attempt: "any buyer command", error: invalid-transition}
+  - {from: [HANDED_TO_ORDER, RELEASED], attempt: "any buyer command", error: invalid-transition}
+  - {from: [LEFT], attempt: "any buyer command other than a rejoin (MEM-T01 on the same row)", error: invalid-transition}
+  - {from: [LEFT], attempt: "rejoin after the second leave (leave_count >= 2)", error: rejoin-limit-reached}
   - {from: [REROUND_CHOICE], attempt: "reround_choice committing at/after choice_deadline", error: deadline-passed}
   - {from: [INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED], attempt: reround_choice, error: invalid-transition}
   - {from: [REROUND_CHOICE], attempt: "leave or accept_quote (use reround_choice)", error: invalid-transition}

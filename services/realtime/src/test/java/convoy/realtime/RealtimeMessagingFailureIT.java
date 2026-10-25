@@ -46,6 +46,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
         "convoy.messaging.enabled=true", "convoy.messaging.wait-seconds=1", "convoy.messaging.gap-snapshot-after=1s",
         "realtime.heartbeat=1h", "realtime.revalidate=1h",
         "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused"})
+@org.junit.jupiter.api.Tag("nightly") // P2.5.B: runs in the nightly workflow
 @Import({ServiceTest.Config.class, RealtimeMessagingFailureIT.Stubs.class})
 class RealtimeMessagingFailureIT extends ServiceTest {
     static final ObjectMapper JSON = new ObjectMapper();

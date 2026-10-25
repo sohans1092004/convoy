@@ -35,7 +35,7 @@ public class RealtimeApplication {
     public static void main(String[] args) { SpringApplication.run(RealtimeApplication.class, args); }
 
     @ConfigurationProperties(prefix = "realtime")
-    public record RealtimeSettings(String instance, String poolUrl, Duration heartbeat, int queueCapacity, Duration revalidate) {}
+    public record RealtimeSettings(String instance, String poolUrl, Duration heartbeat, int queueCapacity, Duration revalidate, int maxConnections) {}
 
     /**
      * Fields a client may see. Everything else (buyer, membership, payment and dealership ids, acceptances,
@@ -67,7 +67,7 @@ public class RealtimeApplication {
     RedisMessageListenerContainer fanout(RedisConnectionFactory redis, Hub hub) {
         RedisMessageListenerContainer c = new RedisMessageListenerContainer();
         c.setConnectionFactory(redis);
-        c.addMessageListener(hub, new PatternTopic("agg:*"));
+        c.addMessageListener(hub, new PatternTopic("agg:*")); // includes Hub.REVOKED
         c.setRecoveryInterval(2_000); // Redis restarts: resubscribe every 2 s until it is back
         return c;
     }
@@ -89,6 +89,8 @@ public class RealtimeApplication {
             s.on((Class) type, (Subscriptions.Handler<EventPayload>) (Envelope e, EventPayload p) -> hub.publish("pool", e.aggregateId().toString(),
                     e.aggregateVersion(), e.eventType(), Instant.parse(e.occurredAt()), delta(json.convertValue(p, Map.class))));
         }
+        // AMENDMENT-008 (Q-044): logout or staff revocation closes the session's streams at once (the 15 s re-check is the fallback).
+        s.on(convoy.contracts.events.SessionRevoked.class, (Envelope e, convoy.contracts.events.SessionRevoked p) -> hub.revokeSession(p.sessionIdHash()));
         // A gap that outlives 5 min: take the owner's current version, and tell every client to refetch its snapshot.
         return s.snapshot("pool", id -> {
             long v = ((Number) poolClient.get().uri("/internal/pools/{id}/version", id).retrieve().body(Map.class).get("version")).longValue();

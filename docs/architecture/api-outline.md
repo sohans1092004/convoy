@@ -48,7 +48,7 @@ Conventions (apply to every row, not repeated):
 | E045 | pool | GET | /internal/pools/{id}/version | service:realtime | no | no | not-found | P2 | AZ-E045-A, AZ-E045-D |
 | E032 | pool | POST | /pools | buyer | yes | no | active-commitment-exists | P1 | AZ-E032-A, AZ-E032-D |
 | E033 | pool | GET | /pools/{id} | buyer, dealer_staff, dealer_admin, platform_admin | no | no | not-found | P1 | AZ-E033-A, AZ-E033-D, AZ-E033-X, AZ-T1 |
-| E034 | pool | POST | /pools/{id}/members | buyer | yes | no | already-member, invalid-transition, deadline-passed | P1 | AZ-E034-A, AZ-E034-D, AZ-INT-01 |
+| E034 | pool | POST | /pools/{id}/members | buyer | yes | no | already-member, rejoin-limit-reached, invalid-transition, deadline-passed | P1 | AZ-E034-A, AZ-E034-D, AZ-INT-01 |
 | E035 | pool | POST | /pools/{id}/commitment | buyer | yes | no | active-commitment-exists, invalid-transition, deadline-passed | P1 | AZ-E035-A, AZ-E035-D, AZ-INT-01 |
 | E036 | pool | DELETE | /pools/{id}/members/me | buyer | yes | yes | invalid-transition, deadline-passed, version-conflict | P1 | AZ-E036-A, AZ-E036-D |
 | E037 | pool | PUT | /pools/{id}/members/me/acceptance | buyer | yes | yes | not-a-member, quote-not-final, deadline-passed, version-conflict | P1 | AZ-E037-A, AZ-E037-D, AZ-T3 |

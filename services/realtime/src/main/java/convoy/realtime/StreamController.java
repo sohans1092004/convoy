@@ -44,8 +44,15 @@ public class StreamController {
     }
 
     @GetMapping(path = "/realtime/pools/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter pool(@PathVariable UUID id) {
+    public SseEmitter pool(@PathVariable UUID id, jakarta.servlet.http.HttpServletResponse response) {
         Caller c = Caller.current().require("buyer", "dealer_staff", "dealer_admin");
+        // Fail fast (P2.5.B): above the cap a new stream is refused with 503 + Retry-After instead of running the instance out
+        // of heap (W5: OutOfMemoryError at ~1,850 streams on a 360 MB instance). The client backs off and may land elsewhere.
+        if (hub.connections() >= settings.maxConnections()) {
+            hub.refused.increment();
+            response.setHeader("Retry-After", String.valueOf(1 + ThreadLocalRandom.current().nextInt(5)));
+            throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "Live updates are busy on this server; retrying shortly. The page keeps working without them.");
+        }
         UUID buyer = c.has("buyer") ? c.userId() : null;
         UUID dealership = c.dealershipId() == null ? null : UUID.fromString(c.dealershipId());
         if (!allowed(id, buyer, dealership)) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such pool.");

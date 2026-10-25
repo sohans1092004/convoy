@@ -128,7 +128,7 @@ Terminal states: `LEFT`
 
 | ID | From | To | Trigger | Guard | Emits |
 |---|---|---|---|---|---|
-| MEM-T01 | (none) | INTERESTED | actor: buyer | pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND (pool.state <> 'QUOTE_OPEN' OR now_db() < rounds[1].deadline) AND no row for (pool, buyer) AND caller has role buyer and no dealer-staff role | MemberJoined |
+| MEM-T01 | (none) | INTERESTED | actor: buyer | pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND (pool.state <> 'QUOTE_OPEN' OR now_db() < rounds[1].deadline) AND (no row for (pool, buyer) OR a LEFT row with leave_count < 2: a rejoin reuses the row as a new episode, AMENDMENT-008) AND caller has role buyer and no dealer-staff role | MemberJoined |
 | MEM-T02 | INTERESTED, (none) | COMMIT_PENDING | actor: buyer | MEM-T01 pool guard AND no other active commitment for this model (partial unique index) AND deposit terms version acknowledged in request (terms_version = current) | - |
 | MEM-T03 | COMMIT_PENDING, INTERESTED | COMMITTED | event: system | event.payment_id = memberships.current_payment_id AND pool.state IN (FORMING, READY_FOR_QUOTES, QUOTE_OPEN) AND now_db() < (forming_deadline if FORMING, rounds[1].deadline if QUOTE_OPEN, no limit if READY_FOR_QUOTES) | MemberCommitted |
 | MEM-T04 | COMMIT_PENDING | INTERESTED | event: system | event.payment_id = memberships.current_payment_id | - |
@@ -149,7 +149,9 @@ Terminal states: `LEFT`
 
 | From | Attempt | Problem type |
 |---|---|---|
-| HANDED_TO_ORDER, LEFT, RELEASED | any buyer command | `invalid-transition` |
+| HANDED_TO_ORDER, RELEASED | any buyer command | `invalid-transition` |
+| LEFT | any buyer command other than a rejoin (MEM-T01 on the same row) | `invalid-transition` |
+| LEFT | rejoin after the second leave (leave_count >= 2) | `rejoin-limit-reached` |
 | REROUND_CHOICE | reround_choice committing at/after choice_deadline | `deadline-passed` |
 | INTERESTED, COMMIT_PENDING, COMMITTED, ACCEPTED, HANDED_TO_ORDER, LEFT, RELEASED | reround_choice | `invalid-transition` |
 | REROUND_CHOICE | leave or accept_quote (use reround_choice) | `invalid-transition` |

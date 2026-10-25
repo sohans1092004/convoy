@@ -95,6 +95,6 @@ const result = {
 };
 result.pass = result.api_first_rejection_ms !== null && result.api_first_rejection_ms <= 30_000 && okAfterReject === 0
   && result.stream_closed_ms !== null && result.stream_closed_ms <= 30_000;
-writeFileSync(new URL('../../reports/p2/revocation.json', import.meta.url), JSON.stringify(result, null, 2) + '\n');
+writeFileSync(new URL(process.env.OUT || '../../reports/p2.5/revocation-last.json', import.meta.url), JSON.stringify(result, null, 2) + '\n');
 console.log(JSON.stringify(result));
 process.exit(result.pass ? 0 : 1);

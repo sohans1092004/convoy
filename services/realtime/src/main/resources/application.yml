@@ -40,4 +40,7 @@ realtime:
   # realtime-recovery.md: heartbeat 15 s, bounded queue 256 per connection, re-validate access every 30 s.
   heartbeat: ${REALTIME_HEARTBEAT:15s}
   queue-capacity: ${REALTIME_QUEUE_CAPACITY:256}
+  # Fail fast (P2.5.B): streams per instance before new ones get 503 + Retry-After. W5 (laptop): ~180 MiB per 1,000
+  # streams and OutOfMemoryError at ~1,850 on a 360 MB instance; 1,000 leaves heap headroom. Size per instance memory.
+  max-connections: ${REALTIME_MAX_CONNECTIONS:1000}
   revalidate: ${REALTIME_REVALIDATE:15s} # AZ-T6: a revoked session's stream closes within 30 s

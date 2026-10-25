@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * E012 staff revocation (pulled forward from P3 for AZ-T6) and E152, the batch session re-check realtime uses so a
- * revoked or logged-out user's live stream closes within 30 s (the gateway's session cache gives the same bound for
- * API calls).
+ * E012 staff revocation (pulled forward from P3 for AZ-T6; AMENDMENT-008: it deletes all the member's sessions and
+ * emits SessionRevoked per session, which gateway and realtime evict on) and E152, the batch session re-check realtime
+ * uses as the fallback when an event is missed.
  */
 @RestController
 public class StaffController {
@@ -50,7 +50,13 @@ public class StaffController {
         if (n == 0) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such staff member.");
         jdbc.update("delete from user_roles where user_id = ? and role in ('dealer_staff', 'dealer_admin') and not exists "
                 + "(select 1 from dealership_staff where user_id = ? and revoked_at is null)", userId, userId);
-        outbox.append(userId, Instant.now().toEpochMilli(), new StaffRevoked(id.toString(), userId.toString(), c.userId().toString()));
+        // AMENDMENT-008 (Q-044): every session of the revoked staff member ends now; gateway and realtime evict on SessionRevoked.
+        long at = Instant.now().toEpochMilli();
+        List<String> sessions = jdbc.queryForList("delete from sessions where user_id = ? returning id_hash", String.class, userId);
+        for (int i = 0; i < sessions.size(); i++) {
+            outbox.append(userId, at + i, new convoy.contracts.events.SessionRevoked(userId.toString(), sessions.get(i), "STAFF_REVOKED"));
+        }
+        outbox.append(userId, at + sessions.size(), new StaffRevoked(id.toString(), userId.toString(), c.userId().toString()));
         return Dto.as(Map.of("status", "REVOKED"), Api.Status.class);
     }
 

@@ -116,6 +116,12 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Rule (Q-041): the success fee is a flat ₹2,500 (250000 paise) per *delivered* booking, recorded as a dealer receivable (J-FEE, Dr 1300 / Cr 4100) inside PAY-T09. It is configurable (`SUCCESS_FEE_PAISE`, 0 = off) and never taken from a buyer deposit.
 - Source: the owner's Phase 2 instructions (2026-10-24). Files: OPEN_QUESTIONS.md, deposit-contract.md §5, pool and payment application.yml. Phase: P2.
 
+**AMENDMENT-008 — Rejoin, admin passkeys, revocation ends sessions (closes Q-045, Q-043, Q-044).**
+- Rule (Q-045): a buyer who left may rejoin the same pool while it is FORMING, READY_FOR_QUOTES, or QUOTE_OPEN before the sealed-round deadline (DB clock). At most 2 leaves per buyer per pool: after the second leave a rejoin is refused (`rejoin-limit-reached`, 409); leaving itself is never refused. A rejoin starts as INTERESTED and needs a new commitment (new deposit); the earlier deposit was already refunded on leave. Interpretation recorded here: "at most 2 leaves" is enforced on the rejoin, not on the leave. Modelled as MEM-T01 on the LEFT row (a new episode), so LEFT stays terminal per episode and `leave_count` is kept.
+- Rule (Q-043): passkeys are optional for buyers and dealer staff and required for platform admins: a session opened with an email code never carries `platform_admin` (identity drops it at validation), so admin powers need a passkey sign-in. Attestation conveyance `none`. Email OTP stays the recovery path for buyers and dealer staff; admin recovery is documented in docs/runbooks/admin-recovery.md.
+- Rule (Q-044): revoking a staff member ends all their sessions at once: identity deletes them and emits `SessionRevoked` (reason STAFF_REVOKED) per session plus `StaffRevoked`. The gateway and realtime evict on the event; the 25 s session cache remains the fallback guarantee.
+- Source: the owner's Phase 2.5 instructions (2026-10-25). Files: OPEN_QUESTIONS.md, membership state machine, transitions vectors, problem-types.yaml, auth-contract.md. Phase: P2.5.
+
 ### Contract additions in P1 (no business-rule change)
 Interface additions made while building the walking skeleton. None changes a rule above; each is reflected in the linked spec file and validated by `validate_spec.py`.
 

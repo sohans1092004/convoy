@@ -11,6 +11,7 @@ problems:
   deadline-passed:          {status: 409, code: DEADLINE_PASSED, title: "The database clock at commit time was at or past the deadline"}
   round-not-open:           {status: 409, code: ROUND_NOT_OPEN, title: "No quote round is open for this pool yet"}
   already-member:           {status: 409, code: ALREADY_MEMBER, title: "Buyer already has a membership in this pool"}
+  rejoin-limit-reached:     {status: 409, code: REJOIN_LIMIT_REACHED, title: "Buyer has left this pool twice and cannot rejoin it"}
   active-commitment-exists: {status: 409, code: ACTIVE_COMMITMENT_EXISTS, title: "Buyer already holds an active commitment for this model"}
   not-a-member:             {status: 409, code: NOT_A_MEMBER, title: "Buyer is not a committed member of this pool"}
   capacity-reached:         {status: 409, code: CAPACITY_REACHED, title: "The quote's max_units confirmations are already taken"}

@@ -32,6 +32,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
  * once (applied, or ignored as stale: the per-aggregate version rule prevents regressions), and the drain time and oldest
  * message age are recorded. Size: -Dmf6.events (default 5,000 in CI; 50,000 in the P2 report run).
  */
+@org.junit.jupiter.api.Tag("nightly") // P2.5.B: runs in the nightly workflow
 @Testcontainers
 class MessagingBacklogIT {
     @Container static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16.15-alpine");

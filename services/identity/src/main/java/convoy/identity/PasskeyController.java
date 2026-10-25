@@ -148,7 +148,7 @@ public class PasskeyController {
         jdbc.update("update passkeys set sign_count = ?, last_used_at = clock_timestamp() where id = ?",
                 data.getAuthenticatorData().getSignCount(), row.get("id"));
         if (users.find(userId).isEmpty()) throw ApiProblem.of(ProblemType.UNAUTHENTICATED, "This account is not active.");
-        return auth.session(userId);
+        return auth.session(userId, "passkey");
     }
 
     private record Challenge(UUID id, byte[] bytes) {}

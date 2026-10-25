@@ -21,8 +21,10 @@ sequenceDiagram
 ## 1. Browser ↔ web (BFF)
 - Opaque session id: 256-bit random, base64url, cookie `cv_sid`; `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=30d` (sliding: refreshed when < 7 days remain). Identity stores only `SHA-256(session_id)`.
 - Login: email OTP (6 digits, 10 min, 5 attempts, rate limited per email hash and per IP) or passkey (WebAuthn, platform/cross-platform). Sessions are created only by identity via the BFF.
+- Passkeys (AMENDMENT-008): optional for buyers and dealer staff, **required for platform admins**: a session records how it was opened (`auth_method` otp | passkey) and `platform_admin` is only granted to passkey sessions. Attestation conveyance `none`. Email OTP is the recovery path for buyers and staff; admin recovery: [admin-recovery.md](../runbooks/admin-recovery.md).
 - CSRF: SameSite=Lax + BFF requires `Origin`/`Sec-Fetch-Site` same-origin on state-changing requests + a per-session CSRF token header for non-GET. 
 - Logout: identity revokes the session (`revoked_at`), emits `SessionRevoked`.
+- Staff revocation (E012, AMENDMENT-008): identity deletes all the staff member's sessions and emits `SessionRevoked` (reason STAFF_REVOKED) per session plus `StaffRevoked`; gateway and realtime evict on the event (target about 1–2 s), the session cache TTL stays the guarantee.
 
 ## 2. web → gateway
 - BFF forwards the session id in `X-Convoy-Session`. The BFF **removes** any `X-Convoy-*`, `X-User-*`, `X-Forwarded-User`, `Authorization` headers coming from the browser before forwarding (test AZ-INT-03).

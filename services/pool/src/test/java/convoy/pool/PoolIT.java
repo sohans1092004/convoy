@@ -232,6 +232,34 @@ class PoolIT extends ServiceTest {
     }
 
     @Test
+    void aBuyerMayRejoinAfterLeavingButNotAfterTheSecondLeave() throws Exception {
+        // AMENDMENT-008 (Q-045): join, leave, rejoin, leave, then the third join is refused; counts stay exact throughout.
+        UUID pool = freshPool();
+        UUID b = UUID.randomUUID();
+        java.util.function.Supplier<Resp> join = () -> send("POST", "/pools/" + pool + "/members", buyer(b), null, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+        java.util.function.Function<Long, Resp> leave = (v) -> send("DELETE", "/pools/" + pool + "/members/me", buyer(b), null,
+                Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"" + v + "\""));
+        JsonNode m = JSON.readTree(join.get().body());
+        for (int round = 1; round <= 2; round++) {
+            assertThat(leave.apply(m.path("version").asLong()).status()).isEqualTo(200);
+            assertThat(jdbc.queryForObject("select interested_count from pools where id = ?", Integer.class, pool)).isZero();
+            Resp again = join.get();
+            if (round == 1) {
+                assertThat(again.status()).isEqualTo(201);
+                m = JSON.readTree(again.body());
+                assertThat(m.path("state").asText()).isEqualTo("INTERESTED");
+                assertThat(jdbc.queryForObject("select interested_count from pools where id = ?", Integer.class, pool)).isEqualTo(1);
+            } else {
+                assertThat(again.status()).isEqualTo(409);
+                assertThat(JSON.readTree(again.body()).path("code").asText()).isEqualTo("REJOIN_LIMIT_REACHED");
+            }
+        }
+        assertThat(jdbc.queryForObject("select count(*) from memberships where pool_id = ?", Integer.class, pool)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select leave_count from memberships where pool_id = ?", Integer.class, pool)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ? and event_type = 'MemberJoined'", Integer.class, pool)).isEqualTo(2);
+    }
+
+    @Test
     void doubleClickJoinWithOneKeyMakesOneMembership() throws Exception {
         UUID pool = freshPool();
         UUID b = UUID.randomUUID();

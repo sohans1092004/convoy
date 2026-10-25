@@ -31,6 +31,7 @@ public class Hub implements MessageListener {
     /** Highest version this instance has seen per aggregate; sent in heartbeats so clients can spot a missed delta. */
     final Map<String, Long> latest = new ConcurrentHashMap<>();
     private final Counter delivered, dropped, redisFailures;
+    final Counter refused; // new streams refused at the connection cap (StreamController)
     private final Timer fanout;
 
     public Hub(String instance, StringRedisTemplate redis, MeterRegistry meters) {
@@ -39,6 +40,7 @@ public class Hub implements MessageListener {
         meters.gauge("realtime.connections", byKey, m -> m.values().stream().mapToInt(Set::size).sum());
         this.delivered = meters.counter("realtime.messages.delivered");
         this.dropped = meters.counter("realtime.connections.dropped", "reason", "overloaded");
+        this.refused = meters.counter("realtime.connections.refused", "reason", "at_capacity");
         this.redisFailures = meters.counter("realtime.redis.publish.failures");
         this.fanout = Timer.builder("realtime.fanout.latency").description("owner commit (occurred_at) to queued on a connection")
                 .publishPercentiles(0.5, 0.95, 0.99).register(meters);
@@ -95,7 +97,32 @@ public class Hub implements MessageListener {
     }
 
     @Override
-    public void onMessage(Message message, byte[] pattern) { deliver(new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8)); }
+    public void onMessage(Message message, byte[] pattern) {
+        String body = new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8);
+        if (REVOKED.equals(new String(message.getChannel(), java.nio.charset.StandardCharsets.UTF_8))) closeSession(body);
+        else deliver(body);
+    }
+
+    /**
+     * Redis channel carrying revoked session hashes (AMENDMENT-008, Q-044); the gateway drops its cache entry on it too.
+     * Inside the agg:* pattern on purpose: a second (channel) subscription broke resubscription after a Redis restart.
+     */
+    static final String REVOKED = "agg:sessions:revoked";
+
+    /** SessionRevoked (one realtime instance consumes it from SQS): every instance closes the session's streams. */
+    void revokeSession(String sessionHash) {
+        try {
+            redis.convertAndSend(REVOKED, sessionHash);
+        } catch (RuntimeException e) {
+            redisFailures.increment();
+            log.warn("redis publish failed ({}); closing revoked streams on this instance only", e.toString());
+            closeSession(sessionHash);
+        }
+    }
+
+    void closeSession(String sessionHash) {
+        for (Connection c : all()) if (sessionHash.equals(c.sessionHash)) c.close("session revoked");
+    }
 
     @SuppressWarnings("unchecked")
     void deliver(String json) {
