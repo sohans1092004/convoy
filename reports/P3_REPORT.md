@@ -46,6 +46,8 @@ P1 journey passed after each subtask, and the first nightly run was fully green.
 - E122 is `/realtime/me/stream?pool_id=` (one pool per stream; membership checked per resource).
 - The mispriced add-on is flagged by comparison (a dealer-required add-on no other offer requires), because there is no
   verified reference price for accessories to compare against (no invented data).
+- Demo final round 0 s → 20 s (`scripts/dev-env.sh`, `.env.example`): a 0-second final round made a final-round revision
+  impossible; the single-dealer journey is ~20 s longer.
 - Simulated dealerships are seeded by a dealer migration (as the P1 synthetic one was): they exist in every environment
   that runs migrations; marked synthetic.
 
@@ -59,7 +61,10 @@ P1 journey passed after each subtask, and the first nightly run was fully green.
   messages parity); simulator 3/3 (`node --test`).
 - Authz matrix covers every built P3 endpoint (ApiOutline.BUILT_IDS).
 - P1 journey (360 px): passed after every subtask (3.8–4.1 min). Three-dealer journey: see section 6 and the final run below.
-- JOURNEY_RESULT_PLACEHOLDER
+- Three-dealer journey (`THREE_DEALERS=1`, 360 px, local): passed on the second attempt (4.1 min): 3 offers compared, the
+  mispriced add-on flagged, the aggressive dealer went from 2nd of 3 at the final-round open to 1st after its revision, rank
+  responses carried only own rank/of_n, final price <= ceiling. The first attempt failed because the demo final round was
+  0 s long (no time to revise); it is now 20 s (`DEMO_FINAL_ROUND_SECONDS`).
 
 ## 5. Bugs found and fixed
 - Buyers could read SUBMITTED/REVISED quotes while the round was open (sealed leak) — now FINAL only (P3.B).
@@ -70,6 +75,8 @@ P1 journey passed after each subtask, and the first nightly run was fully green.
 - CI flakes with real causes: MF-2/MF-3 expected exactly one duplicate (SQS is at-least-once); the realtime "redis back"
   check slept 4 s for a ~5 s resubscription (fixed on both branches before merging).
 - Journey: the evidence-label check picked the hidden mobile list at desktop width (now visible-only).
+- The P1 eligibility test expected exactly one Pune dealership; it now expects the four seeded ones by id.
+- The web image's build typechecked the journey's import of `tools/simulator` (outside its build context): loaded at run time.
 
 ## 6. Nightly results
 First nightly run (manual trigger, `main` after PRs #3/#4): https://github.com/sohans1092004/convoy/actions/runs/40217726891
@@ -89,4 +96,5 @@ that run, so its first nightly execution is the next one.
 ## 8. Needs from me
 - Review and merge PR #5 (ready for review; not merged).
 - Native-speaker review of `web/messages/hi.json`.
+- Your local `.env`: `DEMO_FINAL_ROUND_SECONDS` changed 0 → 20 (nothing else).
 - Confirm the simulated dealerships may stay as migration-seeded synthetic rows (or move them to local-only seed data).
