@@ -11,3 +11,4 @@
 - 12:46Z P2.5.B started (time box 60 min): fail-fast (gateway route limits + 503 mapping, realtime stream cap) and CI split (PR fast path, nightly heavy).
 - 12:52Z Fail fast done: gateway per-route limit (503 + Retry-After, immediate), upstream drop/refuse/timeout -> 503, realtime stream cap 1,000/instance -> 503 + Retry-After. Targeted tests pass (FailFastTest x2, RealtimeIT cap test). Next: CI split (baseline PR run 11m38s).
 - 12:54Z CI split written: ci.yml = changed modules only (-PskipNightly, build cache), node = generated check/price engine/fake/web unit+typecheck, PR e2e = journey at 360 px only; nightly.yml (03:00 IST + manual) = MF-1..6, Storybook/visual, both viewports + all browser suites, budgets, Lighthouse, realtime scenarios. Pushing to measure.
+- 13:03Z P2.5.B DONE: PR CI green, wall 8m00s (before 11m38s); e2e 7m57s, node 35s (was 2m45s), JVM jobs 0m36s-1m36s in parallel. Nightly not yet triggerable: workflow_dispatch needs nightly.yml on main.
