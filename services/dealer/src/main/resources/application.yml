@@ -29,3 +29,7 @@ convoy:
   aws:
     endpoint: ${AWS_ENDPOINT:}
     region: ${AWS_REGION:ap-south-1}
+dealer:
+  # Demo seed (P4.0): synthetic dealerships only when DEMO=true and the seed file is mounted (never in migrations).
+  demo: ${DEMO:false}
+  demo-seed-file: ${DEMO_SEED_DEALERSHIPS:}

@@ -145,6 +145,10 @@ services:
       <<: *service-env
       OTEL_SERVICE_NAME: dealer
       DB_PASSWORD: ${DB_PASSWORD_DEALER}
+      # Demo seed (P4.0): the local stack and CI are demo environments; a lite deploy seeds only with DEMO=true.
+      DEMO: ${DEMO:-true}
+      DEMO_SEED_DEALERSHIPS: /seed/dealerships.sql
+    volumes: ["./deploy/local/seed:/seed:ro"]
 
   pool:
     <<: *service
@@ -154,10 +158,10 @@ services:
       OTEL_SERVICE_NAME: pool
       DB_PASSWORD: ${DB_PASSWORD_POOL}
       CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
-      DEMO_SEALED_ROUND_SECONDS: ${DEMO_SEALED_ROUND_SECONDS}
-      DEMO_FINAL_ROUND_SECONDS: ${DEMO_FINAL_ROUND_SECONDS}
-      DEMO_DECISION_SECONDS: ${DEMO_DECISION_SECONDS}
-      DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS}
+      DEMO_SEALED_ROUND_SECONDS: ${DEMO_SEALED_ROUND_SECONDS:-90} # demo default; production config defaults are days
+      DEMO_FINAL_ROUND_SECONDS: ${DEMO_FINAL_ROUND_SECONDS:-20} # demo default; production config defaults are days
+      DEMO_DECISION_SECONDS: ${DEMO_DECISION_SECONDS:-60} # demo default; production config defaults are days
+      DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS:-60} # demo default; production config defaults are days
       POOL_MIN_MEMBERS: ${POOL_MIN_MEMBERS:-1} # demo value (AMENDMENT-007); production default is 5
 
   # Realtime (wave 2): two instances share one SQS queue (competing consumers) and fan out through Redis Pub/Sub.
