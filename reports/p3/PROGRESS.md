@@ -8,3 +8,4 @@
 - 13:42Z P3.B started (quote lifecycle backend). Surveying existing quote service.
 - 13:51Z P3.B built: E064 revise (immutable v n+1, fresh snapshots, diff in audit), E065 withdraw until deadline, E066 admin cancel after FINAL (after_final), content checks (validity date, stock colour/date, dealer-confirmed stock evidence), quote_versions immutable by trigger; fixed a sealed leak (buyers could read SUBMITTED quotes while the round was open: now FINAL only). Tests written; running quote ITs.
 - 14:00Z Quote ITs pass except drift before regen; web quote form wired to real revise/withdraw (typed client caught the old 501-era calls); Stock.evidence optional (NON_NULL). Re-running quote ITs, then the P1 journey once.
+- 14:13Z P3.B DONE: P1 journey passed (3.9 min) on the 2nd run; 1st failed only at the Jaeger trace check (Jaeger OOM-killed again at 256 MB: in-memory store unbounded). Committed 964fa0e, pushed.
