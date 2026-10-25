@@ -71,8 +71,10 @@ class RealtimeIT extends ServiceTest {
         final java.util.concurrent.CompletableFuture<HttpResponse<java.util.stream.Stream<String>>> response;
         volatile int status;
 
-        Client(UUID pool, String token) {
-            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/realtime/pools/" + pool + "/stream"))
+        Client(UUID pool, String token) { this("/realtime/pools/" + pool + "/stream", token); }
+
+        Client(String path, String token) {
+            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                     .header("Authorization", "Bearer " + token).header("Accept", "text/event-stream").GET().build();
             response = http.sendAsync(req, HttpResponse.BodyHandlers.ofLines());
             response.thenAccept(r -> {
@@ -122,6 +124,24 @@ class RealtimeIT extends ServiceTest {
             fillers.forEach(hub::remove);
         }
         assertThat(hub.connections()).isLessThan(settings.maxConnections()); // capacity back: streams are accepted again
+    }
+
+    @Test
+    void theDealerStreamCarriesOnlyTheCallersOwnDealershipsRankAndRounds() throws Exception {
+        // E121 (P3.C): per-resource authorisation is the token's own dealership; nothing of another dealership leaks.
+        UUID mine = UUID.randomUUID(), rival = UUID.randomUUID();
+        Client me = new Client("/realtime/dealer/stream", TestTokens.dealer("realtime", UUID.randomUUID(), mine));
+        Client them = new Client("/realtime/dealer/stream", TestTokens.dealer("realtime", UUID.randomUUID(), rival));
+        me.await("ready", j -> j.path("id").asText().equals(mine.toString()));
+        them.await("ready", j -> j.path("id").asText().equals(rival.toString()));
+        hub.publish("dealer", mine.toString(), System.currentTimeMillis(), "RankChanged", java.time.Instant.now(),
+                Map.of("quote_id", UUID.randomUUID().toString(), "variant_id", UUID.randomUUID().toString(), "rank", 2, "of_n", 4));
+        me.await("dealer.changed", j -> j.at("/delta/rank").asInt() == 2 && j.at("/delta/of_n").asInt() == 4);
+        Thread.sleep(500);
+        assertThat(them.events.stream().map(e -> e[0]).toList()).doesNotContain("dealer.changed");
+        // Buyers and admins cannot open it; no token: 401.
+        assertThat(get("/realtime/dealer/stream", TestTokens.buyer("realtime", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/realtime/dealer/stream", null).status()).isEqualTo(401);
     }
 
     @Test

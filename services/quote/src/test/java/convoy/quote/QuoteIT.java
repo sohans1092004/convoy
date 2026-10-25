@@ -244,6 +244,94 @@ class QuoteIT extends ServiceTest {
         assertThat(send("POST", "/dealer/quotes/" + id + "/revisions", rival, draft(SWIFT, 1, 2, null), Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"2\"")).status()).isEqualTo(404);
     }
 
+    /** A sealed round inviting several dealerships. */
+    Round openRoundFor(List<UUID> dealers, java.time.Instant deadline, UUID pool, UUID round) {
+        List<Map<String, Object>> variants = List.of(Map.of("id", SWIFT, "code", "swift-lxi-mt", "name", "LXi MT", "fuel", "PETROL", "engine_cc", 1197));
+        inTx(() -> quotes.roundOpened(new QuoteRoundOpened(pool.toString(), round.toString(), 1L, 1L, "SEALED", deadline,
+                dealers.stream().map(UUID::toString).toList(), List.of(SWIFT), 1L, "MH", variants)));
+        return new Round(pool, round, dealers.get(0));
+    }
+
+    @Test
+    void dealersSeeOnlyTheirOwnRankAndOfNAndOnlyFromTheFinalRound() throws Exception {
+        UUID a = UUID.randomUUID(), b = UUID.randomUUID(), pool = Uuid7.next(), r1 = Uuid7.next();
+        openRoundFor(List.of(a, b), Instant.now().plusSeconds(600), pool, r1);
+        Round ra = new Round(pool, r1, a), rb = new Round(pool, r1, b);
+        String qa = create(ra).path("id").asText(), qb = create(rb).path("id").asText();
+        assertThat(saveAndSubmit(ra, qa, draft(SWIFT, 2000000, 2500000, null)).status()).isEqualTo(200); // bigger discount: cheaper
+        assertThat(saveAndSubmit(rb, qb, draft(SWIFT, 1000000, 2500000, null)).status()).isEqualTo(200);
+        // Sealed round: no rank for anyone.
+        assertThat(JSON.readTree(get("/dealer/quotes/" + qa + "/rank", dealer(a)).body()).path("ranks")).isEmpty();
+        // Final round opens: ranks are computed; each dealer sees exactly {variant_id, rank, of_n, rule_version, computed_at}.
+        inTx(() -> quotes.roundClosed(new RoundClosed(pool.toString(), r1.toString(), "SEALED", Instant.now(), Instant.now(), 1L)));
+        inTx(() -> quotes.roundOpened(new QuoteRoundOpened(pool.toString(), Uuid7.next().toString(), 1L, 2L, "FINAL", Instant.now().plusSeconds(600),
+                List.of(a.toString(), b.toString()), List.of(SWIFT), 1L, "MH", List.of(Map.of("id", SWIFT, "code", "swift-lxi-mt", "name", "LXi MT", "fuel", "PETROL", "engine_cc", 1197)))));
+        JsonNode mine = JSON.readTree(get("/dealer/quotes/" + qa + "/rank", dealer(a)).body()).path("ranks").get(0);
+        assertThat(mine.path("rank").asInt()).isEqualTo(1);
+        assertThat(mine.path("of_n").asInt()).isEqualTo(2);
+        java.util.List<String> fields = new java.util.ArrayList<>();
+        mine.fieldNames().forEachRemaining(fields::add);
+        assertThat(fields).containsExactlyInAnyOrder("variant_id", "rank", "of_n", "rule_version", "computed_at"); // AZ-RNK-01: nothing else
+        assertThat(JSON.readTree(get("/dealer/quotes/" + qb + "/rank", dealer(b)).body()).at("/ranks/0/rank").asInt()).isEqualTo(2);
+        assertThat(get("/dealer/quotes/" + qa + "/rank", dealer(b)).status()).isEqualTo(404); // AZ-RNK-02: not another dealer's quote
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'RankChanged' and payload->>'pool_id' = ?", Integer.class, pool.toString())).isEqualTo(2);
+        // A revision in the final round that undercuts the leader re-ranks both.
+        assertThat(act(rb, qb, "/revisions", draft(SWIFT, 3000000, 3500000, null), dealer(b)).status()).isEqualTo(200);
+        assertThat(JSON.readTree(get("/dealer/quotes/" + qb + "/rank", dealer(b)).body()).at("/ranks/0/rank").asInt()).isEqualTo(1);
+        assertThat(JSON.readTree(get("/dealer/quotes/" + qa + "/rank", dealer(a)).body()).at("/ranks/0/rank").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    void fiftyParallelSubmissionsAroundTheDeadlineKeepEveryEarlyOneAndRejectEveryLateOne() throws Exception {
+        // deadline-rule.md: the DB clock at commit decides. 50 dealers submit spread from 0.4 s before to 0.4 s after the deadline.
+        List<UUID> dealers = java.util.stream.IntStream.range(0, 50).mapToObj(i -> UUID.randomUUID()).toList();
+        Instant deadline = Instant.now().plusSeconds(8);
+        UUID pool = Uuid7.next(), r = Uuid7.next();
+        openRoundFor(dealers, deadline, pool, r);
+        Map<UUID, String> ids = new java.util.LinkedHashMap<>();
+        Map<UUID, Long> versions = new java.util.HashMap<>();
+        for (UUID d : dealers) {
+            Round rd = new Round(pool, r, d);
+            String id = create(rd).path("id").asText();
+            Resp saved = send("PUT", "/dealer/quotes/" + id + "/draft", dealer(d), draft(SWIFT, 1000000, 2500000, null), Map.of("If-Match", "\"1\""));
+            ids.put(d, id);
+            versions.put(d, JSON.readTree(saved.body()).path("version").asLong());
+        }
+        assertThat(Instant.now()).as("setup must finish before the deadline").isBefore(deadline.minusMillis(500));
+        java.util.concurrent.ExecutorService pool50 = java.util.concurrent.Executors.newFixedThreadPool(50);
+        List<java.util.concurrent.Future<Resp>> futures = new java.util.ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            UUID d = dealers.get(i);
+            Instant at = deadline.minusMillis(400).plusMillis(i * 16L); // -400 ms .. +384 ms
+            futures.add(pool50.submit(() -> {
+                long wait = java.time.Duration.between(Instant.now(), at).toMillis();
+                if (wait > 0) Thread.sleep(wait);
+                return send("POST", "/dealer/quotes/" + ids.get(d) + "/submit", dealer(d), null,
+                        Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"" + versions.get(d) + "\""));
+            }));
+        }
+        int kept = 0, rejected = 0;
+        for (int i = 0; i < 50; i++) {
+            Resp res = futures.get(i).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            String id = ids.get(dealers.get(i));
+            if (res.status() == 200) {
+                kept++;
+                java.sql.Timestamp committed = jdbc.queryForObject("select committed_at from quote_versions where quote_id = ?::uuid and version_no = 1", java.sql.Timestamp.class, id);
+                assertThat(committed.toInstant()).as("kept submissions committed before the deadline").isBefore(deadline);
+                assertThat(jdbc.queryForObject("select state from quotes where id = ?::uuid", String.class, id)).isEqualTo("SUBMITTED");
+            } else {
+                rejected++;
+                assertThat(code(res)).as(res.body()).isEqualTo("DEADLINE_PASSED");
+                assertThat(jdbc.queryForObject("select state from quotes where id = ?::uuid", String.class, id)).isEqualTo("DRAFT");
+                assertThat(jdbc.queryForObject("select count(*) from quote_versions where quote_id = ?::uuid", Integer.class, id)).as("nothing of a late submission is kept").isZero();
+            }
+        }
+        pool50.shutdown();
+        assertThat(kept + rejected).isEqualTo(50);
+        assertThat(kept).as("some submissions landed before the deadline").isPositive();
+        assertThat(rejected).as("some landed after it").isPositive();
+    }
+
     @Test
     void authorisationMatrixForEveryP1Endpoint() {
         assertThat(AuthzDenyChecks.run("quote", this::send, (m, p) -> p.endsWith("/draft") || p.endsWith("/revisions") ? "{}" : p.endsWith("/withdraw") || p.endsWith("/cancel") ? "{\"reason\":\"x\"}" : null)).isEmpty();

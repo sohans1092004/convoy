@@ -144,5 +144,36 @@ public final class QuotePricing {
         return new Priced(snapshots, CanonicalJson.sha256(snapshots), variantInputs);
     }
 
+    /**
+     * ranking-rule.md section 1: per variant, the engine's cash payable in mode RANKING at the ceiling tier (the tier holding
+     * min_fulfilment), mandatory items and baseline insurance (the engine uses the dealer's figure only if binding and baseline,
+     * AMENDMENT-004). Returns {variant_id: {score_paise, delivery_date}}.
+     */
+    public static Map<String, Object> rankingScores(Map<String, Object> draft, Map<String, Map<String, Object>> facts, String stateCode, Map<String, Object> rules) {
+        String rv = (String) m(rules.get("ruleset")).get("ruleset_version");
+        long minF = lng(draft.get("min_fulfilment")) == null ? 1 : lng(draft.get("min_fulfilment"));
+        long discount = 0;
+        for (Object o : l(draft.get("tiers"))) {
+            Map<String, Object> t = m(o);
+            Long min = lng(t.get("min")), max = lng(t.get("max"));
+            if (min != null && min <= minF && (max == null || minF <= max)) discount = lng(t.get("discount_paise")) == null ? 0 : lng(t.get("discount_paise"));
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (Object o : l(draft.get("variants"))) {
+            Map<String, Object> line = m(o);
+            String vid = String.valueOf(line.get("variant_id"));
+            Map<String, Object> f = facts.get(vid);
+            if (f == null) continue;
+            Map<String, Object> res = m(PriceEngine.snapshotBody(input(f, line, stateCode, rv, discount, "RANKING"), rules).get("output"));
+            if (!"OK".equals(res.get("status"))) continue; // submit/revise already rejected invalid configurations
+            Map<String, Object> s = new LinkedHashMap<>();
+            s.put("score_paise", res.get("cash_payable_paise"));
+            Map<String, Object> stock = line.get("stock") == null ? Map.of() : m(line.get("stock"));
+            s.put("delivery_date", stock.get("delivery_date"));
+            out.put(vid, s);
+        }
+        return out;
+    }
+
     static final Set<String> LIVE = Set.of("SUBMITTED", "REVISED", "FINAL");
 }

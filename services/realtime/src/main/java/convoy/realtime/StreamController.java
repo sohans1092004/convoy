@@ -79,12 +79,34 @@ public class StreamController {
         log.info("closed {} connections on shutdown", n);
     }
 
-    /** E121 / E122 need quote, order and payment events (P2 builds the pool stream only): honest 501 after the role check. */
-    @GetMapping("/realtime/dealer/stream")
-    public void dealerStream() {
-        Caller.current().require("dealer_staff", "dealer_admin");
-        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "The dealer stream (E121) is specified but not built yet; the dealer inbox refreshes every 10 s.");
+    /**
+     * E121 (P3.C): the caller's own dealership only (no path parameter: a dealer cannot ask for another dealership). Carries its
+     * rank updates (RankChanged, own rank and of_n only) and the rounds it is invited to (QuoteRoundOpened). Session and staff
+     * revocation close it like a pool stream (E152 re-check, SessionRevoked).
+     */
+    @GetMapping(path = "/realtime/dealer/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dealerStream(jakarta.servlet.http.HttpServletResponse response) {
+        Caller c = Caller.current().require("dealer_staff", "dealer_admin");
+        if (c.dealershipId() == null) throw ApiProblem.of(ProblemType.NOT_FOUND, "No dealership.");
+        if (hub.connections() >= settings.maxConnections()) {
+            hub.refused.increment();
+            response.setHeader("Retry-After", String.valueOf(1 + ThreadLocalRandom.current().nextInt(5)));
+            throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "Live updates are busy on this server; retrying shortly.");
+        }
+        UUID dealership = UUID.fromString(c.dealershipId());
+        SseEmitter emitter = new SseEmitter(0L);
+        String key = "dealer:" + dealership;
+        Connection conn = new Connection(key, null, null, dealership, c.sessionHash(), emitter, settings.queueCapacity(), hub::remove);
+        hub.add(conn);
+        try {
+            emitter.send(SseEmitter.event().name("ready").reconnectTime(1_000 + ThreadLocalRandom.current().nextLong(4_000))
+                    .data(Hub.write(Map.of("aggregate", "dealer", "id", dealership.toString(), "server_time", Instant.now().toString(), "instance", hub.instance))));
+        } catch (java.io.IOException e) {
+            conn.close(null);
+        }
+        return emitter;
     }
+
 
     @GetMapping("/realtime/me/stream")
     public void meStream() {
@@ -118,6 +140,10 @@ public class StreamController {
         }
         String now = Instant.now().toString();
         for (Connection c : hub.all()) {
+            if (c.poolId == null) { // dealer stream: a liveness heartbeat only (no aggregate version to compare)
+                c.offer(new Connection.Msg("heartbeat", null, Hub.write(Map.of("server_time", now, "aggregate", "dealer", "id", String.valueOf(c.dealershipId)))));
+                continue;
+            }
             c.offer(new Connection.Msg("heartbeat", null, Hub.write(Map.of("server_time", now, "aggregate", "pool", "id", c.poolId.toString(),
                     "version", hub.latest.getOrDefault(c.key, 0L)))));
         }
@@ -149,7 +175,7 @@ public class StreamController {
         }
         for (Connection c : hub.all()) {
             try {
-                if (!allowed(c.poolId, c.buyerId, c.dealershipId)) c.close("access revoked");
+                if (c.poolId != null && !allowed(c.poolId, c.buyerId, c.dealershipId)) c.close("access revoked"); // dealer streams: session check above
             } catch (RestClientException e) {
                 log.info("access re-check for {} unavailable ({}); keeping the connection until the next check", c.key, e.getMessage());
             }

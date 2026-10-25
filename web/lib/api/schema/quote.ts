@@ -160,6 +160,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dealer/quotes/{id}/rank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["rank"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dealer/inbox": {
         parameters: {
             query?: never;
@@ -359,6 +375,19 @@ export interface components {
             dealership_id: string;
             state: string;
             variant_ids: string[];
+        };
+        Rank: {
+            variant_id: string;
+            /** Format: int32 */
+            rank: number;
+            /** Format: int32 */
+            of_n: number;
+            rule_version: string;
+            computed_at: string;
+        };
+        Ranks: {
+            quote_id: string;
+            ranks: components["schemas"]["Rank"][];
         };
         Inbox: {
             requests: components["schemas"]["Request"][];
@@ -649,6 +678,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DealerQuote"];
+                };
+            };
+        };
+    };
+    rank: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Ranks"];
                 };
             };
         };

@@ -141,7 +141,7 @@ public class Hub implements MessageListener {
         Map<String, Object> out = new LinkedHashMap<>(m);
         out.put("server_time", Instant.now().toString());
         String data = write(out);
-        Connection.Msg msg = Boolean.TRUE.equals(m.get("resync")) ? new Connection.Msg("resync", null, data) : new Connection.Msg("pool.changed", key + ":" + version, data);
+        Connection.Msg msg = Boolean.TRUE.equals(m.get("resync")) ? new Connection.Msg("resync", null, data) : new Connection.Msg(m.get("aggregate") + ".changed", key + ":" + version, data); // pool.changed, dealer.changed
         Duration lag = Duration.between(Instant.parse((String) m.get("occurred_at")), Instant.now());
         for (Connection c : cs) {
             if (c.offer(msg)) {

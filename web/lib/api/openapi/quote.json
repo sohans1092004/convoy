@@ -404,6 +404,37 @@
         }
       }
     },
+    "/dealer/quotes/{id}/rank": {
+      "get": {
+        "tags": [
+          "quote-application"
+        ],
+        "operationId": "rank",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ranks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dealer/inbox": {
       "get": {
         "tags": [
@@ -1150,6 +1181,51 @@
           "quote_id",
           "state",
           "variant_ids"
+        ]
+      },
+      "Rank": {
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "of_n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rule_version": {
+            "type": "string"
+          },
+          "computed_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "computed_at",
+          "of_n",
+          "rank",
+          "rule_version",
+          "variant_id"
+        ]
+      },
+      "Ranks": {
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "ranks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Rank"
+            }
+          }
+        },
+        "required": [
+          "quote_id",
+          "ranks"
         ]
       },
       "Inbox": {

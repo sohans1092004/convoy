@@ -49,6 +49,11 @@ public final class Api {
 
     public record Inbox(List<Request> requests) {}
 
+    /** E068: exactly these fields (AZ-RNK-01..03: nothing about competitors). */
+    public record Rank(String variantId, int rank, int ofN, String ruleVersion, String computedAt) {}
+
+    public record Ranks(String quoteId, List<Rank> ranks) {}
+
     // ---- internal (E073)
 
     public record SummaryQuote(String quoteId, String dealershipId, String state, List<String> variantIds) {}

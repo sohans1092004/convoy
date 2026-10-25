@@ -14,3 +14,6 @@
 ## Carried to P4
 - Post-FINAL cancellation effects (QUO-T06, cancellation-rules.md): on `QuoteWithdrawn{after_final: true}` order must cancel the affected orders/bookings, refund deposits, auto-open disputes, and decrement the dealer's reliability score. P3.B emits the event; nothing consumes these effects yet.
 
+- 14:25Z Jaeger capped (max_traces 20000, verified via container args + mounted config; logs do not print the value), P4 list updated, draft PR #5 opened. P3.C: Ranking (pure, tie-breaks), per-version ranking scores (engine RANKING mode, ceiling tier), rank_snapshots + RankChanged, E068 own-rank built; tests written (ranking unit, rank IT, 50-submission deadline IT). Running quote tests.
+- 14:31Z E121 dealer stream built (own dealership only; RankChanged + QuoteRoundOpened fan-out; heartbeat/session re-check apply). Tests pass: RankingTest 4/4, rank IT, 50-submission deadline IT (8.4 s), RealtimeIT incl. E121 authz. Fixed a duplicate QuoteRoundOpened subscription (caught by the MF context). Rebuilding, then the journey once.
+- 14:39Z P3.C DONE: quote ITs + RankingTest all green, realtime ITs green, P1 journey passed first time (3.8 min, Jaeger stayed up). Committing.

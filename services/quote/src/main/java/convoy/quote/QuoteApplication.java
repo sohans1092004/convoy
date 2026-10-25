@@ -97,6 +97,12 @@ public class QuoteApplication {
         return ResponseEntity.ok().eTag("\"" + q.get("version") + "\"").body(convoy.platform.web.Dto.as(q, Api.DealerQuote.class));
     }
 
+    /** E068 (ranking-rule.md section 3): own rank per variant only. */
+    @GetMapping("/dealer/quotes/{id}/rank")
+    public Api.Ranks rank(@PathVariable UUID id) {
+        return convoy.platform.web.Dto.as(quotes.ownRank(id), Api.Ranks.class);
+    }
+
     public record Reason(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 500) String reason) {}
 
     /** E064 (QUO-T03): a full new draft becomes version n+1. */
