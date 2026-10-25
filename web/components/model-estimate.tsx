@@ -1,4 +1,5 @@
 'use client';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -8,30 +9,37 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiError, api, call, type Problem, type Schemas } from '@/lib/api';
+import { ApiError, api, call, type Schemas } from '@/lib/api';
 import { ist } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
+import { useOnline } from '@/lib/use-online';
 
 export type Variant = Schemas['catalog']['Variant'];
 
 const CITIES = ['Mumbai', 'Pune', 'Delhi', 'Bengaluru'] as const;
 type Estimate = Schemas['catalog']['Estimate'];
 
-/** Variant + city picker, on-road estimate (engine snapshot), and "join or start a pool". */
+/**
+ * Variant + city picker, on-road estimate (engine snapshot), and "join or start a pool". PLAN §5.2 states: loading, empty
+ * (no verified price for this variant in this city), error (choices kept), stale (previous estimate after a failed
+ * refresh or offline), pending, conflict (e.g. a commitment elsewhere), offline (joining paused), success.
+ */
 export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: string; variants: Variant[]; canJoin: boolean; signedIn: boolean }) {
   const router = useRouter();
   const [variantId, setVariantId] = React.useState(variants[0]?.id);
   const [city, setCity] = React.useState<(typeof CITIES)[number]>('Pune');
-  const [estimate, setEstimate] = React.useState<{ loading: boolean; data?: Estimate; problem?: Problem }>({ loading: true });
-
-  React.useEffect(() => {
-    let live = true;
-    setEstimate({ loading: true });
-    call(api.GET('/catalog/variants/{id}/price-estimate', { params: { path: { id: variantId }, query: { city } } }))
-      .then(({ data }) => live && setEstimate({ loading: false, data }))
-      .catch((e) => live && setEstimate({ loading: false, problem: e instanceof ApiError ? e.problem : { status: 0, detail: 'Network error.' } }));
-    return () => { live = false; };
-  }, [variantId, city]);
+  const online = useOnline();
+  const estimate = useQuery<Estimate, ApiError>({
+    queryKey: ['estimate', variantId, city],
+    queryFn: async () => (await call(api.GET('/catalog/variants/{id}/price-estimate', { params: { path: { id: variantId! }, query: { city } } }))).data,
+    placeholderData: keepPreviousData,
+    retry: (n, e) => n < 1 && e?.problem?.code !== 'QUOTE_INVALID',
+    enabled: Boolean(variantId),
+  });
+  // QUOTE_INVALID = the engine has no verified inputs for this variant in this city: an empty state, not a failure.
+  const noPrice = estimate.error?.problem?.code === 'QUOTE_INVALID';
+  const current = estimate.data && !estimate.isPlaceholderData ? estimate.data : undefined;
+  const previous = estimate.isPlaceholderData ? estimate.data : undefined;
 
   const month = new Date().toISOString().slice(0, 7);
   const start = useCommand(async (key: string) => call(
@@ -59,8 +67,9 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           <h2 className="font-bold">Buy with others in {city}</h2>
           <p className="text-sm text-muted">Join buyers who want a {variant?.name ?? 'car'} this month. Dealers then compete for the whole group.</p>
+          {!online ? <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">You are offline. Joining is paused until you reconnect; your choices are kept.</p> : null}
           {canJoin ? (
-            <Button loading={start.state.kind === 'loading'} onClick={async () => { const r = await start.execute(); if (r) router.push(`/pools/${r.data.pool.id}`); }}>
+            <Button disabled={!online} loading={start.state.kind === 'loading'} onClick={async () => { const r = await start.execute(); if (r) router.push(`/pools/${r.data.pool.id}`); }}>
               Join or start a pool in {city}
             </Button>
           ) : signedIn ? (
@@ -68,26 +77,37 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
           ) : (
             <Button asChild><Link href={`/sign-in?next=/models/${slug}`}>Sign in to join a pool</Link></Button>
           )}
-          <CommandStatus state={start.state} />
+          <CommandStatus state={start.state} successText="Pool ready. Opening it…" />
         </div>
       </Card>
       <section aria-labelledby="estimate" className="flex flex-col gap-3">
         <h2 id="estimate" className="text-lg font-bold">On-road estimate in {city}</h2>
-        {estimate.loading ? <Skeleton className="h-64" label="Calculating the on-road estimate" /> : null}
-        {estimate.problem ? (
-          <Card><p role="alert" className="text-sm"><strong>No estimate for this variant.</strong> {estimate.problem.detail}</p>
-            <p className="mt-2 text-sm text-muted">We only estimate when every input is published or verified. A dealer&apos;s quote will give exact figures.</p></Card>
+        {estimate.isPending && estimate.isFetching ? <Skeleton className="h-64" label="Calculating the on-road estimate" /> : null}
+        {estimate.isFetching && previous ? <p aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
+        {noPrice ? (
+          <Card><p className="text-sm"><strong>No verified price for {variant?.name} in {city} yet.</strong> {estimate.error?.problem?.detail}</p>
+            <p className="mt-2 text-sm text-muted">We only estimate when every input is published or verified. Try another city, or join a pool: a dealer&apos;s quote gives exact figures.</p></Card>
+        ) : estimate.isError && !estimate.data ? (
+          <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger">
+            <p>The estimate could not be calculated right now. Your variant and city are kept.</p>
+            <Button variant="secondary" onClick={() => estimate.refetch()}>Try again</Button>
+          </div>
         ) : null}
-        {estimate.data ? (
-          <>
+        {(estimate.isError && estimate.data && !noPrice) || (!online && estimate.data) ? (
+          <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">
+            This estimate was calculated {ist(estimate.data.snapshot.computed_at)} and could not be refreshed{!online ? ' (offline)' : ''}. It may be out of date.
+          </p>
+        ) : null}
+        {(current ?? previous) && !noPrice ? (
+          <div className={previous ? 'opacity-60' : undefined} aria-busy={Boolean(previous)}>
             <Card emphasis className="flex flex-col gap-1">
               <CardTitle as="h3" className="text-base">Estimated cash payable</CardTitle>
-              <Price paise={estimate.data.snapshot.output.cash_payable_paise} evidence="CATALOGUE_ESTIMATE" size="lg" />
-              <p className="text-sm text-muted">Catalogue figures only: registration and insurance are estimated from published rules. {estimate.data.city_confirmed ? '' : 'Manufacturer price; city not confirmed.'}</p>
+              <Price paise={(current ?? previous)!.snapshot.output.cash_payable_paise} evidence="CATALOGUE_ESTIMATE" size="lg" />
+              <p className="text-sm text-muted">Catalogue figures only: registration and insurance are estimated from published rules. {(current ?? previous)!.city_confirmed ? '' : 'Manufacturer price; city not confirmed.'}</p>
             </Card>
-            <Breakdown output={estimate.data.snapshot.output} caption={`On-road estimate, ${variant?.name}, ${city}`} />
-            <p className="text-xs text-muted">Ruleset {estimate.data.snapshot.ruleset_version} · calculated {ist(estimate.data.snapshot.computed_at)} · snapshot {estimate.data.snapshot.sha256.slice(0, 12)}</p>
-          </>
+            <div className="mt-3"><Breakdown output={(current ?? previous)!.snapshot.output} caption={`On-road estimate, ${variant?.name}, ${city}`} /></div>
+            <p className="mt-2 text-xs text-muted">Ruleset {(current ?? previous)!.snapshot.ruleset_version} · calculated {ist((current ?? previous)!.snapshot.computed_at)} · snapshot {(current ?? previous)!.snapshot.sha256.slice(0, 12)}</p>
+          </div>
         ) : null}
       </section>
     </div>

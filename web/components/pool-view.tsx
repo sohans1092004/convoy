@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
+import { useOnline } from '@/lib/use-online';
 import { type LiveStatus, useLiveSnapshot } from '@/lib/use-live-snapshot';
 
 type Membership = Schemas['pool']['Membership'];
@@ -59,6 +60,12 @@ export function LiveIndicator({ status }: { status: LiveStatus }) {
   );
 }
 
+/** The membership the buyer sees while their join is in flight (replaced by the server's, or rolled back). */
+function optimisticMembership(poolId: string): Membership {
+  return { id: 'pending', pool_id: poolId, state: 'INTERESTED', current_payment_id: null, terms_version: null, accepted_quote_id: null, accepted_variant_id: null,
+    release_reason: null, version: 0 };
+}
+
 function loadScript(src: string) {
   return new Promise<void>((resolve, reject) => {
     if (window.Razorpay) return resolve();
@@ -72,15 +79,26 @@ function loadScript(src: string) {
 
 export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl: string }) {
   const t = useTranslations('precommit');
-  const snap = useLiveSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), `/api/stream/pools/${poolId}`, [poolId]);
+  const snap = useLiveSnapshot(['pool', poolId], () => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), `/api/stream/pools/${poolId}`);
+  const online = useOnline();
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
 
+  // Optimistic join: the count and "interested" show at once and roll back on failure. The version is not bumped, so the
+  // stream's delta for this join (absolute counts, version + 1) applies on top without counting the buyer twice.
   const join = useCommand(async (key: string) => {
-    const r = await call(api.POST('/pools/{id}/members', { params: { path: { id: poolId } }, headers: { 'Idempotency-Key': key } }));
-    await snap.refresh();
-    return r;
+    const before = snap.data;
+    snap.setData((p) => ({ ...p, interested_count: p.interested_count + 1, my_membership: optimisticMembership(p.id) }));
+    try {
+      const r = await call(api.POST('/pools/{id}/members', { params: { path: { id: poolId } }, headers: { 'Idempotency-Key': key } }));
+      snap.setData((p) => ({ ...p, my_membership: r.data }));
+      await snap.refresh();
+      return r;
+    } catch (e) {
+      if (before) snap.setData(() => before);
+      throw e;
+    }
   });
 
   const commit = useCommand(async (key: string) => {
@@ -89,8 +107,19 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
     return r.data.deposit;
   });
 
+  // Optimistic leave, rolled back on failure (e.g. a version conflict: the page then shows the latest state).
   const leave = useCommand(async (key: string) => {
-    await call(api.DELETE('/pools/{id}/members/me', { params: { path: { id: poolId } }, headers: { 'Idempotency-Key': key, 'If-Match': `"${me!.version}"` } }));
+    const before = snap.data;
+    const wasCommitted = me && me.state !== 'INTERESTED';
+    snap.setData((p) => ({ ...p, interested_count: Math.max(0, p.interested_count - 1), committed_count: Math.max(0, p.committed_count - (wasCommitted ? 1 : 0)),
+      my_membership: p.my_membership ? { ...p.my_membership, state: 'LEFT' } : p.my_membership }));
+    try {
+      await call(api.DELETE('/pools/{id}/members/me', { params: { path: { id: poolId } }, headers: { 'Idempotency-Key': key, 'If-Match': `"${me!.version}"` } }));
+    } catch (e) {
+      if (before) snap.setData(() => before);
+      await snap.refresh();
+      throw e;
+    }
     await snap.refresh();
   });
 
@@ -122,7 +151,16 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   }
 
   if (snap.loading && !pool) return <Skeleton className="h-96" label="Loading the pool" />;
-  if (!pool) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{snap.problem?.detail ?? 'This pool could not be loaded.'}</p>;
+  if (!pool) {
+    return (
+      <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-danger">
+        <p>{snap.problem?.detail ?? 'This pool could not be loaded.'}</p>
+        <Button variant="secondary" onClick={() => snap.refresh()}>Try again</Button>
+      </div>
+    );
+  }
+  // Stale: the last good snapshot is shown but may be behind (offline, or the latest refresh failed).
+  const stale = !online || Boolean(snap.problem);
 
   const sealed = pool.rounds.find((r) => r.kind === 'SEALED');
   const joinable = ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN'].includes(pool.state);
@@ -136,8 +174,13 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
       <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-2xl font-extrabold">{pool.brand} {pool.model_slug.split('-').slice(1).join(' ')} pool, {pool.city}</h1>
         <Badge tone="info">{STATE_TEXT[pool.state] ?? pool.state}</Badge>
-        <LiveIndicator status={snap.status} />
+        <LiveIndicator status={online ? snap.status : 'delayed'} />
       </div>
+      {!online ? (
+        <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">You are offline. This is the last known state of the pool; joining, committing and leaving are paused until you reconnect.</p>
+      ) : stale ? (
+        <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">Counts may be out of date: last updated {ist(new Date(snap.updatedAt).toISOString(), true)}. Retrying every 10 s.</p>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
           <Card className="flex flex-col gap-3">
@@ -146,6 +189,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
               <div><dt className="text-sm text-muted">Committed (deposit held)</dt><dd className="tabular text-2xl font-bold">{pool.committed_count}</dd></div>
               <div><dt className="text-sm text-muted">Interested, no deposit</dt><dd className="tabular text-2xl font-bold">{pool.interested_count - pool.committed_count}</dd></div>
             </dl>
+            {pool.interested_count === 0 && joinable ? <CardText>No one has joined yet. Join free as interested, or commit to be the first.</CardText> : null}
             <div>
               <div className="h-3 overflow-hidden rounded-full border border-border bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={pool.min_members} aria-valuenow={pool.committed_count} aria-label="Committed buyers towards the minimum">
                 <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
@@ -168,7 +212,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
           <CardTitle>Your place</CardTitle>
           <p className="text-sm">{me ? <>Status: <strong>{me.state.replace(/_/g, ' ').toLowerCase()}</strong></> : 'You are not in this pool yet.'}</p>
           {!me && joinable ? (
-            <Button variant="secondary" loading={join.state.kind === 'loading'} onClick={() => join.execute()}>Join as interested (free)</Button>
+            <Button variant="secondary" disabled={!online} loading={join.state.kind === 'loading'} onClick={() => join.execute()}>Join as interested (free)</Button>
           ) : null}
           <CommandStatus state={join.state} successText="You joined as interested." />
           {canCommit ? (
@@ -188,18 +232,18 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
                 <input type="checkbox" className="mt-0.5 size-5 accent-[var(--primary)]" checked={ack} onChange={(e) => setAck(e.target.checked)} />
                 <span>{t('ack', { version: pool.terms_version })}</span>
               </label>
-              <Button disabled={!ack} loading={commit.state.kind === 'loading'} onClick={onCommit}>{t('commit')}</Button>
+              <Button disabled={!ack || !online} loading={commit.state.kind === 'loading'} onClick={onCommit}>{t('commit')}</Button>
               <p className="text-xs text-muted">Deposit {rupees(pool.deposit_amount_paise)} · Razorpay test mode</p>
             </div>
           ) : null}
           <CommandStatus state={commit.state} />
-          {me && ['INTERESTED', 'COMMITTED', 'ACCEPTED'].includes(me.state) && ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN', 'FINAL_ROUND', 'DECISION_OPEN'].includes(pool.state) ? (
-            <Button variant="link" loading={leave.state.kind === 'loading'} onClick={() => leave.execute()}>Leave this pool{me.state !== 'INTERESTED' ? ' (full ₹999 refund)' : ''}</Button>
+          {me && me.id !== 'pending' && ['INTERESTED', 'COMMITTED', 'ACCEPTED'].includes(me.state) && ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN', 'FINAL_ROUND', 'DECISION_OPEN'].includes(pool.state) ? (
+            <Button variant="link" disabled={!online} loading={leave.state.kind === 'loading'} onClick={() => leave.execute()}>Leave this pool{me.state !== 'INTERESTED' ? ' (full ₹999 refund)' : ''}</Button>
           ) : null}
           <CommandStatus state={leave.state} successText="You left the pool. Any deposit is being refunded in full." />
         </Card>
       </div>
-      <p className="text-xs text-muted">This page refreshes every 10 seconds. Last update {ist(pool.server_time, true)}.</p>
+      <p className="text-xs text-muted">{snap.status === 'live' && online ? 'Live updates on.' : 'Refreshing every 10 seconds.'} Last update {ist(new Date(snap.updatedAt || Date.now()).toISOString(), true)}.</p>
     </div>
   );
 }

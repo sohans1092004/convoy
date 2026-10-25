@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Toaster } from '@/components/ui/toast';
 import { SignOutButton } from '@/components/sign-out';
+import { QueryProvider } from '@/lib/query';
 import './globals.css';
 
 export const metadata: Metadata = { title: 'Convoy', description: 'Group car buying with sealed, itemised dealer offers.' };
@@ -20,6 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en-IN">
       <body className="min-h-screen">
         <NextIntlClientProvider>
+          <QueryProvider>
           <Toaster>
             <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-fg focus:px-3 focus:py-2 focus:text-bg">Skip to content</a>
             <p className="bg-fg py-1 text-center text-xs font-bold tracking-wide text-bg">{t('testMode')}</p>
@@ -36,6 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </header>
             <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{children}</main>
           </Toaster>
+          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>

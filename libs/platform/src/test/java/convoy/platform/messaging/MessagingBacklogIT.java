@@ -14,7 +14,6 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -44,7 +43,12 @@ class MessagingBacklogIT {
     void anOfflineConsumerReplaysItsWholeBacklogExactlyOnce() throws Exception {
         int n = Integer.getInteger("mf6.events", 5_000);
         int perPool = 10;
-        DriverManagerDataSource ds = new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+        // A pooled DataSource, as in the services: a new connection per query exhausts ephemeral ports at 50,000 events.
+        com.zaxxer.hikari.HikariDataSource ds = new com.zaxxer.hikari.HikariDataSource();
+        ds.setJdbcUrl(PG.getJdbcUrl());
+        ds.setUsername(PG.getUsername());
+        ds.setPassword(PG.getPassword());
+        ds.setMaximumPoolSize(10);
         Flyway.configure().dataSource(ds).locations("classpath:db/platform").load().migrate();
         JdbcTemplate jdbc = new JdbcTemplate(ds);
         TransactionTemplate tx = new TransactionTemplate(new DataSourceTransactionManager(ds));

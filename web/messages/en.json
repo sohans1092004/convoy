@@ -48,5 +48,26 @@
     "voided": "No money was taken: your deposit was never completed and has been cancelled.",
     "noDeposit": "You had no deposit in this pool, so there is nothing to refund.",
     "again": "Start or join another pool for this car"
+  },
+  "discover": {
+    "heading": "Cars with checked prices",
+    "search": "Search cars",
+    "searchPlaceholder": "Brand, model or body type",
+    "city": "City",
+    "anyCity": "Any city",
+    "loading": "Loading cars",
+    "error": "The catalogue is unavailable right now. Your search is kept; try again.",
+    "retry": "Try again",
+    "stale": "Showing prices loaded at {time}; the latest refresh failed.",
+    "offline": "You are offline. These are the cars loaded earlier; search still works, prices may be out of date.",
+    "rulesetChanged": "Prices were recalculated while you browsed (ruleset {version}). The list now shows the new prices.",
+    "updating": "Updating prices for {city}…",
+    "count": "{count, plural, =0 {No cars} one {# car} other {# cars}} · {city}",
+    "empty": "No cars match “{q}”.",
+    "clear": "Clear search",
+    "variants": "{count, plural, one {# variant} other {# variants}}",
+    "from": "From {price} ex-showroom",
+    "cityNotConfirmed": "Manufacturer price; city not confirmed",
+    "source": "Prices from the manufacturers' official pages (ruleset {version}). Only verified variant prices are listed."
   }
 }

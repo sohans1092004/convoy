@@ -18,16 +18,21 @@ retention (4 days), 4 pollers per queue, long-poll 1 s. Commit: see the P2 repor
 Every MF-1…MF-5 test ends with the global invariants I-1 (delivered, one inbox row), I-2 (one refund, one
 RefundRequested), I-3 (every journal entry balances) and I-4 (DLQs empty unless expected).
 
-## MF-6 measurements (5,000 events, CI size)
+## MF-6 measurements (5,000 events in CI; one 50,000-event run)
 
 | Run | Publish (relay) | Drain after restart | Drain rate | Peak backlog depth | Depth rose after peak |
 |---|---|---|---|---|---|
 | before fixes (1 poller, delete per message, publish per row) | 46.4 s | 154.9 s | 32 /s | 4,990 | 0 times |
 | 4 pollers + batch delete | 41.6 s | 37.4 s | 134 /s | 4,960 | 0 |
 | + relay PublishBatch (10 per call) | 10.3 s | 38.4 s | 130 /s | 4,960 | 0 |
+| **50,000 events** (5,000 pools × 10), commit d4ba59f, pooled DB connections | 67.6 s | 118.5 s | 422 /s | 49,960 | 0 |
+
+The 50,000-event run: all 50,000 reached the inbox exactly once, 50,000 applied, 0 stale, every pool ended at version 10,
+DLQ empty. (A first attempt with an unpooled test DataSource exhausted Windows' ephemeral ports at ~50k connections;
+a harness defect, fixed by pooling as the services do.)
 
 Oldest-message age is a CloudWatch metric, not an SQS queue attribute, so the test samples queue depth instead (it must
-only fall after the peak). The 50,000-event run is recorded in the P2 report.
+only fall after the peak).
 
 ## Defects these tests found (all fixed)
 1. `aggregate_versions` was not keyed by consumer: two consumers in one schema dropped each other's events as stale.

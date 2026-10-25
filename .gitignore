@@ -7,6 +7,7 @@ build/
 out/
 storybook-static/
 playwright-report/
+playwright-report-stories/
 test-results/
 .env
 *.log

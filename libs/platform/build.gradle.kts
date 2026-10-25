@@ -39,3 +39,6 @@ tasks.processResources {
         into("convoy")
     }
 }
+
+// MF-6 size: ./gradlew :libs:platform:test --tests "*MessagingBacklogIT" -Dmf6.events=50000
+tasks.test { System.getProperty("mf6.events")?.let { systemProperty("mf6.events", it) } }

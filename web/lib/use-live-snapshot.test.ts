@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDelta, backoffMs, decide } from './use-live-snapshot';
+import { applyDelta, backoffMs, decide, newer } from './use-live-snapshot';
 
 describe('stream version rule (realtime-recovery.md §2)', () => {
   it('applies only the next version, ignores old ones and resyncs on a gap', () => {
@@ -25,3 +25,12 @@ describe('stream version rule (realtime-recovery.md §2)', () => {
     }
   });
 });
+
+describe('snapshot reconciliation', () => {
+  it('never lets an older snapshot replace a newer one (a slow refetch after a live delta)', () => {
+    expect(newer({ version: 7, n: 'delta' }, { version: 6, n: 'slow snapshot' })).toEqual({ version: 7, n: 'delta' });
+    expect(newer({ version: 7, n: 'a' }, { version: 7, n: 'b' })).toEqual({ version: 7, n: 'b' });
+    expect(newer(undefined, { version: 1 })).toEqual({ version: 1 });
+  });
+});
+
