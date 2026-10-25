@@ -204,3 +204,8 @@ Format: question · options · **default chosen** · impact.
 - Added in P2 (scope F). Measuring AZ-T6 needs a revoke action, so **E012** (revoke staff) moved from P3 to P2; E010/E011 (invites) stay in P3. **E152** `POST /internal/sessions/check` (service:realtime) was added: realtime sends one batch per cycle and closes streams whose session was revoked or whose staff membership ended.
 - **Default:** gateway session cache 25 s (contract: ≤ 30 s; 5 s margin for polling), realtime re-check every 15 s. Revocation removes the dealer role and keeps the user's buyer access and session.
 - Measured locally: reports/p2/revocation.json. Open: whether revocation should also end all the staff member's sessions (stricter), and event-driven cache eviction on StaffRevoked (would make it near-instant; the TTL remains the guarantee).
+
+### Q-045 — Can a buyer rejoin a pool after leaving it? — OPEN (P2)
+- Found by the W3 load test. Today LEFT is terminal (membership state machine) and memberships are unique per (pool, buyer), so a second join returns 409 ALREADY_MEMBER. The spec does not say whether rejoining should be allowed.
+- **Default:** keep current behaviour (no rejoin). W3 was shaped around it: each buyer joins once and may leave once.
+- Impact: a buyer who leaves by mistake cannot come back to the same pool before it closes. Needs a product decision.

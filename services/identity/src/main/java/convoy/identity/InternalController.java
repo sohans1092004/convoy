@@ -46,9 +46,11 @@ public class InternalController {
     public Api.SessionValidation validate(@Valid @RequestBody ValidateBody body) {
         Caller.current().requireScope("sessions:validate");
         String hash = Crypto.sha256(body.sessionId());
-        List<Map<String, Object>> rows = jdbc.queryForList("update sessions set last_seen_at = case when last_seen_at < clock_timestamp() - interval '1 minute' "
-                + "then clock_timestamp() else last_seen_at end where id_hash = ? and revoked_at is null and expires_at > clock_timestamp() "
-                + "returning user_id, expires_at", hash);
+        // A read on the hot path; last_seen is written only when over a minute old (an unconditional UPDATE wrote the row on
+        // every request and made identity the W3 bottleneck).
+        List<Map<String, Object>> rows = jdbc.queryForList("select user_id, expires_at from sessions where id_hash = ? and revoked_at is null "
+                + "and expires_at > clock_timestamp()", hash);
+        if (!rows.isEmpty()) jdbc.update("update sessions set last_seen_at = clock_timestamp() where id_hash = ? and last_seen_at < clock_timestamp() - interval '1 minute'", hash);
         if (rows.isEmpty()) throw ApiProblem.of(ProblemType.UNAUTHENTICATED, "Session is not valid.");
         UUID userId = (UUID) rows.get(0).get("user_id");
         Users.User u = users.find(userId).orElseThrow(() -> ApiProblem.of(ProblemType.UNAUTHENTICATED, "Account not active."));

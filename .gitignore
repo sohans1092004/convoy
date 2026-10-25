@@ -14,3 +14,4 @@ test-results/
 .impeccable/
 reports/p1-media/
 .lighthouseci/
+tools/load/.out/

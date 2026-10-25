@@ -8,6 +8,7 @@ spring:
   application.name: gateway
   # Fail fast on a dead upstream (a stopped container leaves DNS): the stream route's retry then picks the other instance.
   cloud.gateway.server.webflux.httpclient.connect-timeout: 1000
+  cloud.gateway.server.webflux.httpclient.pool.max-idle-time: 15s # below Tomcat's 20 s keep-alive (stale-connection 500s)
   data.redis:
     host: ${REDIS_HOST:localhost}
     port: 6379

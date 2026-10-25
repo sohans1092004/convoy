@@ -53,7 +53,7 @@ let lastEvent = null;
       const { done, value } = await reader.read();
       if (done) break;
       const m = dec.decode(value).match(/event: (\w[\w.]*)/g);
-      if (m) lastEvent = m.at(-1).slice(7);
+      if (m) lastEvent = m.at(-1).replace(/^event: ?/, "");
     }
   } catch { /* aborted */ }
   streamClosedAt ??= Date.now();
