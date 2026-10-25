@@ -1,0 +1,54 @@
+{
+  "measured_at": "2026-10-25T09:35:37.822Z",
+  "commit": "6de3f67",
+  "env": "local docker compose (lite) on one laptop; Node fetch clients on the host through the gateway; realtime x2 behind the gateway load balancer; heartbeat 15 s; queue 256 per connection",
+  "target_note": "local run, not the 10,000-connection W5 target (load-workloads.md); numbers do not extrapolate to production",
+  "connections": {
+    "requested": 1000,
+    "open_after_ramp": 1000,
+    "pools": 20,
+    "slow_consumers": 20
+  },
+  "events_generated": 1470,
+  "hold_s": 300,
+  "delivery_ms": {
+    "p50": 143,
+    "p95": 238,
+    "p99": 2565,
+    "samples": 36822
+  },
+  "delivery_after_storm_ms": {
+    "p95": 21279,
+    "samples": 36413
+  },
+  "storm": {
+    "killed": "realtime-1",
+    "streams_cut": 486,
+    "recovered_with_snapshot": 486,
+    "recovery_p95_ms": 6768,
+    "recovery_max_ms": 14290
+  },
+  "slow_consumers": {
+    "cut_by_server": 14,
+    "of": 20
+  },
+  "memory_mib": {
+    "before": {
+      "realtime-1": 332.3,
+      "realtime-2": 359.6,
+      "gateway": 419.4
+    },
+    "with_connections": {
+      "realtime-1": 359.6,
+      "realtime-2": 358.7,
+      "gateway": 417.8
+    },
+    "realtime_per_1000_connections": 26,
+    "gateway_per_1000_connections": -2
+  },
+  "notes": [
+    "memory_mib per 1,000 is not meaningful here: both realtime containers were already at their 360 MB limit before the streams opened; the 200-connection smoke run measured ~180 MiB per 1,000 in realtime and ~12 MiB in the gateway.",
+    "An earlier 2,000-connection attempt was stopped for low host memory; during it realtime-2 hit OutOfMemoryError twice when the storm moved ~1,850 streams onto it (360 MB container cap).",
+    "delivery_after_storm p95 21 s: likely messages the killed instance had received stay invisible until the SQS visibility timeout, blocking each pool's FIFO group (P3)."
+  ]
+}
