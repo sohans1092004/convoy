@@ -10,6 +10,7 @@ import convoy.contracts.events.PaymentCaptured;
 import convoy.contracts.events.PaymentFailed;
 import convoy.contracts.events.PoolBookingStarted;
 import convoy.contracts.events.PoolCreated;
+import convoy.contracts.events.PoolClosed;
 import convoy.contracts.events.PoolReady;
 import convoy.platform.messaging.Envelope;
 import convoy.platform.messaging.Outbox;
@@ -48,9 +49,9 @@ import org.springframework.web.client.RestClientException;
 public class Pools {
     private static final Logger log = LoggerFactory.getLogger(Pools.class);
     public static final ZoneId IST = ZoneId.of("Asia/Kolkata");
-    public static final TransitionTable POOL = TransitionTable.load("pool", Set.of("POOL-T01", "POOL-T02", "POOL-T03", "POOL-T04", "POOL-T05", "POOL-T06", "POOL-T07", "POOL-T08", "POOL-T11", "POOL-T12"));
+    public static final TransitionTable POOL = TransitionTable.load("pool", Set.of("POOL-T01", "POOL-T02", "POOL-T03", "POOL-T04", "POOL-T05", "POOL-T06", "POOL-T07", "POOL-T08", "POOL-T09", "POOL-T10", "POOL-T11", "POOL-T12"));
     public static final TransitionTable MEMBERSHIP = TransitionTable.load("membership",
-            Set.of("MEM-T01", "MEM-T02", "MEM-T03", "MEM-T04", "MEM-T05", "MEM-T06", "MEM-T07", "MEM-T08", "MEM-T09", "MEM-T10", "MEM-T11"));
+            Set.of("MEM-T01", "MEM-T02", "MEM-T03", "MEM-T04", "MEM-T05", "MEM-T06", "MEM-T07", "MEM-T08", "MEM-T09", "MEM-T10", "MEM-T11", "MEM-T12", "MEM-T13", "MEM-T14", "MEM-T15", "MEM-T16"));
     public static final TransitionTable ROUND = TransitionTable.load("round", Set.of("RND-T01", "RND-T02"));
     static final Map<String, String> CITY_STATE = Map.of("Mumbai", "MH", "Pune", "MH", "Delhi", "DL", "Bengaluru", "KA");
     static final Set<String> JOINABLE = Set.of("FORMING", "READY_FOR_QUOTES", "QUOTE_OPEN");
@@ -434,13 +435,96 @@ public class Pools {
         Map<String, Object> pool = lockPool(poolId);
         if (!"CONFIRMATION".equals(pool.get("state")) || env.aggregateVersion() <= (long) pool.get("last_order_version_seen")) return;
         if (e.bookingsCount() == 0) {
-            POOL.check("CONFIRMATION", e.voidQuoteCount() > 0 ? "FORMING" : "EXPIRED"); // POOL-T09 / T10: 501 in P1
+            jdbc.update("update pools set last_order_version_seen = ? where id = ?", env.aggregateVersion(), poolId);
+            var d = settings.durations();
+            boolean fits = e.voidQuoteCount() > 0 && (int) pool.get("round_set") == 1 && jdbc.queryForObject(
+                    "select clock_timestamp() + ?::interval + ?::interval + ?::interval + ?::interval + ?::interval <= purchase_window_end from pools where id = ?", Boolean.class,
+                    interval(d.forming()), interval(d.sealedRound()), interval(d.finalRound()), interval(d.decision()), interval(d.confirmation()), poolId);
+            if (fits) reopen(poolId, e.voidBuyerIds() == null ? List.of() : e.voidBuyerIds()); // POOL-T09
+            else closePool(poolId, "CONFIRMATION", "EXPIRED", e.voidQuoteCount() > 0 ? "ALL_QUOTES_VOID" : "NO_CONFIRMATIONS"); // POOL-T10
             return;
         }
         POOL.check("CONFIRMATION", "BOOKING");
         long v = jdbc.queryForObject("update pools set state = 'BOOKING', last_order_version_seen = ?, version = version + 1 where id = ? returning version",
                 Long.class, env.aggregateVersion(), poolId);
         outbox.append(poolId, v, new PoolBookingStarted(poolId.toString(), e.bookingsCount()));
+    }
+
+    /**
+     * Ends a pool (POOL-T04/T06/T10/T11/T12) with MEM-T10 for committed members, in the caller's transaction. Refunds are driven
+     * by PoolClosed, which payment consumes: captured deposits are refunded, unpaid ones voided (one event per pool, not per member).
+     */
+    void closePool(UUID poolId, String from, String endState, String endReason) {
+        POOL.check(from, endState);
+        for (String st : jdbc.queryForList("select distinct state from memberships where pool_id = ? and state in ('COMMITTED', 'REROUND_CHOICE')", String.class, poolId)) {
+            MEMBERSHIP.check(st, "RELEASED");
+        }
+        jdbc.update("update memberships set state = 'RELEASED', release_reason = ?, version = version + 1 where pool_id = ? and state in ('COMMITTED', 'REROUND_CHOICE')",
+                "POOL_" + endReason, poolId);
+        long v = jdbc.queryForObject("update pools set state = ?, end_reason = ?, version = version + 1 where id = ? returning version", Long.class, endState, endReason, poolId);
+        outbox.append(poolId, v, new PoolClosed(poolId.toString(), endState, endReason));
+        log.info("pool {} closed: {} ({})", poolId, endState, endReason);
+    }
+
+    /** POOL-T09 (single re-round, AMENDMENT-002): VOID buyers keep their deposit and choose within 48 h (MEM-T12); others go back to INTERESTED (MEM-T16). */
+    void reopen(UUID poolId, List<String> voidBuyers) {
+        POOL.check("CONFIRMATION", "FORMING");
+        Timestamp choiceBy = jdbc.queryForObject("select clock_timestamp() + ?::interval", Timestamp.class, interval(settings.durations().reroundChoice()));
+        for (Map<String, Object> m : jdbc.queryForList("select id, buyer_id, state from memberships where pool_id = ? and state in ('HANDED_TO_ORDER', 'RELEASED') for update", poolId)) {
+            boolean choice = voidBuyers.contains(m.get("buyer_id").toString()) && "HANDED_TO_ORDER".equals(m.get("state"));
+            MEMBERSHIP.check((String) m.get("state"), choice ? "REROUND_CHOICE" : "INTERESTED");
+            if (choice) jdbc.update("update memberships set state = 'REROUND_CHOICE', choice_deadline = ?, version = version + 1 where id = ?", choiceBy, m.get("id"));
+            else jdbc.update("update memberships set state = 'INTERESTED', accepted_quote_id = null, accepted_variant_id = null, current_payment_id = null, version = version + 1 where id = ?", m.get("id"));
+        }
+        jdbc.update("delete from quote_acceptance_counts where pool_id = ?", poolId);
+        Map<String, Object> p = jdbc.queryForMap("update pools set state = 'FORMING', round_set = 2, committed_count = 0, forming_deadline = clock_timestamp() + ?::interval, "
+                + "version = version + 1 where id = ? returning version, forming_deadline", interval(settings.durations().forming()), poolId);
+        outbox.append(poolId, (long) p.get("version"), new convoy.contracts.events.PoolReopened(poolId.toString(), 2L, ((Timestamp) p.get("forming_deadline")).toInstant(), voidBuyers,
+                choiceBy.toInstant()));
+        log.info("pool {} re-opened for its single re-round; {} buyers choose by {}", poolId, voidBuyers.size(), choiceBy.toInstant());
+    }
+
+    /** E042 re-round choice: KEEP (MEM-T13, no new payment) or REFUND (MEM-T14), before choice_deadline on the DB clock. */
+    @Transactional
+    public Map<String, Object> reroundChoice(UUID poolId, String choice, long ifMatch) {
+        Caller c = buyer();
+        Map<String, Object> pool = lockPool(poolId);
+        Map<String, Object> m = membership(poolId, c.userId(), true).orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "You are not in this pool."));
+        boolean keep = "KEEP".equals(choice);
+        if (!"REROUND_CHOICE".equals(m.get("state"))) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "There is no re-round choice to make for your membership.");
+        MEMBERSHIP.check("REROUND_CHOICE", keep ? "COMMITTED" : "RELEASED");
+        if ((long) m.get("version") != ifMatch) throw ApiProblem.of(ProblemType.VERSION_CONFLICT, "Your membership changed; reload and try again.").with("current_version", m.get("version"));
+        if (!before(pool, (Timestamp) m.get("choice_deadline"))) {
+            throw deadlinePassed((Timestamp) m.get("choice_deadline"), pool, "The 48-hour choice window has passed; your deposit is being refunded.");
+        }
+        UUID payment = (UUID) m.get("current_payment_id");
+        if (!keep) {
+            release(poolId, m, "REROUND_REFUND_REQUESTED");
+            return view(membership(poolId, c.userId(), false).orElseThrow());
+        }
+        if (!Set.of("FORMING", "READY_FOR_QUOTES").contains(pool.get("state")) || (int) pool.get("round_set") != 2) {
+            throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "The re-round has already started quoting; you can still take the refund.");
+        }
+        jdbc.update("update memberships set state = 'COMMITTED', accepted_quote_id = null, accepted_variant_id = null, choice_deadline = null, version = version + 1 where id = ?", m.get("id"));
+        Map<String, Object> p = jdbc.queryForMap("update pools set committed_count = committed_count + 1, version = version + 1 where id = ? "
+                + "returning interested_count, committed_count, version, min_members, state, forming_deadline > clock_timestamp() as before_deadline", poolId);
+        outbox.append(poolId, (long) p.get("version"), new MemberCommitted(poolId.toString(), m.get("id").toString(), c.subject(), payment == null ? null : payment.toString(),
+                num(p, "interested_count"), num(p, "committed_count"), true)); // kept from round 1 (MEM-T13)
+        if ("FORMING".equals(p.get("state")) && (int) p.get("committed_count") >= (int) p.get("min_members") && (boolean) p.get("before_deadline")) {
+            POOL.check("FORMING", "READY_FOR_QUOTES");
+            long v = jdbc.queryForObject("update pools set state = 'READY_FOR_QUOTES', version = version + 1 where id = ? and state = 'FORMING' returning version", Long.class, poolId);
+            outbox.append(poolId, v, new PoolReady(poolId.toString(), num(p, "committed_count")));
+        }
+        return view(membership(poolId, c.userId(), false).orElseThrow());
+    }
+
+    /** MEM-T14 / MEM-T15: released with a full refund (payment consumes MemberReleased). */
+    void release(UUID poolId, Map<String, Object> m, String reason) {
+        jdbc.update("update memberships set state = 'RELEASED', release_reason = ?, choice_deadline = null, version = version + 1 where id = ?", reason, m.get("id"));
+        Map<String, Object> p = jdbc.queryForMap("update pools set version = version + 1 where id = ? returning interested_count, committed_count, version", poolId);
+        UUID payment = (UUID) m.get("current_payment_id");
+        outbox.append(poolId, (long) p.get("version"), new MemberReleased(poolId.toString(), m.get("id").toString(), m.get("buyer_id").toString(),
+                payment == null ? null : payment.toString(), reason, num(p, "interested_count"), num(p, "committed_count")));
     }
 
     // ------------------------------------------------------------------ realtime authorisation (internal)
@@ -581,9 +665,9 @@ public class Pools {
 
     static Map<String, Object> view(Map<String, Object> m) {
         Map<String, Object> out = new HashMap<>();
-        for (String k : List.of("id", "pool_id", "state", "current_payment_id", "terms_version", "accepted_quote_id", "accepted_variant_id", "release_reason", "version")) {
+        for (String k : List.of("id", "pool_id", "state", "current_payment_id", "terms_version", "accepted_quote_id", "accepted_variant_id", "release_reason", "choice_deadline", "version")) {
             Object v = m.get(k);
-            out.put(k, v instanceof UUID u ? u.toString() : v);
+            out.put(k, v instanceof UUID u ? u.toString() : v instanceof Timestamp t ? t.toInstant().toString() : v);
         }
         return out;
     }

@@ -55,7 +55,7 @@ public class PaymentApplication {
                         payments.hold(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), UUID.fromString(p.bookingId())))
                 .on(DepositRefundRequested.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
-                .on(convoy.contracts.events.PoolClosed.class, (e, p) -> payments.poolClosed(UUID.fromString(p.poolId()), p.endReason()))
+                .on(convoy.contracts.events.PoolClosed.class, (e, p) -> payments.poolClosed(UUID.fromString(p.poolId()), p.endState(), p.endReason()))
                 .on(convoy.contracts.events.MemberReleased.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
                 .on(MemberLeft.class, (e, p) ->

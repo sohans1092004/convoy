@@ -152,6 +152,74 @@ class PoolIT extends ServiceTest {
         assertVersionsContiguous(pool);
     }
 
+    void bookingsIssued(UUID pool, long voidQuotes, List<UUID> voidBuyers) {
+        Envelope env = new Envelope(Uuid7.next(), "BookingsIssued", 1, pool, 1000, "2026-10-24T00:00:00Z", Uuid7.next(), null, "order", null);
+        EventContext.set(env.correlationId(), env.eventId());
+        try {
+            tx.executeWithoutResult(s -> pools.bookingsIssued(env, new convoy.contracts.events.BookingsIssued(pool.toString(), 1L, 0L, voidQuotes,
+                    voidBuyers.stream().map(UUID::toString).toList())));
+        } finally {
+            EventContext.clear();
+        }
+    }
+
+    Resp choose(UUID pool, UUID buyer, String choice) {
+        long v = jdbc.queryForObject("select version from memberships where pool_id = ? and buyer_id = ?", Long.class, pool, buyer);
+        return send("PUT", "/pools/" + pool + "/members/me/reround-choice", buyer(buyer), "{\"choice\":\"" + choice + "\"}",
+                Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"" + v + "\""));
+    }
+
+    /** AMENDMENT-002: every quote VOID and a full cycle fits -> one re-round; VOID buyers keep, refund, or (no answer) are refunded. */
+    @Test
+    void allQuotesVoidReopensThePoolOnceAndEachVoidBuyerChoosesWithin48Hours() throws Exception {
+        UUID pool = freshPool();
+        UUID keep = UUID.randomUUID(), refund = UUID.randomUUID(), silent = UUID.randomUUID(), late = UUID.randomUUID(), other = UUID.randomUUID();
+        Map<UUID, UUID> payments = new java.util.HashMap<>();
+        for (UUID b : List.of(keep, refund, silent, late, other)) payments.put(b, commitAndCapture(pool, b));
+        jdbc.update("update memberships set state = 'HANDED_TO_ORDER' where pool_id = ?", pool);
+        jdbc.update("update pools set state = 'CONFIRMATION', purchase_window_end = clock_timestamp() + interval '90 days' where id = ?", pool);
+        bookingsIssued(pool, 1, List.of(keep, refund, silent, late));
+        bookingsIssued(pool, 1, List.of(keep, refund, silent, late)); // redelivery: no second re-round
+        assertThat(jdbc.queryForMap("select state, round_set, committed_count from pools where id = ?", pool))
+                .containsEntry("state", "FORMING").containsEntry("round_set", 2).containsEntry("committed_count", 0);
+        assertThat(jdbc.queryForObject("select state from memberships where pool_id = ? and buyer_id = ?", String.class, pool, other)).isEqualTo("INTERESTED"); // MEM-T16
+        assertThat(jdbc.queryForObject("select count(*) from memberships where pool_id = ? and state = 'REROUND_CHOICE' and choice_deadline > clock_timestamp() + interval '47 hours'",
+                Integer.class, pool)).isEqualTo(4); // MEM-T12, 48 h on the DB clock
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ? and event_type = 'PoolReopened'", Integer.class, pool)).isEqualTo(1);
+
+        assertThat(choose(pool, keep, "KEEP").status()).isEqualTo(200); // MEM-T13: COMMITTED with the same deposit, no new payment
+        assertThat(jdbc.queryForMap("select state, current_payment_id from memberships where pool_id = ? and buyer_id = ?", pool, keep))
+                .containsEntry("state", "COMMITTED").containsEntry("current_payment_id", payments.get(keep));
+        assertThat(jdbc.queryForObject("select committed_count from pools where id = ?", Integer.class, pool)).isEqualTo(1);
+        assertThat(choose(pool, refund, "REFUND").status()).isEqualTo(200); // MEM-T14
+        jdbc.update("update memberships set choice_deadline = clock_timestamp() - interval '1 second' where pool_id = ? and buyer_id in (?, ?)", pool, silent, late);
+        assertThat(code(choose(pool, late, "KEEP"))).isEqualTo("DEADLINE_PASSED"); // the DB clock decides
+        sweeper.sweep(); // MEM-T15 for both
+        Map<String, String> reasons = new java.util.HashMap<>();
+        jdbc.queryForList("select buyer_id, release_reason from memberships where pool_id = ? and state = 'RELEASED'", pool)
+                .forEach(r -> reasons.put(r.get("buyer_id").toString(), (String) r.get("release_reason")));
+        assertThat(reasons).containsEntry(refund.toString(), "REROUND_REFUND_REQUESTED").containsEntry(silent.toString(), "REROUND_NO_RESPONSE")
+                .containsEntry(late.toString(), "REROUND_NO_RESPONSE").hasSize(3);
+        // each release is one MemberReleased carrying the deposit (payment refunds it in full)
+        assertThat(jdbc.queryForList("select payload->>'payment_id' from outbox where aggregate_id = ? and event_type = 'MemberReleased'", String.class, pool))
+                .containsExactlyInAnyOrder(payments.get(refund).toString(), payments.get(silent).toString(), payments.get(late).toString());
+        assertThat(code(choose(pool, silent, "KEEP"))).isEqualTo("INVALID_TRANSITION");
+        assertVersionsContiguous(pool);
+    }
+
+    @Test
+    void allQuotesVoidWithoutTimeForAReRoundExpiresThePool() throws Exception {
+        UUID pool = freshPool();
+        UUID b = UUID.randomUUID();
+        commitAndCapture(pool, b);
+        jdbc.update("update memberships set state = 'HANDED_TO_ORDER' where pool_id = ?", pool);
+        jdbc.update("update pools set state = 'CONFIRMATION', purchase_window_end = clock_timestamp() + interval '1 hour' where id = ?", pool);
+        bookingsIssued(pool, 1, List.of(b));
+        assertThat(jdbc.queryForMap("select state, end_reason from pools where id = ?", pool)).containsEntry("state", "EXPIRED").containsEntry("end_reason", "ALL_QUOTES_VOID");
+        assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ? and event_type = 'PoolClosed'", Integer.class, pool)).isEqualTo(1); // POOL-T10 -> D27
+        assertVersionsContiguous(pool);
+    }
+
     @Test
     void lateCaptureAfterThePoolClosedReleasesTheMemberForAnAutomaticRefund() throws Exception {
         UUID pool = freshPool();
@@ -378,7 +446,8 @@ class PoolIT extends ServiceTest {
         assertThat(code(stale)).isEqualTo("VERSION_CONFLICT");
         Resp wrongTerms = send("POST", "/pools/" + pool + "/commitment", buyer(b), "{\"terms_version\":\"old\"}", Map.of("Idempotency-Key", UUID.randomUUID().toString()));
         assertThat(code(wrongTerms)).isEqualTo("VALIDATION_FAILED");
-        assertThat(code(send("PUT", "/pools/" + pool + "/members/me/reround-choice", buyer(b), "{}", Map.of()))).isEqualTo("NOT_IMPLEMENTED_IN_P1");
+        assertThat(code(send("PUT", "/pools/" + pool + "/members/me/reround-choice", buyer(b), "{\"choice\":\"KEEP\"}",
+                Map.of("Idempotency-Key", UUID.randomUUID().toString(), "If-Match", "\"1\"")))).isEqualTo("INVALID_TRANSITION"); // no re-round in progress
 
         // Committed member, pool moved to DECISION_OPEN: joining and committing are invalid; a non-final quote cannot be accepted.
         UUID c = UUID.randomUUID();

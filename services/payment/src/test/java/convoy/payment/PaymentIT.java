@@ -202,10 +202,10 @@ class PaymentIT extends ServiceTest {
         Map<String, Object> d2 = deposit(unpaid, pool);
         String p1 = (String) d1.get("payment_id"), p2 = (String) d2.get("payment_id");
         captured((String) d1.get("razorpay_order_id"), "evt_c_" + p1);
-        inTx(() -> payments.poolClosed(pool, "MINIMUM_NOT_REACHED"));
-        inTx(() -> payments.poolClosed(pool, "MINIMUM_NOT_REACHED")); // redelivery: no second refund, no second void
+        inTx(() -> payments.poolClosed(pool, "EXPIRED", "MINIMUM_NOT_REACHED"));
+        inTx(() -> payments.poolClosed(pool, "EXPIRED", "MINIMUM_NOT_REACHED")); // redelivery: no second refund, no second void
         assertThat(state(p1)).isEqualTo("REFUND_PENDING");
-        assertThat(refund(p1)).containsEntry("reason_code", "POOL_MINIMUM_NOT_REACHED");
+        assertThat(refund(p1)).containsEntry("reason_code", "POOL_EXPIRED") // deposit-contract.md §3, D03;
         assertThat(state(p2)).isEqualTo("VOIDED_UNPAID");
         assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ?::uuid and event_type = 'PaymentVoided'", Integer.class, p2)).isEqualTo(1);
         // The unpaid buyer's payment completes after the pool closed: PAY-T10, refunded in full with reason LATE_CAPTURE.

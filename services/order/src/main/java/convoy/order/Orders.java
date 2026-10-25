@@ -108,7 +108,10 @@ public class Orders {
             UUID orderId = Uuid7.next();
             jdbc.update("insert into orders(id, pool_id, round_set, buyer_id, quote_id, variant_id, state, confirmation_deadline) values (?, ?, ?, ?, ?, ?, 'CONFIRMATION_PENDING', ?)",
                     orderId, pool, e.roundSet(), buyer, quote, variant, Timestamp.from(e.confirmationDeadline()));
-            int ceiling = Tiers.tierFor(ladderOf(q, variant), ((Number) q.get("min_fulfilment")).longValue());
+            List<Tiers.Tier> ladder = ladderOf(q, variant);
+            List<String> invalid = Tiers.validate(ladder, ((Number) q.get("min_fulfilment")).longValue(), q.get("max_units") == null ? null : ((Number) q.get("max_units")).longValue());
+            if (!invalid.isEmpty()) throw new IllegalStateException("ALARM quote " + quote + " has invalid tiers " + invalid + "; no order created");
+            int ceiling = Tiers.tierFor(ladder, ((Number) q.get("min_fulfilment")).longValue());
             Snapshot s = snapshot(orderId, "CEILING", q, variant, ceiling);
             outbox.append(orderId, 1, new OrderCreated(orderId.toString(), pool.toString(), buyer.toString(), quote.toString(), variant.toString(),
                     s.cashPayable(), s.sha256(), e.confirmationDeadline()));
@@ -163,8 +166,10 @@ public class Orders {
             throw ApiProblem.of(ProblemType.CAPACITY_REACHED, "This dealer's offer has no units left.");
         }
         // Deadline check last, on the DB clock (deadline-rule.md).
-        List<Map<String, Object>> ok = jdbc.queryForList("update orders set state = 'CONFIRMED', confirmed_at = clock_timestamp(), version = version + 1 "
-                + "where id = ? and version = ? and clock_timestamp() < confirmation_deadline returning confirmed_at, version", orderId, ifMatch);
+        List<Map<String, Object>> ok = jdbc.queryForList("update orders o set state = 'CONFIRMED', confirmed_at = clock_timestamp(), version = version + 1, "
+                + "ceiling_snapshot_id = s.id, confirmed_ceiling_paise = (s.output->>'cash_payable_paise')::bigint from price_snapshots s "
+                + "where o.id = ? and o.version = ? and clock_timestamp() < o.confirmation_deadline and s.order_id = o.id and s.kind = 'CEILING' "
+                + "returning o.confirmed_at, o.version", orderId, ifMatch);
         if (ok.isEmpty()) {
             throw ApiProblem.of(ProblemType.DEADLINE_PASSED, "The confirmation deadline passed before your confirmation reached our database.")
                     .with("deadline", ((Timestamp) o.get("confirmation_deadline")).toInstant().toString())
@@ -200,7 +205,8 @@ public class Orders {
         List<String> voidBuyers = new ArrayList<>();
         List<Map<String, Object>> voided = new ArrayList<>();
         long rv = ((Number) rs.get(0).get("version")).longValue() * 1000; // one version per resolution event (aggregate = pool resolution)
-        for (UUID quote : jdbc.queryForList("select distinct quote_id from orders where pool_id = ? and round_set = ? and state = 'CONFIRMED'", UUID.class, pool, roundSet)) {
+        // Every accepted quote resolves, including one nobody confirmed (count 0 -> VOID, tiers.json T10/T30).
+        for (UUID quote : jdbc.queryForList("select distinct quote_id from orders where pool_id = ? and round_set = ?", UUID.class, pool, roundSet)) {
             Map<String, Object> q = quote(quote);
             List<Map<String, Object>> confirmed = jdbc.queryForList("""
                     select o.id, o.buyer_id, o.variant_id, o.version, to_char(o.confirmed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as confirmed_at,
@@ -209,11 +215,26 @@ public class Orders {
                     from orders o where o.quote_id = ? and o.round_set = ? and o.state = 'CONFIRMED' for update""", quote, roundSet);
             List<Tiers.Confirmation> cs = confirmed.stream().map(c -> new Tiers.Confirmation((String) c.get("confirmed_at"), (String) c.get("captured_at"),
                     (String) c.get("cancelled_at"))).toList();
-            long n = Tiers.countConfirmed(cs, (String) rs.get(0).get("deadline_text")); // same text format on both sides
+            String dlText = (String) rs.get(0).get("deadline_text"); // same text format on both sides
             long minF = ((Number) q.get("min_fulfilment")).longValue();
-            UUID anyVariant = (UUID) confirmed.get(0).get("variant_id");
-            List<Tiers.Tier> ladder = ladderOf(q, anyVariant);
-            Map<String, Object> res = Tiers.resolve(ladder, minF, n, q.get("max_units") == null ? null : ((Number) q.get("max_units")).longValue());
+            Long maxUnits = q.get("max_units") == null ? null : ((Number) q.get("max_units")).longValue();
+            // Not counted (confirmed or captured at/after the deadline; the confirm API refuses both, so this is defensive) -> VOIDED, refunded.
+            List<Map<String, Object>> counted = new ArrayList<>();
+            for (int i = 0; i < confirmed.size(); i++) {
+                if (Tiers.countConfirmed(List.of(cs.get(i)), dlText) == 1) counted.add(confirmed.get(i));
+                else uncounted(confirmed.get(i), pool, "MISSED_CONFIRMATION_DEADLINE");
+            }
+            counted.sort(java.util.Comparator.comparing(c -> (String) c.get("confirmed_at")));
+            while (maxUnits != null && counted.size() > maxUnits) { // Q-012: earlier confirmations first; capacity is enforced at confirm, so this is defensive
+                log.error("ALARM quote {} has {} counted confirmations over max_units {}", quote, counted.size(), maxUnits);
+                uncounted(counted.remove(counted.size() - 1), pool, "QUOTE_VOID");
+            }
+            confirmed = counted;
+            long n = counted.size();
+            List<Tiers.Tier> ladder = ladderOf(q, (UUID) (confirmed.isEmpty() ? jdbc.queryForObject("select variant_id from orders where quote_id = ? limit 1", UUID.class, quote)
+                    : confirmed.get(0).get("variant_id")));
+            Map<String, Object> res = Tiers.resolve(ladder, minF, n, maxUnits);
+            if (!"OK".equals(res.get("status"))) throw new IllegalStateException("ALARM quote " + quote + " has invalid tiers " + res.get("errors"));
             if ("VOID".equals(res.get("outcome"))) {
                 voidQuotes++;
                 outbox.append(pool, ++rv, new TierResolved(pool.toString(), quote.toString(), n, minF, "VOID", null, null));
@@ -267,6 +288,12 @@ public class Orders {
                 + "where pool_id = ? and round_set = ?", bookings, voidQuotes, pool, roundSet);
         outbox.append(pool, ++rv, new BookingsIssued(pool.toString(), (long) roundSet, (long) bookings, (long) voidQuotes, voidBuyers));
         log.info("pool {} resolved at {}: {} bookings, {} void quotes", pool, dl, bookings, voidQuotes);
+    }
+
+    private void uncounted(Map<String, Object> c, UUID pool, String reason) {
+        ORDER.check("CONFIRMED", "VOIDED");
+        jdbc.update("update orders set state = 'VOIDED', cancel_reason = ?, version = version + 1 where id = ?", reason, c.get("id"));
+        outbox.append((UUID) c.get("id"), ((Number) c.get("version")).longValue() + 1, new DepositRefundRequested(c.get("id").toString(), pool.toString(), c.get("buyer_id").toString(), reason));
     }
 
     // ------------------------------------------------------------------ saga steps

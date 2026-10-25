@@ -220,8 +220,10 @@ public class Payments {
     }
 
     /** PoolClosed: every deposit of the pool is settled with the pool's end reason (refund if captured, void if unpaid). */
-    public void poolClosed(UUID pool, String endReason) {
-        for (UUID buyer : jdbc.queryForList("select distinct buyer_id from payments where pool_id = ?", UUID.class, pool)) requestRefund(buyer, pool, "POOL_" + endReason);
+    public void poolClosed(UUID pool, String endState, String endReason) {
+        // deposit-contract.md §3: POOL_EXPIRED / POOL_NO_QUOTES / POOL_CANCELLED by end state; every quote VOID without a re-round is QUOTE_VOID (D27).
+        String reason = "ALL_QUOTES_VOID".equals(endReason) ? "QUOTE_VOID" : "POOL_" + endState;
+        for (UUID buyer : jdbc.queryForList("select distinct buyer_id from payments where pool_id = ?", UUID.class, pool)) requestRefund(buyer, pool, reason);
     }
 
     // ------------------------------------------------------------------ PAY-T06 hold for booking

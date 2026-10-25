@@ -3,7 +3,6 @@ package convoy.pool;
 import convoy.contracts.events.AcceptancesFrozen;
 import convoy.contracts.events.DecisionOpened;
 import convoy.contracts.events.FinalRoundOpened;
-import convoy.contracts.events.PoolClosed;
 import convoy.contracts.events.QuoteRoundOpened;
 import convoy.contracts.events.RoundClosed;
 import convoy.platform.messaging.Outbox;
@@ -58,6 +57,7 @@ public class PoolSweeper {
             for (UUID id : jdbc.queryForList("select p.id from pools p join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 2 "
                     + "where p.state = 'FINAL_ROUND' and r.state = 'OPEN' and r.deadline <= clock_timestamp()", UUID.class)) guarded(id, this::closeFinalRound);
             for (UUID id : jdbc.queryForList("select id from pools where state = 'DECISION_OPEN' and decision_deadline <= clock_timestamp()", UUID.class)) guarded(id, this::freezeAcceptances);
+            for (UUID id : jdbc.queryForList("select id from memberships where state = 'REROUND_CHOICE' and choice_deadline <= clock_timestamp()", UUID.class)) guarded(id, this::reroundNoResponse);
         } catch (RuntimeException e) {
             log.warn("sweep failed: {}", e.toString());
         }
@@ -204,6 +204,17 @@ public class PoolSweeper {
         });
     }
 
+    // MEM-T15: no re-round choice by choice_deadline means refund (AMENDMENT-002).
+    void reroundNoResponse(UUID membershipId) {
+        tx.executeWithoutResult(s -> {
+            Map<String, Object> m = jdbc.queryForMap("select * from memberships where id = ? for update", membershipId);
+            if (!"REROUND_CHOICE".equals(m.get("state"))) return;
+            pools.lockPool((UUID) m.get("pool_id"));
+            Pools.MEMBERSHIP.check("REROUND_CHOICE", "RELEASED");
+            pools.release((UUID) m.get("pool_id"), m, "REROUND_NO_RESPONSE");
+        });
+    }
+
     // POOL-T11: the minimum was not reached by the forming deadline.
     void expireForming(UUID poolId) {
         tx.executeWithoutResult(s -> {
@@ -236,17 +247,7 @@ public class PoolSweeper {
      * Ends a pool (POOL-T04/T06/T11/T12) with MEM-T10 for committed members, in the caller's transaction. Refunds are driven
      * by PoolClosed, which payment consumes: captured deposits are refunded, unpaid ones voided (one event per pool, not per member).
      */
-    private void closePool(UUID poolId, String from, String endState, String endReason) {
-        Pools.POOL.check(from, endState);
-        for (String st : jdbc.queryForList("select distinct state from memberships where pool_id = ? and state in ('COMMITTED', 'REROUND_CHOICE')", String.class, poolId)) {
-            Pools.MEMBERSHIP.check(st, "RELEASED");
-        }
-        jdbc.update("update memberships set state = 'RELEASED', release_reason = ?, version = version + 1 where pool_id = ? and state in ('COMMITTED', 'REROUND_CHOICE')",
-                "POOL_" + endReason, poolId);
-        long v = jdbc.queryForObject("update pools set state = ?, end_reason = ?, version = version + 1 where id = ? returning version", Long.class, endState, endReason, poolId);
-        outbox.append(poolId, v, new PoolClosed(poolId.toString(), endState, endReason));
-        log.info("pool {} closed: {} ({})", poolId, endState, endReason);
-    }
+    private void closePool(UUID poolId, String from, String endState, String endReason) { pools.closePool(poolId, from, endState, endReason); }
 
     private long nextVersion(UUID poolId) {
         return jdbc.queryForObject("update pools set version = version + 1 where id = ? returning version", Long.class, poolId);

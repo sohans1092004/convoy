@@ -31,7 +31,7 @@ public class PoolApplication {
      */
     @ConfigurationProperties(prefix = "pool")
     public record PoolSettings(int minMembers, Duration sweeperInterval, Durations durations, String termsVersion, Map<String, String> services) {
-        public record Durations(Duration forming, Duration sealedRound, Duration finalRound, Duration decision, Duration confirmation, Duration dealerWait) {}
+        public record Durations(Duration forming, Duration sealedRound, Duration finalRound, Duration decision, Duration confirmation, Duration dealerWait, Duration reroundChoice) {}
     }
 
     /** Deposit amount from the ruleset (ruleset.yaml deposit_amount_paise). */

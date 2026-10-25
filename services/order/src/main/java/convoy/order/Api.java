@@ -20,6 +20,7 @@ public final class Api {
     /** snapshots keyed by kind in lower case: ceiling, final. booking is null until issued. */
     public record Order(String id, String poolId, int roundSet, String buyerId, String quoteId, String variantId, String state, String confirmationDeadline,
                         @Nullable String confirmedAt, @Nullable String cancelledAt, @Nullable String declineReason, @Nullable String cancelReason, long version, String createdAt,
+                        @Nullable String ceilingSnapshotId, @Nullable Long confirmedCeilingPaise,
                         Map<String, Snapshot> snapshots, @Nullable BookingRef booking, String serverTime) {}
 
     public record Voucher(String id, String state, String qrPayload, @Nullable String promisedDeliveryDate, String dealershipId, String verification) {}

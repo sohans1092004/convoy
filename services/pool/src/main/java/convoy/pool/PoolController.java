@@ -117,9 +117,12 @@ public class PoolController {
 
     @PutMapping("/pools/{id}/members/me/reround-choice")
     @convoy.platform.security.RequiresRole("buyer")
-    public void reroundChoice(@PathVariable UUID id) {
-        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "The re-round choice (E042, AMENDMENT-002) is specified but not built in Phase 1.");
+    @Idempotent
+    public Api.Membership reroundChoice(@PathVariable UUID id, @Valid @RequestBody ReroundChoiceBody b, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return convoy.platform.web.Dto.as(pools.reroundChoice(id, b.choice(), version(ifMatch)), Api.Membership.class);
     }
+
+    public record ReroundChoiceBody(@NotNull @jakarta.validation.constraints.Pattern(regexp = "KEEP|REFUND") String choice) {}
 
     static long version(String ifMatch) {
         if (ifMatch == null || ifMatch.isBlank()) throw ApiProblem.of(ProblemType.PRECONDITION_REQUIRED, "Send If-Match with the membership version.");
