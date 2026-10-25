@@ -67,8 +67,7 @@ public class RealtimeApplication {
     RedisMessageListenerContainer fanout(RedisConnectionFactory redis, Hub hub) {
         RedisMessageListenerContainer c = new RedisMessageListenerContainer();
         c.setConnectionFactory(redis);
-        c.addMessageListener(hub, new PatternTopic("agg:*"));
-        c.addMessageListener(hub, new org.springframework.data.redis.listener.ChannelTopic(Hub.REVOKED));
+        c.addMessageListener(hub, new PatternTopic("agg:*")); // includes Hub.REVOKED
         c.setRecoveryInterval(2_000); // Redis restarts: resubscribe every 2 s until it is back
         return c;
     }

@@ -101,8 +101,11 @@ public class Hub implements MessageListener {
         else deliver(body);
     }
 
-    /** Redis channel carrying revoked session hashes (AMENDMENT-008, Q-044); the gateway drops its cache entry on it too. */
-    static final String REVOKED = "sessions:revoked";
+    /**
+     * Redis channel carrying revoked session hashes (AMENDMENT-008, Q-044); the gateway drops its cache entry on it too.
+     * Inside the agg:* pattern on purpose: a second (channel) subscription broke resubscription after a Redis restart.
+     */
+    static final String REVOKED = "agg:sessions:revoked";
 
     /** SessionRevoked (one realtime instance consumes it from SQS): every instance closes the session's streams. */
     void revokeSession(String sessionHash) {

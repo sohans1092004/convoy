@@ -163,7 +163,17 @@ try {
 } finally {
   compose('start', 'redis');
 }
-await sleep(4000); // listener container resubscribes every 2 s
+// Wait until both realtime instances have resubscribed to agg:* (a fixed sleep raced the resubscription and lost the
+// event for some clients); the time it took is recorded.
+const backAt = Date.now();
+for (;;) {
+  let n = 0;
+  // Connections holding a pattern subscription (PUBSUB NUMPAT would count unique patterns, always 1 here).
+  try { n = (compose('exec', '-T', 'redis', 'redis-cli', 'CLIENT', 'LIST').match(/ psub=[1-9]/g) || []).length; } catch { /* Redis still starting */ }
+  if (n >= 2 || Date.now() - backAt > 60_000) break;
+  await sleep(250);
+}
+summary.redis_resubscribed_ms = Date.now() - backAt;
 await joinAndWait('redis back', 'b4');
 check(true, 'Redis back: fan-out to every client resumed');
 

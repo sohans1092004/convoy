@@ -44,7 +44,7 @@ public class GatewayApplication {
                                             org.springframework.data.redis.core.ReactiveStringRedisTemplate redis) {
         // Deferred: the container connects on creation, and the gateway must start (and keep serving) while Redis is down.
         return reactor.core.publisher.Flux.defer(() -> new org.springframework.data.redis.listener.ReactiveRedisMessageListenerContainer(factory)
-                        .receive(org.springframework.data.redis.listener.ChannelTopic.of("sessions:revoked")))
+                        .receive(org.springframework.data.redis.listener.ChannelTopic.of("agg:sessions:revoked")))
                 .flatMap(m -> redis.delete("sess:" + m.getMessage()).onErrorResume(e -> reactor.core.publisher.Mono.just(0L)))
                 .retryWhen(reactor.util.retry.Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(2))) // Redis restarts: resubscribe
                 .subscribe();

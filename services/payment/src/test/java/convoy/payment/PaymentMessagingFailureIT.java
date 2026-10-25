@@ -201,8 +201,9 @@ class PaymentMessagingFailureIT extends ServiceTest {
         orderRelay.tick(); // SNS has it; the row is not marked delivered
         await("first delivery applied", () -> refunds(buyer, pool) == 1, 20_000);
         orderRelay.tick(); // restart: the same event_id is published again
-        // 60 s: the republish has twice taken > 20 s to reach SQS on a loaded CI runner (LocalStack); never locally. Known flake (P2 report §7).
-        await("second delivery rejected by the inbox (duplicate counted)", () -> consumer.duplicates.get() == duplicates + 1, 60_000);
+        // At least one duplicate: SQS standard is at-least-once, so on a slow runner the first copy can also be redelivered
+        // (+2). Waiting for exactly +1 skipped past it and timed out in CI; exactly-once application is asserted below (I-2).
+        await("second delivery rejected by the inbox (duplicate counted)", () -> consumer.duplicates.get() >= duplicates + 1, 20_000);
         invariants(event, buyer, pool, false);
     }
 
@@ -235,7 +236,7 @@ class PaymentMessagingFailureIT extends ServiceTest {
         relay.tick();
         await("refund committed before the crash", () -> refunds(buyer, pool) == 1, 20_000);
         // Visibility timeout 3 s in this test (10 s in the spec): the message comes back, the inbox key rejects it, it is acked.
-        await("redelivered and rejected by the inbox", () -> consumer.duplicates.get() == duplicates + 1, 30_000);
+        await("redelivered and rejected by the inbox", () -> consumer.duplicates.get() >= duplicates + 1, 30_000);
         invariants(event, buyer, pool, false);
     }
 
