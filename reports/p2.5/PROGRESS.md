@@ -7,3 +7,4 @@
 - 11:53Z Next: rebuild containers, AZ-T6 x3, W3 smoke with rejoin.
 - 12:02Z AZ-T6 x3 after AMENDMENT-008: API refused 2.03/2.02/1.01 s (401, 0 successes after; 1 s poll resolution), stream closed 0.63/1.40/0.95 s. W3 smoke with rejoin: counts exact (22), 19 rejoins refused as expected. Committing; CI next.
 - 12:28Z CI on PR #4 failed: payment MF-2 (test waited for exactly +1 duplicate; SQS at-least-once can give +2) and realtime "redis back" (fixed 4 s sleep vs 4.9 s resubscription). Fixed both tests (>= 1 duplicate; wait for psub connections); revocation channel renamed agg:sessions:revoked. Local: payment pass, scenario pass. Re-running CI.
+- 12:41Z P2.5.A DONE: CI green on PR #4 (run 40193292904, commit ce861a0, all jobs incl. e2e).
