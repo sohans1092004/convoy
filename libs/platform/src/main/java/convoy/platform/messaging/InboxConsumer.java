@@ -186,8 +186,8 @@ public class InboxConsumer implements SmartLifecycle {
      * (the message comes back after the visibility timeout); a gap older than gapSnapshotAfter loads the owner snapshot.
      */
     boolean versionOk(Envelope env, String aggregate, Subscriptions.Kind kind) {
-        List<Long> last = jdbc.queryForList("select last_version from aggregate_versions where producer = ? and aggregate_id = ? for update",
-                Long.class, env.producer(), env.aggregateId());
+        List<Long> last = jdbc.queryForList("select last_version from aggregate_versions where consumer = ? and producer = ? and aggregate_id = ? for update",
+                Long.class, consumer, env.producer(), env.aggregateId());
         long prev = last.isEmpty() ? 0 : last.get(0);
         if (kind == Subscriptions.Kind.FULL && !last.isEmpty() && env.aggregateVersion() > prev + 1) {
             Subscriptions.SnapshotLoader loader = subscriptions.snapshotLoader(aggregate);
@@ -197,7 +197,13 @@ public class InboxConsumer implements SmartLifecycle {
                 if (Boolean.TRUE.equals(overdue)) log.error("ALARM gap on {} {} older than {} and no snapshot loader", aggregate, env.aggregateId(), gapSnapshotAfter);
                 throw new Park("gap: got v" + env.aggregateVersion() + ", expected v" + (prev + 1), prev + 1);
             }
-            prev = loader.load(env.aggregateId());
+            try {
+                prev = loader.load(env.aggregateId());
+            } catch (RuntimeException e) {
+                // The owner is unavailable: stay parked (SQS still deletes the message, so a FIFO group is never blocked).
+                log.warn("snapshot for {} {} failed: {}; still parked", aggregate, env.aggregateId(), e.toString());
+                throw new Park("gap and snapshot unavailable: got v" + env.aggregateVersion(), prev + 1);
+            }
             snapshots.incrementAndGet();
             log.warn("gap on {} {} outlived {}: applied owner snapshot v{}", aggregate, env.aggregateId(), gapSnapshotAfter, prev);
             setLast(env, prev);
@@ -215,8 +221,8 @@ public class InboxConsumer implements SmartLifecycle {
     }
 
     private void setLast(Envelope env, long version) {
-        jdbc.update("insert into aggregate_versions(producer, aggregate_id, last_version) values (?, ?, ?) "
-                + "on conflict (producer, aggregate_id) do update set last_version = excluded.last_version", env.producer(), env.aggregateId(), version);
+        jdbc.update("insert into aggregate_versions(consumer, producer, aggregate_id, last_version) values (?, ?, ?, ?) "
+                + "on conflict (consumer, producer, aggregate_id) do update set last_version = excluded.last_version", consumer, env.producer(), env.aggregateId(), version);
     }
 
     private static void sleep(long ms) {

@@ -161,6 +161,8 @@ class MessagingIT {
         await(() -> jdbc.queryForObject("select count(*) from parked_events where consumer = 'realtime' and event_id = ?", Integer.class, v3) == 1, "v3 parked");
         assertTrue(ordered.stream().anyMatch(e -> e.eventId().equals(v1)));
         assertTrue(ordered.stream().noneMatch(e -> e.eventId().equals(v3)), "v3 must wait for v2");
+        // Outlive the 3 s gap timeout: this pool has no snapshot (the loader throws), so v3 must stay parked without blocking the FIFO group.
+        Thread.sleep(4500);
         UUID v2 = appendJoined(pool, 2);
         new OutboxRelay(jdbc, tx, sns, topology, JSON, "pool").tick();
         await(() -> ordered.stream().anyMatch(e -> e.eventId().equals(v3)), "v3 applied after v2");
@@ -179,8 +181,8 @@ class MessagingIT {
         new OutboxRelay(jdbc, tx, sns, topology, JSON, "pool").tick();
         await(() -> ordered.stream().anyMatch(e -> e.eventId().equals(v3)), "v3 applied after the snapshot fallback");
         assertTrue(snapshotLoads.contains(pool));
-        await(() -> jdbc.queryForObject("select last_version from aggregate_versions where aggregate_id = ?", Long.class, pool) == SNAPSHOT_VERSION + 1, "version advanced");
-        await(() -> jdbc.queryForObject("select count(*) from parked_events where aggregate_id = ?", Integer.class, pool) == 0, "parked rows cleared");
+        await(() -> jdbc.queryForObject("select last_version from aggregate_versions where consumer = 'realtime' and aggregate_id = ?", Long.class, pool) == SNAPSHOT_VERSION + 1, "version advanced");
+        await(() -> jdbc.queryForObject("select count(*) from parked_events where consumer = 'realtime' and aggregate_id = ?", Integer.class, pool) == 0, "parked rows cleared");
     }
 
     static String write(Object o) {
