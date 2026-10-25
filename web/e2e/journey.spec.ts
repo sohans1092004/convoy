@@ -98,7 +98,7 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   await page.getByRole('link', { name: plan.model }).click();
   await page.getByRole('radio', { name: new RegExp(plan.variant, 'i') }).check({ timeout: 20_000 });
   await expect(page.getByText('Estimated cash payable')).toBeVisible();
-  await expect(page.getByText('Catalogue estimate').first()).toBeVisible(); // evidence label on the price
+  await expect(page.getByText('Catalogue estimate').filter({ visible: true }).first()).toBeVisible(); // evidence label on the price
   await axe(page, 'model + estimate');
   step('on-road estimate shown');
 

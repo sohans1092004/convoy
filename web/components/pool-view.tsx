@@ -13,6 +13,7 @@ import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
 import { useOnline } from '@/lib/use-online';
 import { type LiveStatus, useLiveSnapshot } from '@/lib/use-live-snapshot';
+import { useQuoteCount } from '@/lib/use-quote-count';
 
 type Membership = Schemas['pool']['Membership'];
 
@@ -79,6 +80,9 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
+  // E122: live quote count while dealers quote (never contents); the closing signal reloads the snapshot (compare link).
+  const quoting = !!pool && ['QUOTE_OPEN', 'FINAL_ROUND'].includes(pool.state) && !!me && me.state !== 'LEFT';
+  const quoteCount = useQuoteCount(poolId, quoting, () => { snap.refresh(); });
 
   // Optimistic join: the count and "interested" show at once and roll back on failure. The version is not bumped, so the
   // stream's delta for this join (absolute counts, version + 1) applies on top without counting the buyer twice.
@@ -192,6 +196,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
               <CardText className="mt-1">{tp('minimum', { min: pool.min_members, month: pool.purchase_month })}</CardText>
             </div>
             {deadline ? <Countdown deadline={deadline} label={tp(pool.state === 'FORMING' ? 'deadline.forming' : pool.state === 'QUOTE_OPEN' ? 'deadline.sealed' : pool.state === 'DECISION_OPEN' ? 'deadline.decide' : 'deadline.confirm')} /> : null}
+            {quoting && quoteCount !== null ? <p role="status" className="text-sm">{tp('quoteCount', { count: quoteCount })}</p> : null}
           </Card>
           {['EXPIRED', 'NO_QUOTES', 'CANCELLED'].includes(pool.state) || me?.release_reason === 'LATE_CAPTURE' ? <ClosedCard pool={pool} me={me ?? undefined} /> : null}
           {pool.state === 'DECISION_OPEN' && me && ['COMMITTED', 'ACCEPTED'].includes(me.state) ? (

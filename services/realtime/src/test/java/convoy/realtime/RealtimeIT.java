@@ -127,6 +127,26 @@ class RealtimeIT extends ServiceTest {
     }
 
     @Test
+    void theBuyerStreamCarriesOnlyTheQuoteCountAndTheComparisonSignalToMembers() throws Exception {
+        // E122 (P3.E): members of the pool only; never any quote content before (or after) the round closes.
+        UUID pool = UUID.randomUUID();
+        Client member = new Client("/realtime/me/stream?pool_id=" + pool, TestTokens.buyer("realtime", MEMBER));
+        member.await("ready", j -> j.path("quote_count").asLong() == 0);
+        hub.quoteCount(pool.toString(), 1, java.time.Instant.now());
+        JsonNode count = member.await("quotes.changed", j -> j.at("/delta/quote_count").asLong() == 1);
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        count.path("delta").fieldNames().forEachRemaining(keys::add);
+        assertThat(keys).containsExactlyInAnyOrder("pool_id", "quote_count"); // no price, dealer, tier or line item
+        assertThat(count.toString()).doesNotContain("paise").doesNotContain("dealership").doesNotContain("cash");
+        hub.comparisonReady(pool.toString(), 1L, java.time.Instant.now());
+        member.await("quotes.changed", j -> j.at("/delta/comparison_ready").asBoolean());
+        // Not a member: 404 (no existence leak); dealers cannot open a buyer stream; no token: 401.
+        assertThat(get("/realtime/me/stream?pool_id=" + pool, TestTokens.buyer("realtime", STRANGER)).status()).isEqualTo(404);
+        assertThat(get("/realtime/me/stream?pool_id=" + pool, TestTokens.dealer("realtime", UUID.randomUUID(), INVITED)).status()).isEqualTo(403);
+        assertThat(get("/realtime/me/stream?pool_id=" + pool, null).status()).isEqualTo(401);
+    }
+
+    @Test
     void theDealerStreamCarriesOnlyTheCallersOwnDealershipsRankAndRounds() throws Exception {
         // E121 (P3.C): per-resource authorisation is the token's own dealership; nothing of another dealership leaks.
         UUID mine = UUID.randomUUID(), rival = UUID.randomUUID();

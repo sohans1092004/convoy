@@ -108,10 +108,32 @@ public class StreamController {
     }
 
 
-    @GetMapping("/realtime/me/stream")
-    public void meStream() {
-        Caller.current().require("buyer");
-        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "The personal stream (E122) is specified but not built yet; order and payment pages refresh every 10 s.");
+    /**
+     * E122 (P3.E): a buyer's stream for one pool they are a member of (checked now and on every re-check). Carries the pool's
+     * quote count during the round and a comparison-ready signal when the final round closes; never any quote content.
+     */
+    @GetMapping(path = "/realtime/me/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter buyerStream(@org.springframework.web.bind.annotation.RequestParam(value = "pool_id", required = false) UUID poolId,
+                                  jakarta.servlet.http.HttpServletResponse response) {
+        Caller c = Caller.current().require("buyer"); // the role first, then the parameter (authz matrix: 401/403 before 400)
+        if (poolId == null) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "pool_id is required.");
+        if (!allowed(poolId, c.userId(), null)) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such pool.");
+        if (hub.connections() >= settings.maxConnections()) {
+            hub.refused.increment();
+            response.setHeader("Retry-After", String.valueOf(1 + ThreadLocalRandom.current().nextInt(5)));
+            throw ApiProblem.of(ProblemType.DEPENDENCY_UNAVAILABLE, "Live updates are busy on this server; retrying shortly.");
+        }
+        SseEmitter emitter = new SseEmitter(0L);
+        Connection conn = new Connection("quotes:" + poolId, poolId, c.userId(), null, c.sessionHash(), emitter, settings.queueCapacity(), hub::remove);
+        hub.add(conn);
+        try {
+            emitter.send(SseEmitter.event().name("ready").reconnectTime(1_000 + ThreadLocalRandom.current().nextLong(4_000))
+                    .data(Hub.write(Map.of("aggregate", "quotes", "id", poolId.toString(), "quote_count", hub.quoteCountOf(poolId.toString()),
+                            "server_time", Instant.now().toString(), "instance", hub.instance))));
+        } catch (java.io.IOException e) {
+            conn.close(null);
+        }
+        return emitter;
     }
 
     boolean allowed(UUID poolId, UUID buyer, UUID dealership) {
@@ -140,8 +162,8 @@ public class StreamController {
         }
         String now = Instant.now().toString();
         for (Connection c : hub.all()) {
-            if (c.poolId == null) { // dealer stream: a liveness heartbeat only (no aggregate version to compare)
-                c.offer(new Connection.Msg("heartbeat", null, Hub.write(Map.of("server_time", now, "aggregate", "dealer", "id", String.valueOf(c.dealershipId)))));
+            if (!c.key.startsWith("pool:")) { // dealer and buyer-quote streams: a liveness heartbeat only (no aggregate version to compare)
+                c.offer(new Connection.Msg("heartbeat", null, Hub.write(Map.of("server_time", now, "aggregate", c.key.substring(0, c.key.indexOf(':')), "id", c.key.substring(c.key.indexOf(':') + 1)))));
                 continue;
             }
             c.offer(new Connection.Msg("heartbeat", null, Hub.write(Map.of("server_time", now, "aggregate", "pool", "id", c.poolId.toString(),

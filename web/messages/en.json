@@ -121,7 +121,8 @@
     "leaveRefund": "Leave this pool (full ₹999 refund)",
     "left": "You left the pool. Any deposit is being refunded in full.",
     "footerLive": "Live updates on. Last update {time}.",
-    "footerPolling": "Refreshing every 10 seconds. Last update {time}."
+    "footerPolling": "Refreshing every 10 seconds. Last update {time}.",
+    "quoteCount": "{count, plural, =0 {No dealer has quoted yet} one {1 dealer has quoted} other {# dealers have quoted}}. Offers stay sealed until the round closes."
   },
   "join": {
     "variant": "Variant",

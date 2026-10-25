@@ -23,3 +23,4 @@
 - 16:46Z Web rebuild + journey run stopped by Claude Code for low host memory (0.87 GB free); not restarted. realtime-2 unpaused. Committing P3.D code + tests; the Playwright dealer-flow run is still owed.
 - 16:57Z P3.D journey owed: run 1 failed in the dealer step (inbox 403 "needs dealer role" right after the web restart; not reproducible: a fresh dealer1 session reads the inbox fine); run 2 passed (3.9 min, dealer flow incl. submit through the new builder). P3.D done.
 - 17:05Z Merge + P3.E session started (75 min box): merging PRs #3 -> #4 -> #5, nightly trigger, journey failure capture, P3.E.
+- 17:15Z Journey failure capture added. P3.E: E122 buyer stream (member-only, quote count + comparison-ready, no content; realtime IT incl. authz green), stacked 360 px breakdown, tier ladder component, last updated + stock confidence, live quote count on the pool page; component tests 20/20 web. PR #3 waiting on its e2e rerun.
