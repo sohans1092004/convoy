@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { Breakdown } from '@/components/breakdown';
+import { BuyerClarifications } from '@/components/clarifications';
 import { CommandStatus } from '@/components/command-status';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -127,6 +128,7 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onA
         <summary className="min-h-6 cursor-pointer text-sm font-semibold">{t('breakdownSummary')}</summary>
         <div className="mt-2"><Breakdown output={v.ceiling.output} caption={`${name}: breakdown at the ceiling tier`} /></div>
       </details>
+      {offer.state === 'FINAL' ? <BuyerClarifications poolId={poolId} quoteId={offer.quote_id} items={offer.clarifications} onChange={onAccepted} /> : null}
       {canAccept ? (
         <>
           <Button variant={accepted ? 'secondary' : 'primary'} disabled={accepted} loading={accept.state.kind === 'loading'} onClick={() => accept.execute()}>

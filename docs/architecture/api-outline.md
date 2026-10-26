@@ -76,6 +76,7 @@ Conventions (apply to every row, not repeated):
 | E165 | identity | POST | /internal/exports/{id}/parts | service:any | no | no | not-found | P5 | AZ-E165-A, AZ-E165-D |
 | E166 | identity | GET | /me/erasure/{id} | authenticated | no | no | not-found | P5 | AZ-E166-A, AZ-E166-D, AZ-E166-X |
 | E168 | identity | GET | /me/consents | authenticated | no | no | - | P5 | AZ-E168-A, AZ-E168-D |
+| E169 | audit | GET | /admin/analytics | platform_admin | no | no | - | P5 | AZ-E169-A, AZ-E169-D |
 | E054 | dealer | POST | /admin/dealerships/{id}/suspend | platform_admin | yes | yes | version-conflict | P3 | AZ-E054-A, AZ-E054-D |
 | E055 | dealer | GET | /internal/eligibility | service:pool | no | no | - | P1 | AZ-E055-A, AZ-E055-D |
 | E056 | dealer | POST | /bookings/{bookingId}/review | buyer | yes | no | review-not-eligible | P4 | AZ-E056-A, AZ-E056-D, AZ-E056-X, AZ-INT-07 |
@@ -117,7 +118,7 @@ Conventions (apply to every row, not repeated):
 | E098 | order | POST | /admin/disputes/{id}/assign | platform_admin | yes | no | invalid-transition | P4 | AZ-E098-A, AZ-E098-D |
 | E099 | order | POST | /admin/disputes/{id}/request-info | platform_admin | yes | no | invalid-transition | P4 | AZ-E099-A, AZ-E099-D |
 | E100 | order | POST | /admin/disputes/{id}/resolve | platform_admin | yes | no | invalid-transition, second-approval-required | P4 | AZ-E100-A, AZ-E100-D, AZ-T7 |
-| E101 | order | PUT | /bookings/{id}/invoice | buyer | yes | no | invalid-transition | P4 | AZ-E101-A, AZ-E101-D, AZ-E101-X |
+| E101 | order | PUT | /bookings/{id}/invoice | buyer | yes | no | invalid-transition, not-found | P5 | AZ-E101-A, AZ-E101-D, AZ-E101-X |
 | E102 | order | GET | /internal/pools/{id}/resolution | service:pool | no | no | not-found | P4 | AZ-E102-A, AZ-E102-D |
 | E110 | payment | POST | /internal/deposits | service:pool | yes | no | dependency-unavailable | P1 | AZ-E110-A, AZ-E110-D, AZ-SVC-03 |
 | E111 | payment | POST | /payments/{id}/checkout-callback | buyer | no | no | webhook-signature-invalid, not-found | P1 | AZ-E111-A, AZ-E111-D, AZ-E111-X |

@@ -85,7 +85,7 @@ public class GatewayApplication {
                 .route("bookings", r -> r.path("/api/bookings/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("disputes", r -> r.path("/api/disputes/**", "/api/admin/disputes", "/api/admin/disputes/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("admin-money", r -> r.path("/api/admin/refunds", "/api/admin/refunds/**", "/api/admin/reconciliation/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
-                .route("admin-audit", r -> r.path("/api/admin/audit").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "audit").uri(u.get("audit")))
+                .route("admin-audit", r -> r.path("/api/admin/audit", "/api/admin/analytics").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "audit").uri(u.get("audit")))
                 .route("admin-dealerships", r -> r.path("/api/admin/dealerships", "/api/admin/dealerships/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "dealer").uri(u.get("dealer")))
                 .route("payments", r -> r.path("/api/payments/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
                 .build();

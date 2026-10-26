@@ -27,25 +27,29 @@ convoy:
       - {table: contact_releases, column: buyer_id, action: PSEUDONYMISE, category: orders}
       - {table: disputes, column: buyer_id, action: PSEUDONYMISE, category: disputes}
       - {table: disputes, column: proposed_by, action: PSEUDONYMISE, category: disputes}
+      # an evidence note is the file name the person typed: cleared (before the general actor_id rule, which would no longer match)
+      - {table: dispute_history, column: actor_id, where: "actor_id = ? and action = 'EVIDENCE_ADDED'", action: PSEUDONYMISE, category: disputes, clear: [note]}
       - {table: dispute_history, column: actor_id, action: PSEUDONYMISE, category: disputes}
-      - {table: dispute_evidence, column: uploader_id, action: PSEUDONYMISE, category: disputes}
+      - {table: dispute_evidence, column: uploader_id, action: PSEUDONYMISE, category: disputes, clear: [file_name]}
     retention:
-      # disputes: 2 years after resolution (Consumer Protection Act 2019 s.69); legal review flagged
+      # disputes: 2 years after resolution (Consumer Protection Act 2019 s.69); legal review flagged. A dispute with evidence
+      # waits until Evidence.purgeExpired has deleted its S3 files and then their rows (no orphaned files).
       - category: disputes
         days: 730
         sql: >-
-          with d as (select id from disputes where resolved_at < :cutoff),
-          h as (delete from dispute_history where dispute_id in (select id from d)),
-          e as (delete from dispute_evidence where dispute_id in (select id from d))
+          with d as (select id from disputes where resolved_at < :cutoff
+                     and not exists (select 1 from dispute_evidence e where e.dispute_id = disputes.id)),
+          h as (delete from dispute_history where dispute_id in (select id from d))
           delete from disputes where id in (select id from d)
-      # orders and bookings: 8 years (Companies Act 2013 s.128(5)); one statement, orders and price_snapshots reference each other
+      # orders and bookings: 8 years (Companies Act 2013 s.128(5)); one statement, orders and price_snapshots reference each other.
+      # An order whose disputes still have evidence waits for Evidence.purgeExpired too.
       - category: orders
         days: 2922
         sql: >-
-          with o as (select id from orders where created_at < :cutoff),
+          with o as (select id from orders where created_at < :cutoff and not exists (select 1 from dispute_evidence e join disputes x on x.id = e.dispute_id
+                     where x.order_id = orders.id)),
           d as (select id from disputes where order_id in (select id from o)),
           h as (delete from dispute_history where dispute_id in (select id from d)),
-          e as (delete from dispute_evidence where dispute_id in (select id from d)),
           dd as (delete from disputes where id in (select id from d)),
           r as (delete from contact_releases where order_id in (select id from o)),
           c as (delete from contact_consents where order_id in (select id from o)),

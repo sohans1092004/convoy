@@ -40,23 +40,38 @@ public class Evidence {
     private final JdbcTemplate jdbc;
     private final Disputes disputes;
     private final S3Presigner presigner;
+    private final S3Client s3;
     private final String bucket;
+    private final int retentionDays, orderDays;
 
     public Evidence(JdbcTemplate jdbc, Disputes disputes, @Value("${order.evidence.bucket:convoy-dispute-evidence}") String bucket,
                     @Value("${convoy.aws.endpoint:}") String endpoint, @Value("${order.evidence.public-endpoint:}") String publicEndpoint,
-                    @Value("${convoy.aws.region:ap-south-1}") String region) {
+                    @Value("${convoy.aws.region:ap-south-1}") String region,
+                    org.springframework.beans.factory.ObjectProvider<convoy.platform.privacy.Privacy.Settings> privacy) {
         this.jdbc = jdbc;
+        // The disputes retention period (retention.md) is the one in convoy.privacy.retention; files go with their dispute.
+        this.retentionDays = days(privacy, "disputes");
+        this.orderDays = days(privacy, "orders");
         this.disputes = disputes;
         this.bucket = bucket;
         S3Presigner.Builder p = S3Presigner.builder().region(Region.of(region)).serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
+        software.amazon.awssdk.services.s3.S3ClientBuilder c = S3Client.builder().region(Region.of(region)).forcePathStyle(true);
         if (!endpoint.isBlank()) {
+            c.endpointOverride(URI.create(endpoint)).credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
             // LocalStack: sign for the address the browser uses (published port), not the in-network host name.
             p.endpointOverride(URI.create(publicEndpoint.isBlank() ? endpoint : publicEndpoint)).credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
             createLocalBucket(endpoint, region, publicEndpoint);
         } else {
             p.credentialsProvider(DefaultCredentialsProvider.builder().build());
+            c.credentialsProvider(DefaultCredentialsProvider.builder().build());
         }
         this.presigner = p.build();
+        this.s3 = c.build();
+    }
+
+    private static int days(org.springframework.beans.factory.ObjectProvider<convoy.platform.privacy.Privacy.Settings> privacy, String category) {
+        return privacy.stream().flatMap(p -> p.retention().stream()).filter(r -> r.category().equals(category)).mapToInt(r -> r.days())
+                .findFirst().orElseThrow(() -> new IllegalStateException("convoy.privacy.retention has no '" + category + "' rule"));
     }
 
     /** Local only: the bucket and a CORS rule for browser uploads. Nothing is created in a real AWS account (zero-cost rule). */
@@ -98,6 +113,28 @@ public class Evidence {
         out.put("headers", Map.of("Content-Type", contentType));
         out.put("expires_in_seconds", URL_TTL.toSeconds());
         return out;
+    }
+
+    /**
+     * Retention (retention.md, disputes: 2 years after resolution, or with their order after 8 years): deletes the S3 files, then
+     * their rows; the disputes and orders retention rules remove a dispute only once it has no evidence rows left, so no file
+     * outlives its record. A failed
+     * S3 delete keeps the row, and the next run tries again. Returns files deleted.
+     */
+    public int purgeExpired() {
+        int n = 0;
+        for (Map<String, Object> e : jdbc.queryForList("select e.id, e.object_key from dispute_evidence e join disputes d on d.id = e.dispute_id join orders o on o.id = d.order_id "
+                + "where d.resolved_at < clock_timestamp() - make_interval(days => ?) or o.created_at < clock_timestamp() - make_interval(days => ?) limit 500", retentionDays, orderDays)) {
+            try {
+                s3.deleteObject(r -> r.bucket(bucket).key((String) e.get("object_key"))); // deleting a missing key succeeds (never uploaded)
+                jdbc.update("delete from dispute_evidence where id = ?", e.get("id"));
+                n++;
+            } catch (RuntimeException ex) {
+                log.warn("retention: evidence {} not deleted from S3 ({}); retrying next run", e.get("id"), ex.toString());
+            }
+        }
+        if (n > 0) log.info("retention: deleted {} dispute evidence file(s) past {} days", n, retentionDays);
+        return n;
     }
 
     /** Pre-signed GETs for a dispute view (the view itself already checked the caller is a party or an admin). */

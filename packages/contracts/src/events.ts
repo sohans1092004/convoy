@@ -383,6 +383,7 @@ export interface QuoteFinalised {
   ruleset_version: string;
   tiers: Record<string, unknown>[];
   variant_inputs: Record<string, unknown>[];
+  figures: Record<string, unknown>[];
 }
 
 /** Owner: quote. Consumers: realtime, notification, audit. FIFO: False. */

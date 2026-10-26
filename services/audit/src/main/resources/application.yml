@@ -30,3 +30,6 @@ convoy:
   aws:
     endpoint: ${AWS_ENDPOINT:}
     region: ${AWS_REGION:ap-south-1}
+audit:
+  # E169: every figure is labelled "simulated" while dealers and buyers are synthetic (the demo seed; metrics.md)
+  analytics.simulated: ${DEMO:false}

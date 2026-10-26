@@ -19,15 +19,19 @@ Each service's retention job (`Privacy.enforceRetention`, daily) deletes kept ro
 | Payments, refunds, ledger | payment `payments`, `refunds`, `journal_*` | pseudonymise | **8 years** from the payment; whole journal entries go together, so the ledger stays balanced | Companies Act 2013 s.128(5) (books of account, 8 financial years); CGST Act 2017 s.36 (72 months) is shorter |
 | Orders, bookings, price snapshots, contact consents and releases | order | pseudonymise | **8 years** from the order | Companies Act 2013 s.128(5) |
 | Disputes, history, evidence records | order `disputes`, `dispute_*` | pseudonymise | **2 years** after resolution | Consumer Protection Act 2019 s.69 (complaints within 2 years of the cause of action; delay can be condoned) |
-| Pool participation | pool `memberships`, `pools.created_by`; quote `member_replica` | pseudonymise | with the payments they back (no separate job yet) | follows the payments |
+| Dispute evidence files (may show names, phone numbers, addresses, invoices) | S3 `convoy-dispute-evidence` (`disputes/<dispute>/<id>`), rows in order `dispute_evidence` | kept with the dispute; the uploader is pseudonymised and the file name (and its history note) cleared | with the dispute: **2 years** after resolution, or with its order after 8 years. `Evidence.purgeExpired` (daily) deletes the S3 files first, then their rows; the disputes and orders rules remove a dispute only once no evidence row is left, so no file outlives its record | as disputes |
+| Pool participation | pool `memberships`, `pools.created_by`; quote `member_replica`, `clarifications` (the buyer's question text is cleared; the dealer's answer stays for the pool) | pseudonymise | with the payments they back (no separate job yet) | follows the payments |
 | Reviews | dealer `reviews` | pseudonymise, text cleared | while the dealer is listed | — |
 | Dealer reliability inputs | dealer `delivered_bookings` | pseudonymise | 90-day window in use (AMENDMENT-009); rows kept | — |
 | Staff and admin actions | dealer, quote, payment, order audit columns | pseudonymise | with the record they belong to | — |
 | Audit log | audit `audit_log` | not changed (append-only, hash chain); it holds ids only, which no longer resolve to a person once identity has erased the account | **at least 1 year** (DPDP Rules 2025 r.6(1)(e)); kept 8 years because it records the payments above | DPDP Rules 2025 r.6(1)(e); Companies Act s.128(5) |
 
-Not yet enforced (known gaps): pruning the audit log (first rows reach 8 years in 2034; needs an owner-role command that
-keeps the chain verifiable from a signed checkpoint), deleting dispute evidence files from S3 together with their rows,
-and a separate period for pool participation.
+Not yet enforced (known gaps): a separate period for pool participation.
+
+**P8 item, audit-log pruning (not built).** Period: keep **8 years** from the event (Companies Act 2013 s.128(5), because
+the log records the payments above), never less than **1 year** (DPDP Rules 2025 r.6(1)(e)). The first rows reach 8 years
+in 2034. Needs an owner-role command (the app role cannot delete; the trigger refuses it) that removes rows older than the
+period and keeps the chain verifiable from a signed checkpoint of the last removed hash.
 
 Sources: [DPDP Rules r.6](https://dpdpa.com/dpdparules/rule6.html), [DSCI safeguards FAQ](https://www.dsci.in/files/content/documents/2025/reasonable-security-safeguards.pdf),
 [Companies Act s.128](https://www.incometaxindia.gov.in/w/section-128-81), [CGST s.36](https://www.knowyourgst.com/gstlaw/cgst-act/36-period-of-retention-of-accounts-36/),

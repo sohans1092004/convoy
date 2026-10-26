@@ -99,9 +99,12 @@ public class Quotes {
             List<Map<String, Object>> variantInputs = readList(inputs.get("variant_inputs"));
             List<String> variantIds = variantInputs.stream().map(x -> (String) x.get("variant_id")).toList();
             Map<String, Object> draft = QuotePricing.m(inputs.get("draft"));
+            long minF = QuotePricing.lng(draft.get("min_fulfilment"));
+            List<Map<String, Object>> figures = QuotePricing.figures(variantInputs, read((String) ver.get("snapshots")), QuotePricing.l(draft.get("tiers")), minF, roundSet,
+                    catalogue(poolId, roundSet), (String) ver.get("ruleset_version"), rules);
             outbox.append(id, v, new QuoteFinalised(id.toString(), poolId.toString(), q.get("dealership_id").toString(), (long) n, variantIds,
-                    QuotePricing.lng(draft.get("min_fulfilment")), QuotePricing.lng(draft.get("max_units")), (String) ver.get("snapshot_sha256"),
-                    (String) ver.get("ruleset_version"), readList(draft.get("tiers")), variantInputs));
+                    minF, QuotePricing.lng(draft.get("max_units")), (String) ver.get("snapshot_sha256"),
+                    (String) ver.get("ruleset_version"), readList(draft.get("tiers")), variantInputs, figures));
         }
     }
 
@@ -494,6 +497,16 @@ public class Quotes {
         out.put("submitted_at", q.get("submitted_at") == null ? null : ((Timestamp) q.get("submitted_at")).toInstant().toString());
         if ((int) q.get("current_version") > 0) {
             out.put("snapshots", read(jdbc.queryForObject("select snapshots::text from quote_versions where quote_id = ? and version_no = ?", String.class, id, q.get("current_version"))));
+        }
+        out.put("clarifications", Clarifications.forQuote(jdbc, id, null));
+        return out;
+    }
+
+    /** The round set's latest round variants by id: catalogue ex-showroom and evidence (AMENDMENT-013). */
+    Map<String, Map<String, Object>> catalogue(UUID poolId, int roundSet) {
+        Map<String, Map<String, Object>> out = new HashMap<>();
+        for (String v : jdbc.queryForList("select variants::text from rounds_replica where pool_id = ? and round_set = ? order by round_no desc limit 1", String.class, poolId, roundSet)) {
+            for (Map<String, Object> x : readList(read("{\"v\":" + v + "}").get("v"))) out.put((String) x.get("id"), x);
         }
         return out;
     }

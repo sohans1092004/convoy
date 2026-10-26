@@ -1,52 +1,47 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "OpenAPI definition",
-    "version": "v0"
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
   },
-  "paths": {
-    "/dealer/quotes/{id}/draft": {
-      "put": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "draft",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+  "paths" : {
+    "/dealer/quotes/{id}/draft" : {
+      "put" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "draft",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/QuoteDraft"
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/QuoteDraft"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -54,48 +49,44 @@
         }
       }
     },
-    "/dealer/quotes/{id}/withdraw": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "withdraw",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+    "/pools/{poolId}/quotes/{quoteId}/clarifications" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "ask",
+        "parameters" : [ {
+          "name" : "poolId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Reason"
+        }, {
+          "name" : "quoteId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Ask"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Clarification"
                 }
               }
             }
@@ -103,87 +94,43 @@
         }
       }
     },
-    "/dealer/quotes/{id}/submit": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "submit",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+    "/dealer/quotes/{id}/withdraw" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "withdraw",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
-                }
-              }
-            }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
           }
-        }
-      }
-    },
-    "/dealer/quotes/{id}/revisions": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "revise",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/QuoteDraft"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Reason"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -191,48 +138,77 @@
         }
       }
     },
-    "/dealer/quotes/{id}/cancel": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "cancel",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
+    "/dealer/quotes/{id}/submit" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "submit",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
+                }
+              }
             }
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Reason"
+        }
+      }
+    },
+    "/dealer/quotes/{id}/revisions" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "revise",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/QuoteDraft"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -240,101 +216,43 @@
         }
       }
     },
-    "/dealer/pools/{poolId}/quotes": {
-      "post": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "create",
-        "parameters": [
-          {
-            "name": "poolId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+    "/dealer/quotes/{id}/cancel" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "cancel",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
-                }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Reason"
               }
-            }
-          }
-        }
-      }
-    },
-    "/pools/{poolId}/quotes": {
-      "get": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "compare",
-        "parameters": [
-          {
-            "name": "poolId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Offers"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pools/{poolId}/quotes/{quoteId}": {
-      "get": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "one",
-        "parameters": [
-          {
-            "name": "poolId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
             }
           },
-          {
-            "name": "quoteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Offer"
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -342,30 +260,26 @@
         }
       }
     },
-    "/internal/rounds/{id}/summary": {
-      "get": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "summary",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+    "/dealer/pools/{poolId}/quotes" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "create",
+        "parameters" : [ {
+          "name" : "poolId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoundSummary"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
                 }
               }
             }
@@ -373,30 +287,36 @@
         }
       }
     },
-    "/dealer/quotes/{id}": {
-      "get": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "get",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+    "/dealer/clarifications/{id}/answer" : {
+      "post" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "answer",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DealerQuote"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Answer"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Clarification"
                 }
               }
             }
@@ -404,30 +324,26 @@
         }
       }
     },
-    "/dealer/quotes/{id}/rank": {
-      "get": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "rank",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+    "/pools/{poolId}/quotes" : {
+      "get" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "compare",
+        "parameters" : [ {
+          "name" : "poolId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Ranks"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Offers"
                 }
               }
             }
@@ -435,19 +351,133 @@
         }
       }
     },
-    "/dealer/inbox": {
-      "get": {
-        "tags": [
-          "quote-application"
-        ],
-        "operationId": "inbox",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Inbox"
+    "/pools/{poolId}/quotes/{quoteId}" : {
+      "get" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "one",
+        "parameters" : [ {
+          "name" : "poolId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "quoteId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Offer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/rounds/{id}/summary" : {
+      "get" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "summary",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoundSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/quotes/{id}" : {
+      "get" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "get",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DealerQuote"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/quotes/{id}/rank" : {
+      "get" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "rank",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Ranks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealer/inbox" : {
+      "get" : {
+        "tags" : [ "quote-application" ],
+        "operationId" : "inbox",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Inbox"
                 }
               }
             }
@@ -456,934 +486,715 @@
       }
     }
   },
-  "components": {
-    "schemas": {
-      "DeclaredCover": {
-        "properties": {
-          "idv_bp": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
+  "components" : {
+    "schemas" : {
+      "DeclaredCover" : {
+        "properties" : {
+          "idv_bp" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
           },
-          "addons": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
+          "addons" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "addons",
-          "idv_bp"
-        ]
+        "required" : [ "addons", "idv_bp" ]
       },
-      "DraftLine": {
-        "properties": {
-          "variant_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+      "DraftLine" : {
+        "properties" : {
+          "variant_id" : {
+            "type" : [ "string", "null" ]
           },
-          "ex_showroom_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "ex_showroom_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "registration_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "registration_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "insurance": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Insurance"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "insurance" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Insurance"
+            }, {
+              "type" : "null"
+            } ]
           },
-          "insurance_addons": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Item"
+          "insurance_addons" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
             }
           },
-          "fees": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Item"
+          "fees" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
             }
           },
-          "accessories": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Item"
+          "accessories" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
             }
           },
-          "extended_warranty": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Item"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "extended_warranty" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Item"
+            }, {
+              "type" : "null"
+            } ]
           },
-          "other_charges": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Item"
+          "other_charges" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
             }
           },
-          "stock": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Stock"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "stock" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Stock"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
-        "required": [
-          "accessories",
-          "ex_showroom_paise",
-          "extended_warranty",
-          "fees",
-          "insurance",
-          "insurance_addons",
-          "other_charges",
-          "registration_paise",
-          "stock",
-          "variant_id"
-        ]
+        "required" : [ "accessories", "ex_showroom_paise", "extended_warranty", "fees", "insurance", "insurance_addons", "other_charges", "registration_paise", "stock", "variant_id" ]
       },
-      "DraftTier": {
-        "properties": {
-          "min": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+      "DraftTier" : {
+        "properties" : {
+          "min" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "max": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "max" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "discount_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "discount_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           }
         },
-        "required": [
-          "discount_paise",
-          "max",
-          "min"
-        ]
+        "required" : [ "discount_paise", "max", "min" ]
       },
-      "Insurance": {
-        "properties": {
-          "od_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+      "Insurance" : {
+        "properties" : {
+          "od_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "tp_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "tp_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "gst_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "gst_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "binding": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "binding" : {
+            "type" : [ "boolean", "null" ]
           },
-          "declared_cover": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DeclaredCover"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "declared_cover" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DeclaredCover"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
-        "required": [
-          "binding",
-          "declared_cover",
-          "gst_paise",
-          "od_paise",
-          "tp_paise"
-        ]
+        "required" : [ "binding", "declared_cover", "gst_paise", "od_paise", "tp_paise" ]
       },
-      "Item": {
-        "properties": {
-          "code": {
-            "type": "string"
+      "Item" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
           },
-          "label": {
-            "type": "string"
+          "label" : {
+            "type" : "string"
           },
-          "amount_paise": {
-            "type": "integer",
-            "format": "int64"
+          "amount_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "basis": {
-            "type": "string"
+          "basis" : {
+            "type" : "string"
           },
-          "required": {
-            "type": "boolean"
+          "required" : {
+            "type" : "boolean"
           },
-          "selected": {
-            "type": "boolean"
+          "selected" : {
+            "type" : "boolean"
           },
-          "evidence": {
-            "type": "string"
+          "evidence" : {
+            "type" : "string"
           }
         }
       },
-      "QuoteDraft": {
-        "properties": {
-          "variants": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/DraftLine"
+      "QuoteDraft" : {
+        "properties" : {
+          "variants" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/DraftLine"
             }
           },
-          "tiers": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/DraftTier"
+          "tiers" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/DraftTier"
             }
           },
-          "min_fulfilment": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "min_fulfilment" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "max_units": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "max_units" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "valid_until": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "valid_until" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required": [
-          "max_units",
-          "min_fulfilment",
-          "tiers",
-          "valid_until",
-          "variants"
-        ]
+        "required" : [ "max_units", "min_fulfilment", "tiers", "valid_until", "variants" ]
       },
-      "Stock": {
-        "properties": {
-          "units": {
-            "type": "integer",
-            "format": "int64"
+      "Stock" : {
+        "properties" : {
+          "units" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "colours": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
+          "colours" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "type" : "string"
             }
           },
-          "delivery_date": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "delivery_date" : {
+            "type" : [ "string", "null" ]
           },
-          "evidence": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "evidence" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required": [
-          "colours",
-          "delivery_date",
-          "units"
-        ]
+        "required" : [ "colours", "delivery_date", "units" ]
       },
-      "DealerQuote": {
-        "properties": {
-          "id": {
-            "type": "string"
+      "Clarification" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
           },
-          "pool_id": {
-            "type": "string"
+          "quote_id" : {
+            "type" : "string"
           },
-          "state": {
-            "type": "string"
+          "question_type" : {
+            "type" : "string"
           },
-          "version": {
-            "type": "integer",
-            "format": "int64"
+          "question" : {
+            "type" : [ "string", "null" ]
           },
-          "draft": {
-            "$ref": "#/components/schemas/QuoteDraft"
+          "answer" : {
+            "type" : [ "string", "null" ]
           },
-          "current_version": {
-            "type": "integer",
-            "format": "int32"
+          "asked_at" : {
+            "type" : "string"
           },
-          "submitted_at": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "answered_at" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "answer", "answered_at", "asked_at", "id", "question", "question_type", "quote_id" ]
+      },
+      "DealerQuote" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
           },
-          "snapshots": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "$ref": "#/components/schemas/TierSnapshot"
+          "pool_id" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "draft" : {
+            "$ref" : "#/components/schemas/QuoteDraft"
+          },
+          "current_version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "submitted_at" : {
+            "type" : [ "string", "null" ]
+          },
+          "snapshots" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/TierSnapshot"
               }
             }
-          }
-        },
-        "required": [
-          "current_version",
-          "draft",
-          "id",
-          "pool_id",
-          "state",
-          "submitted_at",
-          "version"
-        ]
-      },
-      "Line": {
-        "properties": {
-          "code": {
-            "type": "string"
           },
-          "amount_paise": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "evidence": {
-            "type": "string",
-            "enum": [
-              "DEALER_CONFIRMED",
-              "CATALOGUE_ESTIMATE",
-              "UNVERIFIED"
-            ]
-          },
-          "in_cash_payable": {
-            "type": "boolean"
-          },
-          "flags": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "clarifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Clarification"
             }
           }
         },
-        "required": [
-          "amount_paise",
-          "code",
-          "evidence",
-          "flags",
-          "in_cash_payable"
-        ]
+        "required" : [ "clarifications", "current_version", "draft", "id", "pool_id", "state", "submitted_at", "version" ]
       },
-      "PriceOutput": {
-        "properties": {
-          "status": {
-            "type": "string"
+      "Line" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
           },
-          "vehicle_price_paise": {
-            "type": "integer",
-            "format": "int64"
+          "amount_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Line"
-            }
+          "evidence" : {
+            "type" : "string",
+            "enum" : [ "DEALER_CONFIRMED", "CATALOGUE_ESTIMATE", "UNVERIFIED" ]
           },
-          "cash_payable_paise": {
-            "type": "integer",
-            "format": "int64"
+          "in_cash_payable" : {
+            "type" : "boolean"
           },
-          "tcs_paise": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "estimated_net_cost_paise": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "flags" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "cash_payable_paise",
-          "estimated_net_cost_paise",
-          "lines",
-          "status",
-          "tcs_paise",
-          "vehicle_price_paise",
-          "warnings"
-        ]
+        "required" : [ "amount_paise", "code", "evidence", "flags", "in_cash_payable" ]
       },
-      "TierSnapshot": {
-        "properties": {
-          "tier_index": {
-            "type": "integer",
-            "format": "int64"
+      "PriceOutput" : {
+        "properties" : {
+          "status" : {
+            "type" : "string"
           },
-          "discount_paise": {
-            "type": "integer",
-            "format": "int64"
+          "vehicle_price_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "cash_payable_paise": {
-            "type": "integer",
-            "format": "int64"
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Line"
+            }
           },
-          "sha256": {
-            "type": "string"
+          "cash_payable_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "output": {
-            "$ref": "#/components/schemas/PriceOutput"
-          }
-        },
-        "required": [
-          "cash_payable_paise",
-          "discount_paise",
-          "output",
-          "sha256",
-          "tier_index"
-        ]
-      },
-      "Reason": {
-        "properties": {
-          "reason": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
-      "Ceiling": {
-        "properties": {
-          "tier_index": {
-            "type": "integer",
-            "format": "int32"
+          "tcs_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "cash_payable_paise": {
-            "type": "integer",
-            "format": "int64"
+          "estimated_net_cost_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "output": {
-            "$ref": "#/components/schemas/PriceOutput"
-          },
-          "snapshot_sha256": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "cash_payable_paise",
-          "output",
-          "snapshot_sha256",
-          "tier_index"
-        ]
-      },
-      "Offer": {
-        "properties": {
-          "quote_id": {
-            "type": "string"
-          },
-          "dealership_id": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string"
-          },
-          "version_no": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "committed_at": {
-            "type": "string"
-          },
-          "min_fulfilment": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "max_units": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "snapshot_sha256": {
-            "type": "string"
-          },
-          "variants": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OfferVariant"
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "committed_at",
-          "dealership_id",
-          "max_units",
-          "min_fulfilment",
-          "quote_id",
-          "snapshot_sha256",
-          "state",
-          "variants",
-          "version_no"
-        ]
+        "required" : [ "cash_payable_paise", "estimated_net_cost_paise", "lines", "status", "tcs_paise", "vehicle_price_paise", "warnings" ]
       },
-      "OfferVariant": {
-        "properties": {
-          "variant_id": {
-            "type": "string"
+      "TierSnapshot" : {
+        "properties" : {
+          "tier_index" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "variant_code": {
-            "type": "string"
+          "discount_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "ceiling": {
-            "$ref": "#/components/schemas/Ceiling"
+          "cash_payable_paise" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "projection": {
-            "$ref": "#/components/schemas/Projection"
+          "sha256" : {
+            "type" : "string"
           },
-          "tiers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TierView"
+          "output" : {
+            "$ref" : "#/components/schemas/PriceOutput"
+          }
+        },
+        "required" : [ "cash_payable_paise", "discount_paise", "output", "sha256", "tier_index" ]
+      },
+      "Ask" : {
+        "properties" : {
+          "question_type" : {
+            "type" : [ "string", "null" ]
+          },
+          "text" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "question_type", "text" ]
+      },
+      "Reason" : {
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason" ]
+      },
+      "Answer" : {
+        "properties" : {
+          "text" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "text" ]
+      },
+      "Ceiling" : {
+        "properties" : {
+          "tier_index" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "cash_payable_paise" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "output" : {
+            "$ref" : "#/components/schemas/PriceOutput"
+          },
+          "snapshot_sha256" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "cash_payable_paise", "output", "snapshot_sha256", "tier_index" ]
+      },
+      "Offer" : {
+        "properties" : {
+          "quote_id" : {
+            "type" : "string"
+          },
+          "dealership_id" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "version_no" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "committed_at" : {
+            "type" : "string"
+          },
+          "min_fulfilment" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "max_units" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "snapshot_sha256" : {
+            "type" : "string"
+          },
+          "variants" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OfferVariant"
             }
           },
-          "stock": {
-            "$ref": "#/components/schemas/Stock"
-          }
-        },
-        "required": [
-          "ceiling",
-          "projection",
-          "stock",
-          "tiers",
-          "variant_code",
-          "variant_id"
-        ]
-      },
-      "Offers": {
-        "properties": {
-          "pool_id": {
-            "type": "string"
-          },
-          "quotes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Offer"
-            }
-          },
-          "ranking_rule": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "pool_id",
-          "quotes",
-          "ranking_rule"
-        ]
-      },
-      "Projection": {
-        "properties": {
-          "label": {
-            "type": "string"
-          },
-          "count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "guaranteed": {
-            "type": "boolean"
-          },
-          "cash_payable_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "note": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "cash_payable_paise",
-          "count",
-          "guaranteed",
-          "label",
-          "note"
-        ]
-      },
-      "TierView": {
-        "properties": {
-          "min": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "max": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "cash_payable_paise": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "is_ceiling": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "cash_payable_paise",
-          "is_ceiling",
-          "max",
-          "min"
-        ]
-      },
-      "RoundSummary": {
-        "properties": {
-          "round_id": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "valid_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "final_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "quotes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SummaryQuote"
+          "clarifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Clarification"
             }
           }
         },
-        "required": [
-          "final_count",
-          "kind",
-          "quotes",
-          "round_id",
-          "valid_count"
-        ]
+        "required" : [ "clarifications", "committed_at", "dealership_id", "max_units", "min_fulfilment", "quote_id", "snapshot_sha256", "state", "variants", "version_no" ]
       },
-      "SummaryQuote": {
-        "properties": {
-          "quote_id": {
-            "type": "string"
+      "OfferVariant" : {
+        "properties" : {
+          "variant_id" : {
+            "type" : "string"
           },
-          "dealership_id": {
-            "type": "string"
+          "variant_code" : {
+            "type" : "string"
           },
-          "state": {
-            "type": "string"
+          "ceiling" : {
+            "$ref" : "#/components/schemas/Ceiling"
           },
-          "variant_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "projection" : {
+            "$ref" : "#/components/schemas/Projection"
+          },
+          "tiers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TierView"
+            }
+          },
+          "stock" : {
+            "$ref" : "#/components/schemas/Stock"
+          }
+        },
+        "required" : [ "ceiling", "projection", "stock", "tiers", "variant_code", "variant_id" ]
+      },
+      "Offers" : {
+        "properties" : {
+          "pool_id" : {
+            "type" : "string"
+          },
+          "quotes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Offer"
+            }
+          },
+          "ranking_rule" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "pool_id", "quotes", "ranking_rule" ]
+      },
+      "Projection" : {
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "guaranteed" : {
+            "type" : "boolean"
+          },
+          "cash_payable_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "note" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "cash_payable_paise", "count", "guaranteed", "label", "note" ]
+      },
+      "TierView" : {
+        "properties" : {
+          "min" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "max" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "cash_payable_paise" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "is_ceiling" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "cash_payable_paise", "is_ceiling", "max", "min" ]
+      },
+      "RoundSummary" : {
+        "properties" : {
+          "round_id" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "valid_count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "final_count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "quotes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SummaryQuote"
             }
           }
         },
-        "required": [
-          "dealership_id",
-          "quote_id",
-          "state",
-          "variant_ids"
-        ]
+        "required" : [ "final_count", "kind", "quotes", "round_id", "valid_count" ]
       },
-      "Rank": {
-        "properties": {
-          "variant_id": {
-            "type": "string"
+      "SummaryQuote" : {
+        "properties" : {
+          "quote_id" : {
+            "type" : "string"
           },
-          "rank": {
-            "type": "integer",
-            "format": "int32"
+          "dealership_id" : {
+            "type" : "string"
           },
-          "of_n": {
-            "type": "integer",
-            "format": "int32"
+          "state" : {
+            "type" : "string"
           },
-          "rule_version": {
-            "type": "string"
-          },
-          "computed_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "computed_at",
-          "of_n",
-          "rank",
-          "rule_version",
-          "variant_id"
-        ]
-      },
-      "Ranks": {
-        "properties": {
-          "quote_id": {
-            "type": "string"
-          },
-          "ranks": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Rank"
+          "variant_ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "quote_id",
-          "ranks"
-        ]
+        "required" : [ "dealership_id", "quote_id", "state", "variant_ids" ]
       },
-      "Inbox": {
-        "properties": {
-          "requests": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Request"
+      "Rank" : {
+        "properties" : {
+          "variant_id" : {
+            "type" : "string"
+          },
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "of_n" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rule_version" : {
+            "type" : "string"
+          },
+          "computed_at" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "computed_at", "of_n", "rank", "rule_version", "variant_id" ]
+      },
+      "Ranks" : {
+        "properties" : {
+          "quote_id" : {
+            "type" : "string"
+          },
+          "ranks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Rank"
             }
           }
         },
-        "required": [
-          "requests"
-        ]
+        "required" : [ "quote_id", "ranks" ]
       },
-      "Request": {
-        "properties": {
-          "round_id": {
-            "type": "string"
+      "Inbox" : {
+        "properties" : {
+          "requests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Request"
+            }
+          }
+        },
+        "required" : [ "requests" ]
+      },
+      "Request" : {
+        "properties" : {
+          "round_id" : {
+            "type" : "string"
           },
-          "pool_id": {
-            "type": "string"
+          "pool_id" : {
+            "type" : "string"
           },
-          "round_set": {
-            "type": "integer",
-            "format": "int32"
+          "round_set" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "round_no": {
-            "type": "integer",
-            "format": "int32"
+          "round_no" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "kind": {
-            "type": "string"
+          "kind" : {
+            "type" : "string"
           },
-          "deadline": {
-            "type": "string"
+          "deadline" : {
+            "type" : "string"
           },
-          "state": {
-            "type": "string"
+          "state" : {
+            "type" : "string"
           },
-          "state_code": {
-            "type": "string"
+          "state_code" : {
+            "type" : "string"
           },
-          "variants": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoundVariant"
+          "variants" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RoundVariant"
             }
           },
-          "committed_count": {
-            "type": "integer",
-            "format": "int64"
+          "committed_count" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "quote_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "quote_id" : {
+            "type" : [ "string", "null" ]
           },
-          "quote_state": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "quote_state" : {
+            "type" : [ "string", "null" ]
           },
-          "quote_version": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "quote_version" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "server_time": {
-            "type": "string"
+          "server_time" : {
+            "type" : "string"
           },
-          "ruleset_version": {
-            "type": "string"
+          "ruleset_version" : {
+            "type" : "string"
           }
         },
-        "required": [
-          "committed_count",
-          "deadline",
-          "kind",
-          "pool_id",
-          "quote_id",
-          "quote_state",
-          "quote_version",
-          "round_id",
-          "round_no",
-          "round_set",
-          "ruleset_version",
-          "server_time",
-          "state",
-          "state_code",
-          "variants"
-        ]
+        "required" : [ "committed_count", "deadline", "kind", "pool_id", "quote_id", "quote_state", "quote_version", "round_id", "round_no", "round_set", "ruleset_version", "server_time", "state", "state_code", "variants" ]
       },
-      "RoundVariant": {
-        "properties": {
-          "id": {
-            "type": "string"
+      "RoundVariant" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
           },
-          "code": {
-            "type": "string"
+          "code" : {
+            "type" : "string"
           },
-          "name": {
-            "type": "string"
+          "name" : {
+            "type" : "string"
           },
-          "fuel": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "fuel" : {
+            "type" : [ "string", "null" ]
           },
-          "transmission": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "transmission" : {
+            "type" : [ "string", "null" ]
           },
-          "engine_cc": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
+          "engine_cc" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
           },
-          "catalogue_ex_showroom_paise": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+          "catalogue_ex_showroom_paise" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
-          "catalogue_evidence": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "catalogue_evidence" : {
+            "type" : [ "string", "null" ]
           },
-          "city_confirmed": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "city_confirmed" : {
+            "type" : [ "boolean", "null" ]
           }
         },
-        "required": [
-          "catalogue_evidence",
-          "catalogue_ex_showroom_paise",
-          "city_confirmed",
-          "code",
-          "engine_cc",
-          "fuel",
-          "id",
-          "name",
-          "transmission"
-        ]
+        "required" : [ "catalogue_evidence", "catalogue_ex_showroom_paise", "city_confirmed", "code", "engine_cc", "fuel", "id", "name", "transmission" ]
       }
     }
   }

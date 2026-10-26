@@ -35,7 +35,7 @@ import org.springframework.web.client.RestClient;
 
 /** P4.B saga and crash recovery, contact release; P4.D booking, delivery and every cancellation rule; P4.E disputes and evidence. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "convoy.messaging.enabled=false", "order.sweeper-interval=1h", "convoy.aws.endpoint=http://127.0.0.1:1",
+        "convoy.messaging.enabled=false", "order.sweeper-interval=1h",
         "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused"})
 @Import({ServiceTest.Config.class, LifecycleIT.Stubs.class})
 class LifecycleIT extends ServiceTest {
@@ -51,8 +51,25 @@ class LifecycleIT extends ServiceTest {
         OrderApplication.IdentityClient testIdentity() { return new OrderApplication.IdentityClient(RestClient.builder().baseUrl(IDENTITY.url()).build()); }
     }
 
+    /** S3 only, for dispute evidence (P5.E retention deletes the files). */
+    static final org.testcontainers.containers.localstack.LocalStackContainer LS = new org.testcontainers.containers.localstack.LocalStackContainer(
+            org.testcontainers.utility.DockerImageName.parse("localstack/localstack:4.14.0")).withServices(org.testcontainers.containers.localstack.LocalStackContainer.Service.S3);
+
+    static {
+        LS.start();
+    }
+
+    @org.springframework.test.context.DynamicPropertySource
+    static void aws(org.springframework.test.context.DynamicPropertyRegistry r) {
+        r.add("convoy.aws.endpoint", () -> LS.getEndpoint().toString());
+        r.add("convoy.aws.region", LS::getRegion);
+    }
+
     @AfterAll
-    static void stop() { IDENTITY.close(); }
+    static void stop() {
+        IDENTITY.close();
+        LS.stop();
+    }
 
     @Autowired JdbcTemplate jdbc;
     @Autowired TransactionTemplate tx;
@@ -98,7 +115,7 @@ class LifecycleIT extends ServiceTest {
             tiers.get(1).put("max", null);
             inTx(() -> orders.quoteFinalised(new QuoteFinalised(quote.toString(), pool.toString(), dealership.toString(), 1L, List.of(VARIANT), 1L, null, "sha", "2026.10.24-p0",
                     tiers, List.of(Map.of("variant_id", VARIANT, "input", OrderIT.swiftInput(), "stock", Map.of("units", 10, "colours", List.of("White"), "delivery_date",
-                            LocalDate.now().plusDays(20).toString()))))));
+                            LocalDate.now().plusDays(20).toString()))), List.of())));
             counts.put(quote.toString(), (long) buyersPerQuote[q]);
             for (int i = 0; i < buyersPerQuote[q]; i++) {
                 UUID b = UUID.randomUUID();
@@ -377,6 +394,16 @@ class LifecycleIT extends ServiceTest {
         Resp got = send("POST", "/bookings/" + b1 + "/confirm-delivery", TestTokens.buyer("order", p.buyers().get(0)), null, idem());
         assertThat(got.status()).as(got.body()).isEqualTo(200);
         assertThat(JSON.readTree(got.body()).path("state").asText()).isEqualTo("COMPLETED"); // ORD-T08
+        // E101 (P5.E): the buyer confirms the invoice total once, after delivery only.
+        String inv = "{\"invoice_total_paise\":66000000}";
+        assertThat(code(send("PUT", "/bookings/" + b2 + "/invoice", TestTokens.buyer("order", p.buyers().get(1)), inv, idem()))).isEqualTo("INVALID_TRANSITION");
+        assertThat(send("PUT", "/bookings/" + b1 + "/invoice", TestTokens.buyer("order", p.buyers().get(1)), inv, idem()).status()).isEqualTo(404); // AZ-E101-X
+        assertThat(send("PUT", "/bookings/" + b1 + "/invoice", TestTokens.buyer("order", p.buyers().get(0)), "{\"invoice_total_paise\":0}", idem()).status()).isEqualTo(400);
+        Resp invoiced = send("PUT", "/bookings/" + b1 + "/invoice", TestTokens.buyer("order", p.buyers().get(0)), inv, idem());
+        assertThat(invoiced.status()).as(invoiced.body()).isEqualTo(200);
+        assertThat(JSON.readTree(invoiced.body()).at("/booking/invoice_total_paise").asLong()).isEqualTo(66000000L);
+        assertThat(jdbc.queryForObject("select payload->>'invoice_total_paise' from outbox where event_type = 'InvoiceConfirmed' and aggregate_id = ?", String.class, b1)).isEqualTo("66000000");
+        assertThat(code(send("PUT", "/bookings/" + b1 + "/invoice", TestTokens.buyer("order", p.buyers().get(0)), inv, idem()))).isEqualTo("INVALID_TRANSITION");
         String wrong = jdbc.queryForObject("select voucher_token from bookings where id = ?", String.class, b1);
         assertThat(send("POST", "/dealer/bookings/" + b2 + "/deliver", staff, "{\"voucher_token\":\"" + wrong + "\"}", idem()).status()).isEqualTo(403);
         assertThat(count("select count(*) from outbox where event_type = 'AllBookingsClosed' and aggregate_id = ?", p.id())).isZero();
@@ -457,6 +484,48 @@ class LifecycleIT extends ServiceTest {
         d.path("history").forEach(h -> actions.add(h.path("action").asText()));
         assertThat(actions).startsWith("OPENED").contains("EVIDENCE_ADDED", "ASSIGNED", "INFO_REQUESTED", "RESPONDED", "OUTCOME_PROPOSED", "RESOLVED", "APPEALED");
         assertThat(code(send("POST", "/disputes/" + id + "/withdraw", buyerT, null, idem()))).isNull(); // the buyer opened it: they may withdraw
+    }
+
+    @Autowired Evidence evidence;
+    @Autowired convoy.platform.privacy.Privacy privacy;
+
+    /** P5.E retention.md: evidence files stay with their dispute; erasure clears the file name; at 2 years the files go first, then the rows. */
+    @Test
+    void evidenceFilesAreKeptWithTheDisputeAndDeletedFromS3WhenItsPeriodEnds() throws Exception {
+        Pool p = booked(1);
+        UUID buyer = p.buyers().get(0), order = p.order(jdbc, buyer);
+        String buyerT = TestTokens.buyer("order", buyer);
+        Resp opened = send("POST", "/orders/" + order + "/disputes", buyerT, "{\"category\":\"PRICE_NOT_HONOURED\",\"description\":\"Asked for more.\"}", idem());
+        String id = JSON.readTree(opened.body()).path("id").asText();
+        String url = JSON.readTree(send("POST", "/disputes/" + id + "/evidence-uploads", buyerT, "{\"file_name\":\"rahul-invoice.pdf\",\"content_type\":\"application/pdf\",\"size_bytes\":4}", idem())
+                .body()).path("upload_url").asText();
+        assertThat(http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).header("Content-Type", "application/pdf").PUT(java.net.http.HttpRequest.BodyPublishers.ofString("%PDF")).build(),
+                java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(200);
+        send("POST", "/disputes/" + id + "/evidence-uploads", buyerT, "{\"file_name\":\"never-uploaded.png\",\"content_type\":\"image/png\",\"size_bytes\":4}", idem());
+        String key = jdbc.queryForObject("select object_key from dispute_evidence where dispute_id = ?::uuid and file_name = 'rahul-invoice.pdf'", String.class, id);
+        try (software.amazon.awssdk.services.s3.S3Client s3 = software.amazon.awssdk.services.s3.S3Client.builder().region(software.amazon.awssdk.regions.Region.of(LS.getRegion()))
+                .endpointOverride(LS.getEndpoint()).forcePathStyle(true).credentialsProvider(software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                        software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create("test", "test"))).build()) {
+            java.util.function.Supplier<Boolean> stored = () -> {
+                try { s3.headObject(b -> b.bucket("convoy-dispute-evidence").key(key)); return true; }
+                catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) { return false; }
+                catch (software.amazon.awssdk.services.s3.model.S3Exception e) { if (e.statusCode() == 404) return false; throw e; }
+            };
+            assertThat(stored.get()).as("uploaded").isTrue();
+            // erasure keeps the dispute and its files (claims, 2 years) but clears the file name the person typed
+            privacy.erase(buyer);
+            assertThat(count("select count(*) from dispute_evidence where dispute_id = ?::uuid and file_name is null", id)).isEqualTo(2);
+            assertThat(count("select count(*) from dispute_history where dispute_id = ?::uuid and action = 'EVIDENCE_ADDED' and note is not null", id)).isZero();
+            // not yet past the period: nothing goes
+            assertThat(evidence.purgeExpired()).isZero();
+            jdbc.update("update disputes set state = 'CLOSED', resolved_at = clock_timestamp() - interval '731 days' where id = ?::uuid", id);
+            privacy.enforceRetention();
+            assertThat(count("select count(*) from disputes where id = ?::uuid", id)).as("waits for its files").isEqualTo(1);
+            assertThat(evidence.purgeExpired()).isEqualTo(2);
+            assertThat(stored.get()).as("deleted from S3").isFalse();
+            privacy.enforceRetention();
+            assertThat(count("select count(*) from disputes where id = ?::uuid", id)).isZero();
+        }
     }
 
     @Test

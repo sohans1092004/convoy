@@ -180,6 +180,74 @@ class AuditIT extends ServiceTest {
         assertThat(count("select count(*) from audit_log where event_type = 'AuditViewed'")).isEqualTo(2);
     }
 
+    /** E169 (P5.E): one pool's story through to delivery, each metrics.md figure counted by hand. No other test injects these types. */
+    @Test
+    void analyticsCountEveryMetricFromTheLogAndKeepTheFourSavingsLabelsApart() throws Exception {
+        UUID pool = UUID.randomUUID(), round = UUID.randomUUID(), d1 = UUID.randomUUID(), d2 = UUID.randomUUID(), d3 = UUID.randomUUID();
+        UUID q1 = UUID.randomUUID(), q2 = UUID.randomUUID(), o1 = UUID.randomUUID(), o2 = UUID.randomUUID(), b1 = UUID.randomUUID(), b2 = UUID.randomUUID(), corr = UUID.randomUUID();
+        String v = UUID.randomUUID().toString(), now = Instant.now().toString(), past = Instant.now().minusSeconds(60).toString();
+        java.util.function.BiFunction<Long, Long, Map<String, Object>> fig = (ceiling, estimate) -> {
+            Map<String, Object> f = new LinkedHashMap<>(m("variant_id", v, "round_set", 1, "mode", "BUYER_CONFIG", "ceiling_tier_index", 0, "ceiling_cash_payable_paise", ceiling,
+                    "ceiling_discount_paise", 700 - ceiling, "ceiling_snapshot_sha256", "c" + ceiling, "catalogue_ex_showroom_paise", 500, "catalogue_evidence", "CATALOGUE_ESTIMATE"));
+            f.put("catalogue_estimate_cash_payable_paise", estimate);
+            f.put("catalogue_snapshot_sha256", estimate == null ? null : "e" + estimate);
+            return f;
+        };
+        inject(List.of(
+                new Ev("PoolCreated", "pool", pool, 1, m("pool_id", pool)),
+                new Ev("PoolReady", "pool", pool, 2, m("pool_id", pool, "committed_count", 2)),
+                new Ev("QuoteRoundOpened", "pool", pool, 3, m("pool_id", pool, "round_id", round, "kind", "SEALED", "deadline", Instant.now().plusSeconds(3600).toString(),
+                        "invited_dealership_ids", List.of(d1, d2, d3))),
+                new Ev("QuoteSubmitted", "quote", q1, 1, m("quote_id", q1, "pool_id", pool, "dealership_id", d1, "committed_at", Instant.now().plusSeconds(5).toString())),
+                new Ev("QuoteSubmitted", "quote", q2, 1, m("quote_id", q2, "pool_id", pool, "dealership_id", d2, "committed_at", Instant.now().plusSeconds(5).toString())),
+                new Ev("RoundClosed", "pool", pool, 4, m("pool_id", pool, "kind", "FINAL", "valid_quote_count", 2)),
+                new Ev("QuoteFinalised", "quote", q1, 3, m("quote_id", q1, "pool_id", pool, "dealership_id", d1, "ruleset_version", "r1", "figures", List.of(fig.apply(600L, 700L)))),
+                new Ev("QuoteFinalised", "quote", q2, 3, m("quote_id", q2, "pool_id", pool, "dealership_id", d2, "ruleset_version", "r1", "figures", List.of(fig.apply(650L, null)))),
+                new Ev("OrderCreated", "order", o1, 1, m("order_id", o1, "pool_id", pool, "quote_id", q1, "variant_id", v, "confirmation_deadline", past)),
+                new Ev("OrderCreated", "order", o2, 1, m("order_id", o2, "pool_id", pool, "quote_id", q1, "variant_id", v, "confirmation_deadline", past)),
+                new Ev("ConfirmationRecorded", "order", o1, 2, m("order_id", o1, "pool_id", pool, "quote_id", q1, "confirmed_at", now)),
+                new Ev("BookingIssued", "order", b1, 1, m("booking_id", b1, "order_id", o1, "pool_id", pool, "dealership_id", d1, "variant_id", v)),
+                new Ev("BookingIssued", "order", b2, 1, m("booking_id", b2, "order_id", o2, "pool_id", pool, "dealership_id", d1, "variant_id", v)),
+                new Ev("BookingDelivered", "order", b1, 2, m("booking_id", b1, "order_id", o1)),
+                new Ev("InvoiceConfirmed", "order", b1, 3, m("booking_id", b1, "invoice_total_paise", 640)),
+                new Ev("BookingCancelled", "order", b2, 2, m("booking_id", b2, "order_id", o2, "reason", "DEALER_CANCELLED"))), corr);
+        long end = System.currentTimeMillis() + 60_000;
+        while (count("select count(*) from audit_log where correlation_id = ?", corr) < 16 && System.currentTimeMillis() < end) Thread.sleep(200);
+
+        Resp r = get("/admin/analytics", TestTokens.admin("audit", UUID.randomUUID()));
+        assertThat(r.status()).as(r.body()).isEqualTo(200);
+        JsonNode a = JSON.readTree(r.body());
+        assertThat(a.path("simulated").isBoolean() && !a.path("simulated").asBoolean()).as("simulated present and false: DEMO unset").isTrue();
+        assertThat(a.at("/fill/0/created").asInt()).isEqualTo(1);
+        assertThat(a.at("/fill/0/filled").asInt()).isEqualTo(1);
+        assertThat(a.at("/dealer_response/invited").asInt()).isEqualTo(3);
+        assertThat(a.at("/dealer_response/responded").asInt()).isEqualTo(2);
+        assertThat(a.at("/pools_with_two_valid_quotes/two_or_more").asInt()).isEqualTo(1);
+        assertThat(a.at("/acceptance_to_confirmation/orders").asInt()).isEqualTo(2);
+        assertThat(a.at("/acceptance_to_confirmation/confirmed").asInt()).isEqualTo(1);
+        assertThat(a.at("/confirmation_to_delivery/closed_bookings").asInt()).isEqualTo(2);
+        assertThat(a.at("/confirmation_to_delivery/delivered").asInt()).isEqualTo(1);
+        assertThat(a.at("/cancellation/cancelled").asInt()).isEqualTo(1);
+        assertThat(a.at("/cancellation/by_reason/dealer").asInt()).isEqualTo(1);
+        // savings: each label its own distribution, in paise, with the hashes it came from
+        JsonNode s = a.path("savings");
+        assertThat(s.at("/dealer_stated_discount/n").asInt()).isEqualTo(2);
+        assertThat(s.at("/dealer_stated_discount/median_paise").asLong()).isEqualTo(50);
+        assertThat(s.at("/vs_catalogue_estimate/n").asInt()).as("hidden without a catalogue estimate").isEqualTo(1);
+        assertThat(s.at("/vs_catalogue_estimate/median_paise").asLong()).isEqualTo(100);
+        assertThat(s.at("/vs_best_other_quote/n").asInt()).isEqualTo(2);
+        assertThat(s.at("/vs_best_other_quote/p25_paise").asLong()).as("shown honestly when worse").isEqualTo(-50);
+        assertThat(s.at("/vs_best_other_quote/p75_paise").asLong()).isEqualTo(50);
+        assertThat(s.at("/realised/n").asInt()).as("only from a confirmed invoice").isEqualTo(1);
+        assertThat(s.at("/realised/median_paise").asLong()).isEqualTo(60);
+        assertThat(s.at("/realised/items/0/snapshot_sha256/0").asText()).isEqualTo("e700");
+        assertThat(s.at("/vs_best_other_quote/items/0/ruleset_version").asText()).isEqualTo("r1");
+        // AZ-E169: platform admins only
+        assertThat(get("/admin/analytics", TestTokens.buyer("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/admin/analytics", TestTokens.dealer("audit", UUID.randomUUID(), UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/admin/analytics", null).status()).isEqualTo(401);
+    }
+
     @Test
     void openApiMatchesWebClient() { assertOpenApiMatchesWebClient("audit"); }
 }

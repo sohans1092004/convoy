@@ -59,7 +59,8 @@ let lastEvent = null;
   streamClosedAt ??= Date.now();
 })();
 
-// Poll E060 every 1 s.
+// Poll E060 every 1 s. A rejection is 401/403 only: a network error (status 0) or a 5xx is not a revocation (P5.X).
+const rejected = (p) => p.status === 401 || p.status === 403;
 const polls = [];
 let polling = true;
 (async () => {
@@ -75,12 +76,12 @@ await sleep(3000); // a few successful polls before t0
 const t0 = Date.now();
 const rev = await fetch(`${GW}/api/dealerships/${DEALERSHIP}/staff/${staff.userId}`, { method: 'DELETE', headers: { 'X-Convoy-Session': admin.session, 'Idempotency-Key': randomUUID() } });
 if (!rev.ok) throw new Error(`revoke ${rev.status} ${await rev.text()}`);
-while (Date.now() - t0 < 45_000 && !(streamClosedAt && polls.some((p) => p.at > t0 && p.status !== 200))) await sleep(250);
+while (Date.now() - t0 < 45_000 && !(streamClosedAt && polls.some((p) => p.at > t0 && rejected(p)))) await sleep(250);
 await sleep(5000); // keep polling: any success after the first rejection fails the test
 polling = false;
 ctl.abort();
 
-const firstReject = polls.find((p) => p.at >= t0 && p.status !== 200);
+const firstReject = polls.find((p) => p.at >= t0 && rejected(p));
 const okAfterReject = firstReject ? polls.filter((p) => p.at > firstReject.at && p.status === 200).length : null;
 const result = {
   measured_at: new Date().toISOString(),

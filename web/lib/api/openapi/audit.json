@@ -93,6 +93,25 @@
           }
         }
       }
+    },
+    "/admin/analytics" : {
+      "get" : {
+        "tags" : [ "analytics" ],
+        "operationId" : "analytics",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {

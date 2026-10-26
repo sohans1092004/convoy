@@ -335,6 +335,8 @@ class PaymentIT extends ServiceTest {
         if (anyLine != null) {
             assertThatThrownBy(() -> jdbc.update("update journal_lines set dr = dr where line_no = 1 and entry_id = (select entry_id from journal_lines limit 1)"))
                     .hasMessageContaining("immutable");
+        } else { // no row to try: the triggers must still be there (P5.X)
+            assertThat(jdbc.queryForObject("select count(*) from pg_trigger where tgname in ('journal_entries_immutable', 'journal_lines_immutable') and tgenabled <> 'D'", Integer.class)).isEqualTo(2);
         }
     }
 

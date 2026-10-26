@@ -10,6 +10,7 @@ import convoy.contracts.events.BookingOverdue;
 import convoy.contracts.events.ConfirmationDeclined;
 import convoy.contracts.events.DeliveryScheduled;
 import convoy.contracts.events.DepositRefundRequested;
+import convoy.contracts.events.InvoiceConfirmed;
 import convoy.contracts.events.OrderCancelled;
 import convoy.platform.messaging.Outbox;
 import convoy.platform.problem.ApiProblem;
@@ -215,6 +216,21 @@ public class Lifecycle {
         Map<String, Object> b = lockBooking(bookingId);
         if (!buyer.equals(b.get("buyer_id"))) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such booking.");
         deliver(b);
+        return orders.view((UUID) b.get("order_id"), buyer);
+    }
+
+    /** E101: after delivery the buyer confirms the invoice total once (savings label 4; savings-model.md). */
+    @Transactional
+    public Map<String, Object> confirmInvoice(UUID bookingId, long totalPaise) {
+        UUID buyer = Caller.current().require("buyer").userId();
+        Map<String, Object> b = lockBooking(bookingId);
+        if (!buyer.equals(b.get("buyer_id"))) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such booking.");
+        if (!"DELIVERED".equals(b.get("state"))) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Confirm the invoice after delivery.");
+        if (b.get("invoice_total_paise") != null) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "The invoice total is already confirmed.");
+        if (totalPaise <= 0) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Enter the invoice total.").with("field", "invoice_total_paise");
+        long v = jdbc.queryForObject("update bookings set invoice_total_paise = ?, invoice_confirmed_at = clock_timestamp(), version = version + 1 where id = ? returning version",
+                Long.class, totalPaise, bookingId);
+        outbox.append(bookingId, v, new InvoiceConfirmed(bookingId.toString(), totalPaise));
         return orders.view((UUID) b.get("order_id"), buyer);
     }
 

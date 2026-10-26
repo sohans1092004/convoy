@@ -93,6 +93,7 @@ public class OrderApplication {
         this.evidence = evidence;
         this.identity = identity.http();
         scheduler.scheduleWithFixedDelay(this::sweep, settings.sweeperInterval());
+        scheduler.scheduleWithFixedDelay(evidence::purgeExpired, java.time.Instant.now().plus(java.time.Duration.ofMinutes(5)), java.time.Duration.ofDays(1));
     }
 
     /** Saga driver (P4.B): every unfinished saga moves as far as it can (the resolution step waits for the deadline), then the lifecycle sweeps. */
@@ -161,6 +162,14 @@ public class OrderApplication {
     @Idempotent
     @convoy.platform.security.RequiresRole({"buyer"})
     public Api.Order confirmDelivery(@PathVariable UUID id) { return convoy.platform.web.Dto.as(lifecycle.buyerConfirmsDelivery(id), Api.Order.class); }
+
+    public record InvoiceBody(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Positive Long invoiceTotalPaise) {}
+
+    /** E101 (P5.E): the buyer confirms the invoice total after delivery, once. */
+    @org.springframework.web.bind.annotation.PutMapping("/bookings/{id}/invoice")
+    @Idempotent
+    @convoy.platform.security.RequiresRole({"buyer"})
+    public Api.Order confirmInvoice(@PathVariable UUID id, @Valid @RequestBody InvoiceBody b) { return convoy.platform.web.Dto.as(lifecycle.confirmInvoice(id, b.invoiceTotalPaise()), Api.Order.class); }
 
     public record DeliveryBody(@jakarta.validation.constraints.NotNull java.time.LocalDate scheduledDate, @jakarta.validation.constraints.Size(max = 40) String slot) {}
 

@@ -2,6 +2,7 @@
 import { compute, rules } from '@convoy/price-engine';
 import Link from 'next/link';
 import * as React from 'react';
+import { DealerClarifications } from '@/components/clarifications';
 import { CommandStatus } from '@/components/command-status';
 import type { Request, RoundVariant } from '@/components/dealer-inbox';
 import { Badge } from '@/components/ui/badge';
@@ -196,6 +197,7 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
         {validUntil ? <Countdown deadline={`${validUntil}T23:59:59+05:30`} label="Quote valid until" /> : null}
       </div>
       {ranks.length ? <p className="text-sm text-muted"><strong>Ranking rule:</strong> {RANKING_RULE}</p> : null}
+      <DealerClarifications items={quote.clarifications} onChange={() => void load()} />
 
       {!editable && quote.state !== 'DRAFT' ? (
         <Card>

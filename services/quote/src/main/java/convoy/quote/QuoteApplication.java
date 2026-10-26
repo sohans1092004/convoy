@@ -66,8 +66,12 @@ public class QuoteApplication {
     }
 
     private final Quotes quotes;
+    private final Clarifications clarifications;
 
-    public QuoteApplication(Quotes quotes) { this.quotes = quotes; }
+    public QuoteApplication(Quotes quotes, Clarifications clarifications) {
+        this.quotes = quotes;
+        this.clarifications = clarifications;
+    }
 
     // ------------------------------------------------------------------ dealer (E060-E063, E067)
 
@@ -148,7 +152,7 @@ public class QuoteApplication {
         if (quotes.member(poolId, buyer).isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "Offers are shown to committed members of this pool.");
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> q : quotes.jdbc().queryForList("select id from quotes where pool_id = ? and state = 'FINAL' order by submitted_at", poolId)) {
-            out.add(buyerView(poolId, (UUID) q.get("id")));
+            out.add(buyerView(poolId, (UUID) q.get("id"), buyer));
         }
         return convoy.platform.web.Dto.as(Map.of("pool_id", poolId.toString(), "quotes", out, "ranking_rule", "Cash payable at the ceiling price for mandatory items and baseline insurance (ranking-rule.md)."), Api.Offers.class);
     }
@@ -157,11 +161,25 @@ public class QuoteApplication {
     public Api.Offer one(@PathVariable UUID poolId, @PathVariable UUID quoteId) {
         UUID buyer = Caller.current().require("buyer").userId();
         if (quotes.member(poolId, buyer).isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "Offers are shown to committed members of this pool.");
-        return convoy.platform.web.Dto.as(buyerView(poolId, quoteId), Api.Offer.class);
+        return convoy.platform.web.Dto.as(buyerView(poolId, quoteId, buyer), Api.Offer.class);
+    }
+
+    /** E071: a committed member asks about one FINAL quote (fixed type + short text, no contact details). */
+    @PostMapping("/pools/{poolId}/quotes/{quoteId}/clarifications")
+    @Idempotent
+    public ResponseEntity<Api.Clarification> ask(@PathVariable UUID poolId, @PathVariable UUID quoteId, @RequestBody Api.Ask body) {
+        return ResponseEntity.status(201).body(convoy.platform.web.Dto.as(clarifications.ask(poolId, quoteId, body.questionType(), body.text()), Api.Clarification.class));
+    }
+
+    /** E072: the quote's dealership answers once; the answer is shown to the pool's committed members. */
+    @PostMapping("/dealer/clarifications/{id}/answer")
+    @Idempotent
+    public Api.Clarification answer(@PathVariable UUID id, @RequestBody Api.Answer body) {
+        return convoy.platform.web.Dto.as(clarifications.answer(id, body.text()), Api.Clarification.class);
     }
 
     @SuppressWarnings("unchecked")
-    Map<String, Object> buyerView(UUID poolId, UUID quoteId) {
+    Map<String, Object> buyerView(UUID poolId, UUID quoteId, UUID buyer) {
         List<Map<String, Object>> rs = quotes.jdbc().queryForList("select q.*, coalesce(c.accepted, 0) as accepted, coalesce(c.confirmed, 0) as confirmed from quotes q "
                 + "left join count_replica c on c.pool_id = q.pool_id and c.quote_id = q.id where q.id = ? and q.pool_id = ? and q.state = 'FINAL'", quoteId, poolId);
         if (rs.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such offer.");
@@ -222,6 +240,7 @@ public class QuoteApplication {
         out.put("max_units", draft.get("max_units"));
         out.put("snapshot_sha256", ver.get("snapshot_sha256"));
         out.put("variants", variants);
+        out.put("clarifications", Clarifications.forQuote(quotes.jdbc(), quoteId, buyer));
         return out;
     }
 

@@ -275,6 +275,7 @@ services:
       OTEL_SERVICE_NAME: audit
       DB_PASSWORD: ${DB_PASSWORD_AUDIT}
       DB_OWNER_PASSWORD: ${DB_PASSWORD_AUDIT_OWNER}
+      DEMO: ${DEMO:-true} # E169 labels every figure "simulated" on the demo stack (synthetic dealers and buyers)
 
   web:
     build: { context: ., dockerfile: web/Dockerfile }

@@ -346,7 +346,7 @@ public class Orders {
         }
         o.put("snapshots", snaps);
         List<Map<String, Object>> b = jdbc.queryForList("select id, state, version, promised_delivery_date::text as promised_delivery_date, dealer_confirm_deadline, dealership_id, "
-                + "voucher_active, scheduled_date::text as scheduled_date, delivery_slot, delivered_at, overdue_flag, cancel_reason, cancelled_at, "
+                + "voucher_active, scheduled_date::text as scheduled_date, delivery_slot, delivered_at, overdue_flag, cancel_reason, cancelled_at, invoice_total_paise, invoice_confirmed_at, "
                 + "(select released_at from contact_releases r where r.booking_id = b.id) as contact_released_at from bookings b where order_id = ?", orderId);
         o.put("booking", b.isEmpty() ? null : iso(b.get(0)));
         o.put("disputes", jdbc.queryForList("select id, category, state, opened_by, created_at from disputes where order_id = ? order by created_at", orderId).stream().map(Orders::iso).toList());

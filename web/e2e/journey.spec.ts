@@ -308,14 +308,11 @@ test.afterAll(() => {
   expect(distinct).toBe(0);
   expect(read).toHaveLength(9);
   // Ledger balances and every deposit is in a valid AMENDMENT-003 state after the journeys.
-  const sql = "select (select coalesce(sum(dr),0) = coalesce(sum(cr),0) from journal_lines) as balanced, "
+  // P5.X: no try/catch (it swallowed a failed expect too) and an empty ledger is not "balanced".
+  const sql = "select (select count(*) > 0 and sum(dr) = sum(cr) from journal_lines) as balanced, "
     + "(select count(*) from payments where state not in ('INITIATED','PENDING','CAPTURED','FAILED','VOIDED_UNPAID','HELD_FOR_BOOKING','REFUND_PENDING','REFUNDED','RELEASED')) as invalid";
-  try {
-    const out = execFileSync('docker', ['compose', 'exec', '-T', 'postgres', 'sh', '-c', `PGPASSWORD="$DB_PASSWORD_PAYMENT" psql -U payment -d convoy -At -c "${sql}"`],
-      { cwd: '..', encoding: 'utf8' }).trim();
-    console.log(`ledger check: ${out}`);
-    expect(out).toBe('t|0');
-  } catch (e) {
-    console.log(`ledger check skipped: ${(e as Error).message.split('\n')[0]}`);
-  }
+  const out = execFileSync('docker', ['compose', 'exec', '-T', 'postgres', 'sh', '-c', `PGPASSWORD="$DB_PASSWORD_PAYMENT" psql -U payment -d convoy -At -c "${sql}"`],
+    { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
+  console.log(`ledger check: ${out}`);
+  expect(out).toBe('t|0');
 });

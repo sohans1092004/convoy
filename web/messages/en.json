@@ -356,7 +356,12 @@
     "cancelTerms": "Cancel this booking? In test mode you get your full ₹999 deposit back. Your cancellation never changes anyone else's price.",
     "cancelYes": "Yes, cancel",
     "cancelNo": "Keep my booking",
-    "cancelledDone": "Cancelled. Your deposit is being refunded in full."
+    "cancelledDone": "Cancelled. Your deposit is being refunded in full.",
+    "invoiceTotal": "Invoice total (₹), from your final invoice",
+    "invoiceNote": "Optional. Used only to show you the saving you actually got, against the catalogue estimate. You can confirm it once.",
+    "invoiceConfirm": "Confirm invoice total",
+    "invoiceThanks": "Thank you. Your invoice total is recorded.",
+    "invoiceConfirmed": "Invoice total you confirmed: {total}"
   },
   "reround": {
     "title": "The offer could not go ahead: keep your place?",
@@ -400,7 +405,8 @@
       "disputes": "Disputes",
       "verification": "Dealer verification",
       "reconciliation": "Reconciliation",
-      "audit": "Audit log"
+      "audit": "Audit log",
+      "analytics": "Analytics"
     },
     "loading": "Loading",
     "noRefunds": "No refunds need attention.",
@@ -432,6 +438,39 @@
       "found": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
       "sensitive": "Sensitive",
       "by": "By {actor}"
+    },
+    "analytics": {
+      "loading": "Loading analytics",
+      "simulated": "simulated",
+      "simulatedNote": "Every figure here comes from synthetic dealers and buyers (the demo seed and the dealer simulator), so each is labelled simulated.",
+      "of": "{num} of {den}",
+      "fill": "Pool fill rate and time to fill, by creation week",
+      "week": "Week",
+      "fillRate": "Fill rate",
+      "medianHours": "Median hours to fill",
+      "dealerResponse": "Dealer response rate (sealed round)",
+      "twoValid": "Pools with at least 2 valid quotes",
+      "acceptToConfirm": "Acceptance to confirmation",
+      "confirmToDeliver": "Confirmation to delivery (closed cohort)",
+      "cancellation": "Cancellation rate",
+      "reason": {
+        "buyer": "Buyer",
+        "dealer": "Dealer",
+        "stock": "Stock",
+        "admin": "Admin",
+        "other": "Other"
+      },
+      "savings": "Savings",
+      "savingsRule": "Four labels, never added together. Values are per offer and variant, in rupees; negative means more expensive.",
+      "label": {
+        "dealer_stated_discount": "Dealer-stated discount (as stated by the dealer)",
+        "vs_catalogue_estimate": "Difference vs the catalogue estimate",
+        "vs_best_other_quote": "Difference vs the best other offer in the pool",
+        "realised": "Realised saving (buyer-confirmed invoices only)"
+      },
+      "dist": "p25 {p25} · median {median} · p75 {p75}",
+      "explain": "Where each figure comes from (ruleset, snapshot hashes)",
+      "quote": "offer"
     }
   },
   "dispute": {
@@ -523,5 +562,31 @@
     "deleteConfirm": "Yes, delete my account",
     "cancel": "Cancel",
     "deleteProgress": "Deleting: {done} of {of} parts done."
+  },
+  "clarify": {
+    "summary": "Questions about this offer ({count, plural, =0 {none answered yet} one {# answered} other {# answered}})",
+    "type": {
+      "DELIVERY_DATE": "Delivery date",
+      "STOCK_COLOUR": "Stock and colour",
+      "PRICE_ITEM": "A price item",
+      "INSURANCE": "Insurance",
+      "ACCESSORIES": "Accessories",
+      "DOCUMENTS": "Documents",
+      "OTHER": "Other"
+    },
+    "typeLabel": "What is your question about?",
+    "choose": "Choose one",
+    "question": "Your question (up to 300 characters)",
+    "noContact": "Do not include phone numbers, email addresses or links: contact details are shared only after booking. Answers are shown to everyone in this pool.",
+    "ask": "Ask the dealer",
+    "asked": "Sent. The answer will appear here for everyone in the pool.",
+    "answer": "Answer:",
+    "waiting": "Waiting for the dealer",
+    "removed": "(question removed)",
+    "dealerTitle": "Questions from buyers",
+    "yourAnswer": "Your answer (up to 500 characters, shown to every buyer in the pool)",
+    "noContactDealer": "Phone numbers, email addresses and links are refused: contact details are released only after booking.",
+    "send": "Send answer",
+    "sent": "Answer sent."
   }
 }

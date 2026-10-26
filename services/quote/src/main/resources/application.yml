@@ -22,6 +22,8 @@ convoy:
   privacy: # P5.D (docs/privacy/retention.md)
     tables:
       - {table: member_replica, column: buyer_id, action: PSEUDONYMISE, category: pool-participation}
+      - {table: clarifications, column: buyer_id, action: PSEUDONYMISE, category: pool-participation, clear: [question]}
+      - {table: clarifications, column: answered_by, action: PSEUDONYMISE, category: staff-actions}
       - {table: quotes, column: created_by, action: PSEUDONYMISE, category: staff-actions}
       - {table: quote_versions, column: committed_by, action: PSEUDONYMISE, category: staff-actions}
       - {table: audit_trail, column: actor, action: PSEUDONYMISE, category: staff-actions}

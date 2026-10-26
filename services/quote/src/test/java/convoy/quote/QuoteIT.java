@@ -355,6 +355,70 @@ class QuoteIT extends ServiceTest {
         assertThat(rejected).as("some landed after it").isPositive();
     }
 
+    Resp post(String path, String token, String body) {
+        return send("POST", path, token, body, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+    }
+
+    static String ask(String type, String text) throws Exception { return JSON.writeValueAsString(Map.of("question_type", type, "text", text)); }
+
+    @Test
+    void clarificationsAboutAFinalQuoteAreAnsweredOnceShownToMembersAndRefuseContactDetails() throws Exception {
+        Round r = openRound(600);
+        String id = create(r).path("id").asText();
+        assertThat(saveAndSubmit(r, id, draft(SWIFT, 1000000, 2500000, null)).status()).isEqualTo(200);
+        UUID b1 = UUID.randomUUID(), b2 = UUID.randomUUID();
+        for (UUID b : List.of(b1, b2)) inTx(() -> quotes.memberCommitted(new MemberCommitted(r.pool().toString(), Uuid7.next().toString(), b.toString(), Uuid7.next().toString(), 1L, 1L, false)));
+        String t1 = TestTokens.buyer("quote", b1), t2 = TestTokens.buyer("quote", b2), outsider = TestTokens.buyer("quote", UUID.randomUUID());
+        String asks = "/pools/" + r.pool() + "/quotes/" + id + "/clarifications";
+        assertThat(code(post(asks, t1, ask("DELIVERY_DATE", "When can you deliver?")))).isEqualTo("INVALID_TRANSITION"); // sealed: not FINAL yet
+        inTx(() -> quotes.roundClosed(new RoundClosed(r.pool().toString(), r.round().toString(), "SEALED", Instant.now(), Instant.now(), 1L)));
+        UUID r2 = Uuid7.next();
+        inTx(() -> quotes.roundOpened(new QuoteRoundOpened(r.pool().toString(), r2.toString(), 1L, 2L, "FINAL", Instant.now().minusSeconds(1), List.of(r.dealership().toString()),
+                List.of(SWIFT), 1L, "MH", List.of(Map.of("id", SWIFT, "code", "swift-lxi-mt", "name", "LXi MT", "fuel", "PETROL", "engine_cc", 1197,
+                        "catalogue_ex_showroom_paise", 58390000L, "catalogue_evidence", "CATALOGUE_ESTIMATE")))));
+        get("/internal/rounds/" + r2 + "/summary", TestTokens.service("quote", "pool", List.of("rounds:summary")));
+        assertThat(jdbc.queryForObject("select state from quotes where id = ?::uuid", String.class, id)).isEqualTo("FINAL");
+
+        // AMENDMENT-013: the savings figures ride on QuoteFinalised, each with its snapshot hash.
+        JsonNode fig = JSON.readTree(jdbc.queryForObject("select payload::text from outbox where event_type = 'QuoteFinalised' and aggregate_id = ?::uuid", String.class, id)).at("/figures/0");
+        assertThat(fig.path("ceiling_cash_payable_paise").asLong()).as(fig.toString()).isEqualTo(66347500L);
+        assertThat(fig.path("ceiling_discount_paise").asLong()).isEqualTo(1000000L);
+        assertThat(fig.path("ceiling_snapshot_sha256").asText()).hasSize(64);
+        assertThat(fig.path("catalogue_estimate_cash_payable_paise").asLong()).isGreaterThan(66347500L); // same configuration, no discount
+        assertThat(fig.path("catalogue_snapshot_sha256").asText()).hasSize(64);
+
+        // Contact details are refused before the consent point, in the question ...
+        for (String bad : List.of("Call me on 98765 43210", "WhatsApp +91-98765-43210", "mail a.b@example.com", "rahul (at) gmail.com", "see www.dealer-site.in",
+                "https://bit.ly/x", "my site dealer.com", "९८७६५४३२१० पर कॉल करें")) {
+            Resp x = post(asks, t1, ask("OTHER", bad));
+            assertThat(x.status()).as(bad).isEqualTo(400);
+            assertThat(JSON.readTree(x.body()).path("field").asText()).as(bad).isEqualTo("text");
+        }
+        assertThat(code(post(asks, t1, ask("NOT_A_TYPE", "Is it in stock?")))).isEqualTo("VALIDATION_FAILED");
+        assertThat(post(asks, outsider, ask("OTHER", "Is it in stock?")).status()).isEqualTo(404); // AZ-E071-X
+        // ... while prices and dates pass
+        Resp asked = post(asks, t1, ask("PRICE_ITEM", "Is the Rs 5,83,900 ex-showroom final, and delivery by 2026-11-09?"));
+        assertThat(asked.status()).as(asked.body()).isEqualTo(201);
+        String cid = JSON.readTree(asked.body()).path("id").asText();
+        // Open: the asker sees it, another member does not, the dealer does.
+        assertThat(JSON.readTree(get("/pools/" + r.pool() + "/quotes/" + id, t1).body()).path("clarifications")).hasSize(1);
+        assertThat(JSON.readTree(get("/pools/" + r.pool() + "/quotes/" + id, t2).body()).path("clarifications")).isEmpty();
+        assertThat(JSON.readTree(get("/dealer/quotes/" + id, dealer(r.dealership())).body()).path("clarifications")).hasSize(1);
+
+        // ... and in the answer, from the quote's own dealership only, once.
+        String answer = "/dealer/clarifications/" + cid + "/answer";
+        assertThat(post(answer, dealer(UUID.randomUUID()), "{\"text\":\"Yes\"}").status()).isEqualTo(404); // AZ-E072-X
+        assertThat(post(answer, dealer(r.dealership()), "{\"text\":\"Call 9876543210 for details\"}").status()).isEqualTo(400);
+        Resp ok = post(answer, dealer(r.dealership()), "{\"text\":\"Yes, final; delivery by 9 Nov.\"}");
+        assertThat(ok.status()).as(ok.body()).isEqualTo(200);
+        assertThat(code(post(answer, dealer(r.dealership()), "{\"text\":\"Again\"}"))).isEqualTo("INVALID_TRANSITION");
+        JsonNode seen = JSON.readTree(get("/pools/" + r.pool() + "/quotes", t2).body()).at("/quotes/0/clarifications/0");
+        assertThat(seen.path("answer").asText()).isEqualTo("Yes, final; delivery by 9 Nov.");
+        assertThat(seen.path("question_type").asText()).isEqualTo("PRICE_ITEM");
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'ClarificationAnswered' and aggregate_id = ?", Integer.class, Clarifications.stream(id))).isEqualTo(1);
+        assertThat(Outboxes.assertAllValid(jdbc, "quote")).isPositive();
+    }
+
     @Test
     void authorisationMatrixForEveryP1Endpoint() {
         assertThat(AuthzDenyChecks.run("quote", this::send, (m, p) -> p.endsWith("/draft") || p.endsWith("/revisions") ? "{}" : p.endsWith("/withdraw") || p.endsWith("/cancel") ? "{\"reason\":\"x\"}" : null)).isEmpty();

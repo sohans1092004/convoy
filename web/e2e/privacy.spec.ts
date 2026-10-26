@@ -87,7 +87,7 @@ test('export holds every service, erasure completes everywhere, money stays bala
   expect(sql(`select count(*) from payment.payments where id in (${kept.payments})`)).toBe(String(kept.payments.split(',').length));
   if (kept.orders) expect(sql(`select count(*) from "order".orders where id in (${kept.orders})`)).toBe(String(kept.orders.split(',').length));
   // money rule: the ledger still balances and every deposit is in a valid AMENDMENT-003 state
-  expect(sql("select (select coalesce(sum(dr),0) = coalesce(sum(cr),0) from payment.journal_lines) || '|' || (select count(*) from payment.payments where state not in "
+  expect(sql("select (select count(*) > 0 and sum(dr) = sum(cr) from payment.journal_lines) || '|' || (select count(*) from payment.payments where state not in "
     + "('INITIATED','PENDING','CAPTURED','FAILED','VOIDED_UNPAID','HELD_FOR_BOOKING','REFUND_PENDING','REFUNDED','RELEASED'))")).toBe('true|0');
   // the export file is gone with the account
   expect(sql(`select count(*) from identity.data_exports where user_id = '${user}' and object_key is not null`)).toBe('0');
