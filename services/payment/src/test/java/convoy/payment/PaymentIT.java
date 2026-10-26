@@ -246,10 +246,28 @@ class PaymentIT extends ServiceTest {
         String pid = (String) d.get("payment_id");
         captured((String) d.get("razorpay_order_id"), "evt_c_" + pid);
         inTx(() -> payments.requestRefund(buyer, pool, "BUYER_LEFT"));
+        // A concurrent attempt holds the row: this one skips it without spending a retry (it used to count as a failure, which
+        // is how the 2 s background worker gave D21 a 6th attempt). The holder makes it due inside its lock, so no worker gets there first.
+        UUID refundId = UUID.fromString((String) refund(pid).get("id"));
+        java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1), done = new java.util.concurrent.CountDownLatch(1);
+        Thread holder = new Thread(() -> inTx(() -> {
+            jdbc.update("update refunds set next_attempt_at = clock_timestamp() - interval '1 second' where id = ?", refundId);
+            locked.countDown();
+            try { done.await(10, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        }));
+        holder.start();
+        locked.await();
+        assertThat(refund(pid)).as("not yet attempted").containsEntry("state", "REFUND_REQUESTED").containsEntry("attempts", 0);
+        payments.attempt(refundId);
+        assertThat(refund(pid)).containsEntry("state", "REFUND_REQUESTED").containsEntry("attempts", 0);
+        done.countDown();
+        holder.join();
         dueNow(pid);
-        payments.refundWorker();
+        payments.refundWorker(); // or the background worker got there first: either way exactly one attempt
         Map<String, Object> rf = refund(pid);
         assertThat(rf).containsEntry("state", "REFUND_INITIATED").containsEntry("attempts", 1);
+        payments.attempt(refundId); // already initiated by the attempt above: a no-op, not a failure
+        assertThat(refund(pid)).containsEntry("state", "REFUND_INITIATED").containsEntry("attempts", 1);
         // REF-T04: Razorpay reports failure -> REFUND_FAILED, next attempt after 1 minute (schedule[0]), RefundFailed emitted.
         webhook("refund.failed", "refund", Map.of("id", rf.get("razorpay_refund_id"), "receipt", rf.get("id"), "status", "failed"), "evt_rf_" + pid, "test_webhook_secret");
         rf = refund(pid);

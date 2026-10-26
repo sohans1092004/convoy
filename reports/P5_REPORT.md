@@ -107,6 +107,13 @@ every metrics.md figure with its sample size, labelled "simulated" while the dat
 - P5.C: `/actuator/prometheus` was 401, then 404 (no registry) on every service since P1, so `stale_distinct` had never been read.
 - P5.E: `InvoiceConfirmed` was in the catalogue but never emitted (E101 never built).
 - P5.X: the 6 vacuous checks above.
+- **Refund retries burned by a lock race (payment, since P2).** `initiate()` read the refund with `for update skip locked` through
+  `queryForMap`. When another attempt held the row, or had already moved it to `REFUND_INITIATED`, the empty result or the
+  state check threw. `attempt()` then counted that as a failed Razorpay call (`attempts + 1`, rescheduled). In production, a lost
+  race shortens the 5-step retry schedule. In CI, the 2 s background worker raced D21's own attempts and gave it a 6th
+  (CI run 40321065175 at 850ebd2). Fix: a locked or no-longer-due refund is a no-op. New check in PaymentIT: hold the row lock and
+  attempt (0 attempts counted), then attempt an already-initiated refund (still 1). On the old code it fails with `attempts=2`,
+  `Incorrect result size: expected 1, actual 0`. PaymentIT 42/42.
 
 ## 6. Nightly
 - **Run 40318303340 on `p5/ops` at 63678b6 (manual dispatch): success.** Every step passed, including:
