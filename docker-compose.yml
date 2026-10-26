@@ -40,6 +40,8 @@ services:
       DB_PASSWORD_PAYMENT: ${DB_PASSWORD_PAYMENT}
       DB_PASSWORD_REALTIME: ${DB_PASSWORD_REALTIME}
       DB_PASSWORD_NOTIFICATION: ${DB_PASSWORD_NOTIFICATION}
+      DB_PASSWORD_AUDIT: ${DB_PASSWORD_AUDIT}
+      DB_PASSWORD_AUDIT_OWNER: ${DB_PASSWORD_AUDIT_OWNER}
       TZ: UTC
     volumes:
       - ./deploy/local/postgres:/docker-entrypoint-initdb.d:ro
@@ -110,6 +112,11 @@ services:
       CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
       CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER}
       CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
+      CLIENT_SECRET_CATALOG: ${CLIENT_SECRET_CATALOG}
+      CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER}
+      CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE}
+      CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT}
+      EXPORT_PUBLIC_ENDPOINT: http://localhost:4566
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -148,6 +155,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: catalog
+      CLIENT_SECRET_CATALOG: ${CLIENT_SECRET_CATALOG}
       DB_PASSWORD: ${DB_PASSWORD_CATALOG}
 
   dealer:
@@ -156,6 +164,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: dealer
+      CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER}
       DB_PASSWORD: ${DB_PASSWORD_DEALER}
       # Demo seed (P4.0): the local stack and CI are demo environments; a lite deploy seeds only with DEMO=true.
       DEMO: ${DEMO:-true}
@@ -211,6 +220,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: quote
+      CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE}
       DB_PASSWORD: ${DB_PASSWORD_QUOTE}
 
   order:
@@ -229,6 +239,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: payment
+      CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT}
       DB_PASSWORD: ${DB_PASSWORD_PAYMENT}
       RAZORPAY_BASE_URL: ${RAZORPAY_BASE_URL}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
@@ -251,6 +262,19 @@ services:
       CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+
+  audit:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: audit } }
+    mem_limit: 360m
+    depends_on:
+      postgres: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: audit
+      DB_PASSWORD: ${DB_PASSWORD_AUDIT}
+      DB_OWNER_PASSWORD: ${DB_PASSWORD_AUDIT_OWNER}
 
   web:
     build: { context: ., dockerfile: web/Dockerfile }

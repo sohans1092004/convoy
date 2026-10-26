@@ -19,6 +19,40 @@ management:
   endpoints.web.exposure.include: health,info,prometheus
   endpoint.health.probes.enabled: true
 convoy:
+  privacy: # P5.D (docs/privacy/retention.md): orders and bookings are transaction records, disputes are kept for claims
+    tables:
+      - {table: orders, column: buyer_id, action: PSEUDONYMISE, category: orders}
+      - {table: payment_replica, column: buyer_id, action: PSEUDONYMISE, category: orders}
+      - {table: contact_consents, column: buyer_id, action: PSEUDONYMISE, category: orders}
+      - {table: contact_releases, column: buyer_id, action: PSEUDONYMISE, category: orders}
+      - {table: disputes, column: buyer_id, action: PSEUDONYMISE, category: disputes}
+      - {table: disputes, column: proposed_by, action: PSEUDONYMISE, category: disputes}
+      - {table: dispute_history, column: actor_id, action: PSEUDONYMISE, category: disputes}
+      - {table: dispute_evidence, column: uploader_id, action: PSEUDONYMISE, category: disputes}
+    retention:
+      # disputes: 2 years after resolution (Consumer Protection Act 2019 s.69); legal review flagged
+      - category: disputes
+        days: 730
+        sql: >-
+          with d as (select id from disputes where resolved_at < :cutoff),
+          h as (delete from dispute_history where dispute_id in (select id from d)),
+          e as (delete from dispute_evidence where dispute_id in (select id from d))
+          delete from disputes where id in (select id from d)
+      # orders and bookings: 8 years (Companies Act 2013 s.128(5)); one statement, orders and price_snapshots reference each other
+      - category: orders
+        days: 2922
+        sql: >-
+          with o as (select id from orders where created_at < :cutoff),
+          d as (select id from disputes where order_id in (select id from o)),
+          h as (delete from dispute_history where dispute_id in (select id from d)),
+          e as (delete from dispute_evidence where dispute_id in (select id from d)),
+          dd as (delete from disputes where id in (select id from d)),
+          r as (delete from contact_releases where order_id in (select id from o)),
+          c as (delete from contact_consents where order_id in (select id from o)),
+          s as (delete from saga_steps where order_id in (select id from o)),
+          b as (delete from bookings where order_id in (select id from o)),
+          p as (delete from price_snapshots where order_id in (select id from o))
+          delete from orders where id in (select id from o)
   service-name: order
   identity-url: ${IDENTITY_URL:http://identity:8080}
   client-id: order

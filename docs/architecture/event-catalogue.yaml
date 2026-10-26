@@ -12,7 +12,7 @@
 # https://aws.amazon.com/about-aws/whats-new/2023/09/amazon-sns-fifo-topics-message-delivery-sqs-standard-queues/ , accessed 2026-10-24;
 # standard subscribers get best-effort ordering and at-least-once delivery). Consumers that need pool order
 # (quote, order, realtime, and payment for membership events) subscribe to pool-events.fifo with FIFO queues;
-# notification and audit subscribe with standard queues and rely on inbox dedupe (+ aggregate_version for audit; AMENDMENT-010).
+# notification and audit subscribe with standard queues and rely on inbox dedupe only (AMENDMENT-010, AMENDMENT-012 for audit).
 envelope: events/envelope.schema.json
 fifo_policy: "FIFO only where consumers must apply events in order per aggregate and cannot cheaply recompute: pool membership counts and pool/round lifecycle (MessageGroupId = pool_id). All consumers additionally check aggregate_version: gap -> park and retry, stale -> ignore and count, gap older than 5 min -> fetch owner snapshot (PLAN §4.3.3)."
 events:
@@ -21,7 +21,10 @@ events:
   - {name: SessionRevoked, owner: identity, consumers: [gateway, realtime, audit], aggregate: user, fifo: false, payload: {user_id: uuid, session_id_hash: string, reason: "enum(LOGOUT|ADMIN|STAFF_REVOKED|PASSWORD_RESET|ERASURE)"}}
   - {name: StaffInvited, owner: identity, consumers: [notification, dealer, audit], aggregate: dealership_staff, fifo: false, payload: {dealership_id: uuid, invite_id: uuid, role: "enum(dealer_staff|dealer_admin)", invited_by: uuid}}
   - {name: StaffRevoked, owner: identity, consumers: [gateway, realtime, dealer, quote, audit], aggregate: dealership_staff, fifo: false, payload: {dealership_id: uuid, user_id: uuid, revoked_by: uuid}}
-  - {name: ErasureRequested, owner: identity, consumers: [pool, dealer, quote, order, payment, notification, audit], aggregate: user, fifo: false, payload: {erasure_id: uuid, user_id: uuid, requested_at: timestamp}}
+  - {name: ErasureRequested, owner: identity, consumers: [catalog, pool, dealer, quote, order, payment, notification, audit], aggregate: user, fifo: false, payload: {erasure_id: uuid, user_id: uuid, requested_at: timestamp}}
+  # P5.D: one aggregate per export request (v1 = requested, later versions = each download link issued)
+  - {name: UserExportRequested, owner: identity, consumers: [catalog, pool, dealer, quote, order, payment, notification, audit], aggregate: data_export, fifo: false, payload: {export_id: uuid, user_id: uuid, requested_at: timestamp}}
+  - {name: DataExportDownloaded, owner: identity, consumers: [audit], aggregate: data_export, fifo: false, payload: {export_id: uuid, user_id: uuid, expires_at: timestamp}}
   # ---------------- catalog
   - {name: CatalogPriceUpdated, owner: catalog, consumers: [quote, notification, audit], aggregate: variant, fifo: false, payload: {variant_id: uuid, city: string, ex_showroom_paise: paise, evidence: "enum(DEALER_CONFIRMED|CATALOGUE_ESTIMATE|UNVERIFIED)", effective_from: date, source_url: string}}
   - {name: RulesetPublished, owner: catalog, consumers: [quote, order, audit], aggregate: ruleset, fifo: false, payload: {ruleset_version: string, published_at: timestamp, sha256: string}}
@@ -96,10 +99,19 @@ events:
 # FULL = the consumer receives every event type of the aggregate, so a version gap is real: park, retry, and after
 # 5 min fetch the owner snapshot. PARTIAL = it cannot tell a gap from an event it does not receive: stale rule only
 # (order within the aggregate comes from the FIFO queue for pool events). validate_spec.py checks FULL <=> every event.
-# EVENTS (AMENDMENT-010, notification only) = every event is its own message and never overwrites state: inbox dedupe
+# EVENTS (AMENDMENT-010 notification, AMENDMENT-012 audit) = every event is its own message and never overwrites state: inbox dedupe
 # on event_id only, no stale rule, so an unordered standard queue (or a backlog replay) loses nothing.
 subscriptions:
-  - {consumer: audit, aggregate: user, kind: FULL}
+  - {consumer: audit, aggregate: user, kind: EVENTS}
+  - {consumer: catalog, aggregate: user, kind: PARTIAL}
+  - {consumer: audit, aggregate: data_export, kind: EVENTS}
+  - {consumer: catalog, aggregate: data_export, kind: PARTIAL}
+  - {consumer: pool, aggregate: data_export, kind: PARTIAL}
+  - {consumer: dealer, aggregate: data_export, kind: PARTIAL}
+  - {consumer: quote, aggregate: data_export, kind: PARTIAL}
+  - {consumer: order, aggregate: data_export, kind: PARTIAL}
+  - {consumer: payment, aggregate: data_export, kind: PARTIAL}
+  - {consumer: notification, aggregate: data_export, kind: EVENTS}
   - {consumer: dealer, aggregate: user, kind: PARTIAL}
   - {consumer: gateway, aggregate: user, kind: PARTIAL}
   - {consumer: notification, aggregate: user, kind: EVENTS}
@@ -108,58 +120,58 @@ subscriptions:
   - {consumer: pool, aggregate: user, kind: PARTIAL}
   - {consumer: quote, aggregate: user, kind: PARTIAL}
   - {consumer: realtime, aggregate: user, kind: PARTIAL}
-  - {consumer: audit, aggregate: dealership_staff, kind: FULL}
+  - {consumer: audit, aggregate: dealership_staff, kind: EVENTS}
   - {consumer: dealer, aggregate: dealership_staff, kind: FULL}
   - {consumer: gateway, aggregate: dealership_staff, kind: PARTIAL}
   - {consumer: notification, aggregate: dealership_staff, kind: EVENTS}
   - {consumer: quote, aggregate: dealership_staff, kind: PARTIAL}
   - {consumer: realtime, aggregate: dealership_staff, kind: PARTIAL}
-  - {consumer: audit, aggregate: variant, kind: FULL}
+  - {consumer: audit, aggregate: variant, kind: EVENTS}
   - {consumer: notification, aggregate: variant, kind: EVENTS}
   - {consumer: quote, aggregate: variant, kind: FULL}
-  - {consumer: audit, aggregate: ruleset, kind: FULL}
+  - {consumer: audit, aggregate: ruleset, kind: EVENTS}
   - {consumer: order, aggregate: ruleset, kind: FULL}
   - {consumer: quote, aggregate: ruleset, kind: FULL}
-  - {consumer: audit, aggregate: pool, kind: FULL}
+  - {consumer: audit, aggregate: pool, kind: EVENTS}
   - {consumer: notification, aggregate: pool, kind: EVENTS}
   - {consumer: order, aggregate: pool, kind: PARTIAL}
   - {consumer: payment, aggregate: pool, kind: PARTIAL}
   - {consumer: pool, aggregate: pool, kind: PARTIAL}
   - {consumer: quote, aggregate: pool, kind: PARTIAL}
   - {consumer: realtime, aggregate: pool, kind: FULL}
-  - {consumer: audit, aggregate: dealership, kind: FULL}
+  - {consumer: audit, aggregate: dealership, kind: EVENTS}
   - {consumer: notification, aggregate: dealership, kind: EVENTS}
   - {consumer: identity, aggregate: dealership, kind: PARTIAL}
   - {consumer: quote, aggregate: dealership, kind: PARTIAL}
-  - {consumer: audit, aggregate: quote, kind: FULL}
+  - {consumer: audit, aggregate: quote, kind: EVENTS}
   - {consumer: dealer, aggregate: quote, kind: PARTIAL}
   - {consumer: notification, aggregate: quote, kind: EVENTS}
   - {consumer: order, aggregate: quote, kind: PARTIAL}
   - {consumer: pool, aggregate: quote, kind: PARTIAL}
   - {consumer: realtime, aggregate: quote, kind: PARTIAL}
-  - {consumer: audit, aggregate: order, kind: FULL}
+  - {consumer: audit, aggregate: order, kind: EVENTS}
   - {consumer: notification, aggregate: order, kind: EVENTS}
   - {consumer: payment, aggregate: order, kind: PARTIAL}
   - {consumer: quote, aggregate: order, kind: PARTIAL}
   - {consumer: realtime, aggregate: order, kind: PARTIAL}
-  - {consumer: audit, aggregate: order_pool_resolution, kind: FULL}
+  - {consumer: audit, aggregate: order_pool_resolution, kind: EVENTS}
   - {consumer: notification, aggregate: order_pool_resolution, kind: EVENTS}
   - {consumer: pool, aggregate: order_pool_resolution, kind: PARTIAL}
   - {consumer: quote, aggregate: order_pool_resolution, kind: PARTIAL}
   - {consumer: realtime, aggregate: order_pool_resolution, kind: PARTIAL}
-  - {consumer: audit, aggregate: booking, kind: FULL}
+  - {consumer: audit, aggregate: booking, kind: EVENTS}
   - {consumer: dealer, aggregate: booking, kind: PARTIAL}
   - {consumer: notification, aggregate: booking, kind: EVENTS}
   - {consumer: payment, aggregate: booking, kind: PARTIAL}
   - {consumer: realtime, aggregate: booking, kind: PARTIAL}
-  - {consumer: audit, aggregate: dispute, kind: FULL}
+  - {consumer: audit, aggregate: dispute, kind: EVENTS}
   - {consumer: dealer, aggregate: dispute, kind: PARTIAL}
   - {consumer: notification, aggregate: dispute, kind: EVENTS}
   - {consumer: realtime, aggregate: dispute, kind: PARTIAL}
-  - {consumer: audit, aggregate: payment, kind: FULL}
+  - {consumer: audit, aggregate: payment, kind: EVENTS}
   - {consumer: notification, aggregate: payment, kind: EVENTS}
   - {consumer: order, aggregate: payment, kind: PARTIAL}
   - {consumer: pool, aggregate: payment, kind: PARTIAL}
   - {consumer: realtime, aggregate: payment, kind: PARTIAL}
-  - {consumer: audit, aggregate: reconciliation_run, kind: FULL}
+  - {consumer: audit, aggregate: reconciliation_run, kind: EVENTS}
   - {consumer: notification, aggregate: reconciliation_run, kind: EVENTS}

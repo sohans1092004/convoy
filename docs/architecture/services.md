@@ -91,8 +91,8 @@ Endpoints: see [api-outline.md](api-outline.md). Events: see [event-catalogue.ya
 
 ## audit
 - **Wave 3.** Append-only audit log fed by every outbox (all events), sensitive-access log, admin read models and analytics views.
-- **Tables:** `audit_log(seq bigserial, event_id unique, event_type, producer, aggregate_id, actor, correlation_id, sensitive bool, payload jsonb, received_at, prev_hash, row_hash)` with INSERT/SELECT-only role and an UPDATE/DELETE trigger that raises; `sensitive_access(seq, actor, resource, action, at, row_hash)`; read models: `admin_pool_view`, `admin_refund_queue_view`, `marketplace_metrics_daily(date, metric, value, simulated bool)`.
-- **API:** admin audit search, chain verification, metrics read (admin).
+- **Tables:** `audit_log(seq identity, event_id unique null, event_type, producer, aggregate_type, aggregate_id, aggregate_version, actor, correlation_id, sensitive bool, occurred_at, recorded_at, payload jsonb, prev_hash, hash)`: one hash chain (`row_hash`), app role `audit` has INSERT/SELECT only, a trigger refuses UPDATE/DELETE/TRUNCATE, the schema is owned by `audit_owner` (migrations). Sensitive access (viewer reads, export downloads) is a row with `sensitive = true` in the same chain (P5.C), not a second table. Read models and analytics views: later in P5.
+- **API:** E163 admin audit search (every read is audited). Chain verification is a command: `docker compose run --rm audit verify-chain` (exit 1 on the first broken link). Runbook: [audit.md](../runbooks/audit.md).
 - **Events consumed:** all. Produces none.
 - **Scaling signal:** ingest lag (outbox → audit), DB write rate.
 - **Dependencies down:** audit down → nothing else blocks; events wait in its queue; reconciliation of owner counts vs audit counts detects omissions (PLAN §4.6).

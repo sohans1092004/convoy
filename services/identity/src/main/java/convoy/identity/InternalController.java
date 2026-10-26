@@ -31,8 +31,10 @@ public class InternalController {
     private final Users users;
     private final SigningKeys keys;
     private final ObjectMapper json;
+    private final DataRights dataRights;
 
-    public InternalController(JdbcTemplate jdbc, Users users, SigningKeys keys, ObjectMapper json) {
+    public InternalController(JdbcTemplate jdbc, Users users, SigningKeys keys, ObjectMapper json, @org.springframework.context.annotation.Lazy DataRights dataRights) {
+        this.dataRights = dataRights;
         this.jdbc = jdbc;
         this.users = users;
         this.keys = keys;
@@ -68,8 +70,10 @@ public class InternalController {
     @GetMapping("/internal/users/{id}/contact")
     @convoy.platform.security.RequiresScope("contacts:read")
     public Map<String, Object> contact(@PathVariable java.util.UUID id) {
-        Caller.current().requireScope("contacts:read");
+        Caller c = Caller.current().requireScope("contacts:read");
         Users.User u = users.find(id).orElseThrow(() -> ApiProblem.of(ProblemType.NOT_FOUND, "No such user."));
+        // P5.D: a withdrawn DEALER_DISCLOSURE consent stops any further sharing with dealers (notification still emails the buyer)
+        if ("order".equals(c.subject()) && dataRights.dealerDisclosureWithdrawn(id)) throw ApiProblem.of(ProblemType.NOT_FOUND, "The buyer withdrew consent to share their contact.");
         return Map.of("user_id", u.id().toString(), "email", u.email());
     }
 

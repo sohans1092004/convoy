@@ -110,6 +110,13 @@ export interface ConfirmationRecorded {
   quote_confirmed_count: number;
 }
 
+/** Owner: identity. Consumers: audit. FIFO: False. */
+export interface DataExportDownloaded {
+  export_id: string;
+  user_id: string;
+  expires_at: string;
+}
+
 /** Owner: dealer. Consumers: quote, notification, audit. FIFO: False. */
 export interface DealershipSuspended {
   dealership_id: string;
@@ -198,7 +205,7 @@ export interface DisputeStatusChanged {
   to_state: string;
 }
 
-/** Owner: identity. Consumers: pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
+/** Owner: identity. Consumers: catalog, pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
 export interface ErasureRequested {
   erasure_id: string;
   user_id: string;
@@ -245,7 +252,7 @@ export interface MemberJoined {
   committed_count: number;
 }
 
-/** Owner: pool. Consumers: quote, payment, realtime, audit. FIFO: True. */
+/** Owner: pool. Consumers: quote, payment, realtime, notification, audit. FIFO: True. */
 export interface MemberLeft {
   pool_id: string;
   membership_id: string;
@@ -564,6 +571,13 @@ export interface TierResolved {
   resolved_cash_payable_paise: number | null;
 }
 
+/** Owner: identity. Consumers: catalog, pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
+export interface UserExportRequested {
+  export_id: string;
+  user_id: string;
+  requested_at: string;
+}
+
 /** Owner: identity. Consumers: notification, audit. FIFO: False. */
 export interface UserRegistered {
   user_id: string;
@@ -585,6 +599,7 @@ export interface EventPayloads {
   ClarificationAnswered: ClarificationAnswered;
   ConfirmationDeclined: ConfirmationDeclined;
   ConfirmationRecorded: ConfirmationRecorded;
+  DataExportDownloaded: DataExportDownloaded;
   DealershipSuspended: DealershipSuspended;
   DealershipVerified: DealershipVerified;
   DecisionOpened: DecisionOpened;
@@ -638,6 +653,7 @@ export interface EventPayloads {
   StockReserved: StockReserved;
   StockUnavailable: StockUnavailable;
   TierResolved: TierResolved;
+  UserExportRequested: UserExportRequested;
   UserRegistered: UserRegistered;
 }
 
@@ -657,6 +673,7 @@ export const EVENT_PRODUCERS: Record<EventType, string> = {
   ClarificationAnswered: "quote",
   ConfirmationDeclined: "order",
   ConfirmationRecorded: "order",
+  DataExportDownloaded: "identity",
   DealershipSuspended: "dealer",
   DealershipVerified: "dealer",
   DecisionOpened: "pool",
@@ -710,5 +727,6 @@ export const EVENT_PRODUCERS: Record<EventType, string> = {
   StockReserved: "quote",
   StockUnavailable: "quote",
   TierResolved: "order",
+  UserExportRequested: "identity",
   UserRegistered: "identity",
 };

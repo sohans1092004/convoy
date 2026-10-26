@@ -399,7 +399,8 @@
       "refunds": "Refunds",
       "disputes": "Disputes",
       "verification": "Dealer verification",
-      "reconciliation": "Reconciliation"
+      "reconciliation": "Reconciliation",
+      "audit": "Audit log"
     },
     "loading": "Loading",
     "noRefunds": "No refunds need attention.",
@@ -418,7 +419,20 @@
     "reject": "Reject",
     "openedBy": "opened by {by}",
     "proposed": "proposed: {outcome}",
-    "runSummary": "{checked} deposits checked, {mismatches} mismatches"
+    "runSummary": "{checked} deposits checked, {mismatches} mismatches",
+    "audit": {
+      "actor": "Actor (user:<id> or service:<name>)",
+      "aggregate_type": "Aggregate type",
+      "aggregate_id": "Aggregate ID",
+      "event_type": "Event type",
+      "from": "From",
+      "to": "To",
+      "search": "Search",
+      "readsAudited": "Your search is itself recorded in the audit log.",
+      "found": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+      "sensitive": "Sensitive",
+      "by": "By {actor}"
+    }
   },
   "dispute": {
     "loading": "Loading the case",
@@ -480,5 +494,34 @@
     "pushUnsupported": "This browser cannot show push alerts.",
     "pushDenied": "Alerts are blocked for this site in your browser settings.",
     "pushFailed": "Could not change push alerts. Try again."
+  },
+  "privacy": {
+    "title": "Your privacy choices",
+    "loading": "Loading…",
+    "unavailable": "Privacy settings are unavailable right now.",
+    "notAsked": "Not asked yet",
+    "granted": "Given",
+    "withdrawn": "Withdrawn",
+    "data": "Data: {list}",
+    "retention": "Kept: {text}",
+    "withdraw": "Withdraw consent",
+    "give": "Give consent",
+    "required": "Needed to use Convoy; to stop it, delete your account.",
+    "history": "History ({count})",
+    "saved": "Saved.",
+    "exportTitle": "Download your data",
+    "exportText": "One file with everything every part of Convoy holds about you. The download link works for 15 minutes; the file is deleted after 24 hours.",
+    "exportButton": "Prepare my data",
+    "exportPending": "Collecting: {done} of {of} parts.",
+    "exportReady": "Your file is ready.",
+    "download": "Download (JSON)",
+    "linkExpires": "Link valid until {at}.",
+    "refresh": "Check again",
+    "deleteTitle": "Delete your account",
+    "deleteText": "Your account, saved cars, preferences and messages are deleted. Deposits, refunds, orders and disputes are kept for the periods the law requires, with your name and email removed. You are signed out when every part has finished.",
+    "deleteButton": "Delete my account…",
+    "deleteConfirm": "Yes, delete my account",
+    "cancel": "Cancel",
+    "deleteProgress": "Deleting: {done} of {of} parts done."
   }
 }

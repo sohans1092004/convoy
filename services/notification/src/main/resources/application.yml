@@ -30,6 +30,14 @@ management:
   endpoints.web.exposure.include: health,info,prometheus
   endpoint.health.probes.enabled: true
 convoy:
+  privacy: # P5.D (docs/privacy/retention.md): everything here is deleted with the account
+    tables:
+      - {table: deliveries, column: notification_id, where: "notification_id in (select id from notifications where user_id = ?)", action: DELETE, category: messages}
+      - {table: notifications, column: user_id, action: DELETE, category: messages}
+      - {table: preferences, column: user_id, action: DELETE, category: messages}
+      - {table: push_subscriptions, column: user_id, action: DELETE, category: messages}
+      - {table: links, column: target, where: "target = 'user:' || ?::text", action: DELETE, category: messages}
+      - {table: events, column: payload, where: "payload->>'buyer_id' = ?::text", action: DELETE, category: messages}
   service-name: notification
   identity-url: ${IDENTITY_URL:http://identity:8080}
   client-id: notification

@@ -21,6 +21,7 @@ public final class EventTypes {
         Map.entry("ClarificationAnswered", ClarificationAnswered.class),
         Map.entry("ConfirmationDeclined", ConfirmationDeclined.class),
         Map.entry("ConfirmationRecorded", ConfirmationRecorded.class),
+        Map.entry("DataExportDownloaded", DataExportDownloaded.class),
         Map.entry("DealershipSuspended", DealershipSuspended.class),
         Map.entry("DealershipVerified", DealershipVerified.class),
         Map.entry("DecisionOpened", DecisionOpened.class),
@@ -74,5 +75,6 @@ public final class EventTypes {
         Map.entry("StockReserved", StockReserved.class),
         Map.entry("StockUnavailable", StockUnavailable.class),
         Map.entry("TierResolved", TierResolved.class),
+        Map.entry("UserExportRequested", UserExportRequested.class),
         Map.entry("UserRegistered", UserRegistered.class));
 }

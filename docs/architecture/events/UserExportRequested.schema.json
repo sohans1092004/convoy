@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/UserExportRequested.schema.json",
+  "title": "UserExportRequested v1",
+  "description": "Owner: identity. Consumers: catalog, pool, dealer, quote, order, payment, notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "UserExportRequested"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "identity"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "export_id",
+        "requested_at",
+        "user_id"
+      ],
+      "properties": {
+        "export_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC, RFC 3339"
+        }
+      }
+    }
+  }
+}

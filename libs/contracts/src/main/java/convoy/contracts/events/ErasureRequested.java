@@ -4,7 +4,7 @@ package convoy.contracts.events;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 
-/** Owner: identity. Consumers: pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
+/** Owner: identity. Consumers: catalog, pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
 public record ErasureRequested(
         @JsonProperty("erasure_id") String erasureId,
         @JsonProperty("user_id") String userId,

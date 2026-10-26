@@ -16,6 +16,9 @@ add CLIENT_SECRET_REALTIME "$(rnd)"
 add CLIENT_SECRET_ORDER "$(rnd)" # P4.B: order reads a buyer's contact from identity after a booking is issued
 add DB_PASSWORD_REALTIME "$(rnd)"
 add DB_PASSWORD_NOTIFICATION "$(rnd)" # P5.A
+add DB_PASSWORD_AUDIT "$(rnd)" # P5.C: app role (INSERT + SELECT on audit_log)
+add DB_PASSWORD_AUDIT_OWNER "$(rnd)" # P5.C: schema owner, migrations only
+for s in CATALOG DEALER QUOTE PAYMENT; do add "CLIENT_SECRET_$s" "$(rnd)"; done # P5.D: export parts + erasure confirmations to identity
 add CLIENT_SECRET_NOTIFICATION "$(rnd)" # P5.A: notification reads a recipient's email (E157) at send time
 add RAZORPAY_BASE_URL "http://razorpay-fake:9090"
 add RAZORPAY_KEY_ID "rzp_test_fake"

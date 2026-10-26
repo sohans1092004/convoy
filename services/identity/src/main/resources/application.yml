@@ -38,6 +38,7 @@ convoy:
   public-paths:
     - /actuator/health
     - /actuator/health/**
+    - /actuator/prometheus
     - /v3/api-docs/**
     - /.well-known/jwks.json
     - /internal/oauth/token
@@ -46,6 +47,10 @@ convoy:
     region: ${AWS_REGION:ap-south-1}
 identity:
   data-key: ${IDENTITY_DATA_KEY}
+  privacy: # P5.D: who must send an export part and confirm an erasure (docs/privacy/retention.md)
+    services: catalog,pool,dealer,quote,order,payment,notification
+    export-bucket: ${EXPORT_BUCKET:convoy-data-exports}
+    public-endpoint: ${EXPORT_PUBLIC_ENDPOINT:}
   mail-from: ${MAIL_FROM:no-reply@convoy.test}
   otp-minutes: 10
   session-days: 30
@@ -61,13 +66,18 @@ identity:
     gateway: { secret: "${CLIENT_SECRET_GATEWAY}", scopes: { identity: [sessions:validate] } }
     pool:
       secret: "${CLIENT_SECRET_POOL}"
-      scopes: { payment: [deposits:create], quote: [rounds:summary], dealer: [eligibility:read], order: [resolution:read], catalog: [models:read] }
+      scopes: { payment: [deposits:create], quote: [rounds:summary], dealer: [eligibility:read], order: [resolution:read], catalog: [models:read], identity: [privacy:write] }
     order:
       secret: "${CLIENT_SECRET_ORDER}"
-      scopes: { identity: [contacts:read] } # P4.B: a buyer's contact, only for a released booking
+      scopes: { identity: [contacts:read, privacy:write] } # P4.B: a buyer's contact, only for a released booking
     notification:
       secret: "${CLIENT_SECRET_NOTIFICATION}"
-      scopes: { identity: [contacts:read] } # P5.A: the recipient's email, read at send time
+      scopes: { identity: [contacts:read, privacy:write] } # P5.A: the recipient's email, read at send time
+    # P5.D: every service holding personal data sends its export part (E165) and confirms erasure (E017)
+    catalog: { secret: "${CLIENT_SECRET_CATALOG}", scopes: { identity: [privacy:write] } }
+    dealer: { secret: "${CLIENT_SECRET_DEALER}", scopes: { identity: [privacy:write] } }
+    quote: { secret: "${CLIENT_SECRET_QUOTE}", scopes: { identity: [privacy:write] } }
+    payment: { secret: "${CLIENT_SECRET_PAYMENT}", scopes: { identity: [privacy:write] } }
     realtime:
       secret: "${CLIENT_SECRET_REALTIME}"
       scopes: { pool: [pools:access], identity: [sessions:check] }

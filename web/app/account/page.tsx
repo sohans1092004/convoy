@@ -1,6 +1,7 @@
 'use client';
 import * as React from 'react';
 import { CommandStatus } from '@/components/command-status';
+import { DataRights } from '@/components/data-rights';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { passkeysSupported, registerPasskey } from '@/lib/passkey';
@@ -22,6 +23,7 @@ export default function AccountPage() {
         <p className="text-sm">This browser does not support passkeys. Keep using the email code.</p>
       )}
       <CommandStatus state={add.state} successText="Passkey added. Next time, choose “Sign in with a passkey”." />
+      <DataRights />
     </Card>
   );
 }
