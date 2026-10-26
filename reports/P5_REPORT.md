@@ -109,9 +109,11 @@ every metrics.md figure with its sample size, labelled "simulated" while the dat
 - P5.X: the 6 vacuous checks above.
 
 ## 6. Nightly
-- The last nightly (run 40244851654, `main` before P5) failed only the 360 px price-breakdown visual baseline. That baseline was refreshed in P5.0 from that run's Linux render.
-- The lifecycle and cancellation journeys, and the P5.F notification and verify-chain checks, have **not yet run in CI**: nightly runs on `main`, so their first CI run is after the merge or a manual dispatch on `p5/ops`.
-- PR #7 CI and spec checks were green at 25679f3.
+- **Run 40318303340 on `p5/ops` at 63678b6 (manual dispatch): success.** Every step passed, including:
+  - all Playwright suites (360 px + desktop)
+  - the full lifecycle journey (3 dealers) with the P5.F notification, email and verify-chain checks
+  - the cancellation journey
+- The previous nightly (run 40244851654, `main` before P5) failed only the 360 px price-breakdown visual baseline. That baseline was refreshed in P5.0.
 
 ## 7. Gaps for P6 (deployment)
 - SES SMTP credentials and a verified sender domain (AMENDMENT-011 keys exist, unset). DKIM/SPF.
@@ -125,6 +127,5 @@ every metrics.md figure with its sample size, labelled "simulated" while the dat
 
 ## 8. Needs from me
 - Review PR #7 (marked ready; not merged).
-- Run the nightly on `p5/ops` once (`gh workflow run nightly.yml --ref p5/ops`) or after the merge, to get the first CI run of the lifecycle/cancellation journeys with the P5.F checks.
 - Legal review of the retention periods in `docs/privacy/retention.md`. Native-speaker review of the Hindi drafts (P5 templates and strings).
 - P2_SUBTASKS.md–P4_SUBTASKS.md were not in `~/Downloads` (only P5). Drop them there if you want them in `docs/prompts/` too.
