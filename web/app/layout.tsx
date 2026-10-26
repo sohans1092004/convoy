@@ -42,9 +42,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {roles.includes('platform_admin') ? <Link href="/admin" className="text-sm font-medium">{t('admin')}</Link> : null}
                 <span className="ml-auto flex items-center gap-4">
                   {signedIn ? (
-                    <Link href="/notifications" className="relative text-sm font-medium" aria-label={unread ? `${t('notifications')} (${unread})` : t('notifications')} data-testid="bell">
+                    <Link href="/notifications" className="relative text-sm font-medium" data-testid="bell">
                       <span aria-hidden="true">🔔</span>
-                      {unread ? <span aria-hidden="true" className="absolute -right-3 -top-2 rounded-full bg-primary px-1.5 text-xs font-bold text-bg">{unread > 99 ? '99+' : unread}</span> : null}
+                      <span className="sr-only">{t('notifications')}</span>
+                      {unread ? <span className="absolute -right-3 -top-2 rounded-full bg-primary px-1.5 text-xs font-bold text-primary-fg">{unread > 99 ? '99+' : unread}</span> : null}
                     </Link>
                   ) : null}
                   <LocaleSwitch />{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>
