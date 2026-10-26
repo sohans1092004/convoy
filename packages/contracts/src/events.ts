@@ -94,6 +94,15 @@ export interface ClarificationAnswered {
   question_type: string;
 }
 
+/** Owner: quote. Consumers: notification, audit. FIFO: False. */
+export interface ClarificationAsked {
+  quote_id: string;
+  pool_id: string;
+  clarification_id: string;
+  question_type: string;
+  dealer_user_id: string;
+}
+
 /** Owner: order. Consumers: realtime, notification, audit. FIFO: False. */
 export interface ConfirmationDeclined {
   order_id: string;
@@ -108,6 +117,13 @@ export interface ConfirmationRecorded {
   quote_id: string;
   confirmed_at: string;
   quote_confirmed_count: number;
+}
+
+/** Owner: identity. Consumers: audit. FIFO: False. */
+export interface DataExportDownloaded {
+  export_id: string;
+  user_id: string;
+  expires_at: string;
 }
 
 /** Owner: dealer. Consumers: quote, notification, audit. FIFO: False. */
@@ -198,7 +214,7 @@ export interface DisputeStatusChanged {
   to_state: string;
 }
 
-/** Owner: identity. Consumers: pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
+/** Owner: identity. Consumers: catalog, pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
 export interface ErasureRequested {
   erasure_id: string;
   user_id: string;
@@ -245,7 +261,7 @@ export interface MemberJoined {
   committed_count: number;
 }
 
-/** Owner: pool. Consumers: quote, payment, realtime, audit. FIFO: True. */
+/** Owner: pool. Consumers: quote, payment, realtime, notification, audit. FIFO: True. */
 export interface MemberLeft {
   pool_id: string;
   membership_id: string;
@@ -376,6 +392,7 @@ export interface QuoteFinalised {
   ruleset_version: string;
   tiers: Record<string, unknown>[];
   variant_inputs: Record<string, unknown>[];
+  figures: Record<string, unknown>[];
 }
 
 /** Owner: quote. Consumers: realtime, notification, audit. FIFO: False. */
@@ -564,6 +581,13 @@ export interface TierResolved {
   resolved_cash_payable_paise: number | null;
 }
 
+/** Owner: identity. Consumers: catalog, pool, dealer, quote, order, payment, notification, audit. FIFO: False. */
+export interface UserExportRequested {
+  export_id: string;
+  user_id: string;
+  requested_at: string;
+}
+
 /** Owner: identity. Consumers: notification, audit. FIFO: False. */
 export interface UserRegistered {
   user_id: string;
@@ -583,8 +607,10 @@ export interface EventPayloads {
   BookingsIssued: BookingsIssued;
   CatalogPriceUpdated: CatalogPriceUpdated;
   ClarificationAnswered: ClarificationAnswered;
+  ClarificationAsked: ClarificationAsked;
   ConfirmationDeclined: ConfirmationDeclined;
   ConfirmationRecorded: ConfirmationRecorded;
+  DataExportDownloaded: DataExportDownloaded;
   DealershipSuspended: DealershipSuspended;
   DealershipVerified: DealershipVerified;
   DecisionOpened: DecisionOpened;
@@ -638,6 +664,7 @@ export interface EventPayloads {
   StockReserved: StockReserved;
   StockUnavailable: StockUnavailable;
   TierResolved: TierResolved;
+  UserExportRequested: UserExportRequested;
   UserRegistered: UserRegistered;
 }
 
@@ -655,8 +682,10 @@ export const EVENT_PRODUCERS: Record<EventType, string> = {
   BookingsIssued: "order",
   CatalogPriceUpdated: "catalog",
   ClarificationAnswered: "quote",
+  ClarificationAsked: "quote",
   ConfirmationDeclined: "order",
   ConfirmationRecorded: "order",
+  DataExportDownloaded: "identity",
   DealershipSuspended: "dealer",
   DealershipVerified: "dealer",
   DecisionOpened: "pool",
@@ -710,5 +739,6 @@ export const EVENT_PRODUCERS: Record<EventType, string> = {
   StockReserved: "quote",
   StockUnavailable: "quote",
   TierResolved: "order",
+  UserExportRequested: "identity",
   UserRegistered: "identity",
 };

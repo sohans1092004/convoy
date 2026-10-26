@@ -10,7 +10,9 @@
     "testMode": "TEST MODE: no real money",
     "saved": "My cars",
     "account": "Account",
-    "admin": "Admin"
+    "admin": "Admin",
+    "notifications": "Notifications",
+    "dealerAnalytics": "Analytics"
   },
   "home": {
     "title": "Buy the same car together, with prices you can check",
@@ -355,7 +357,12 @@
     "cancelTerms": "Cancel this booking? In test mode you get your full ₹999 deposit back. Your cancellation never changes anyone else's price.",
     "cancelYes": "Yes, cancel",
     "cancelNo": "Keep my booking",
-    "cancelledDone": "Cancelled. Your deposit is being refunded in full."
+    "cancelledDone": "Cancelled. Your deposit is being refunded in full.",
+    "invoiceTotal": "Invoice total (₹), from your final invoice",
+    "invoiceNote": "Optional. Used only to show you the saving you actually got, against the catalogue estimate. You can confirm it once.",
+    "invoiceConfirm": "Confirm invoice total",
+    "invoiceThanks": "Thank you. Your invoice total is recorded.",
+    "invoiceConfirmed": "Invoice total you confirmed: {total}"
   },
   "reround": {
     "title": "The offer could not go ahead: keep your place?",
@@ -398,7 +405,9 @@
       "refunds": "Refunds",
       "disputes": "Disputes",
       "verification": "Dealer verification",
-      "reconciliation": "Reconciliation"
+      "reconciliation": "Reconciliation",
+      "audit": "Audit log",
+      "analytics": "Analytics"
     },
     "loading": "Loading",
     "noRefunds": "No refunds need attention.",
@@ -417,7 +426,57 @@
     "reject": "Reject",
     "openedBy": "opened by {by}",
     "proposed": "proposed: {outcome}",
-    "runSummary": "{checked} deposits checked, {mismatches} mismatches"
+    "runSummary": "{checked} deposits checked, {mismatches} mismatches",
+    "audit": {
+      "actor": "Actor (user:<id> or service:<name>)",
+      "aggregate_type": "Aggregate type",
+      "aggregate_id": "Aggregate ID",
+      "event_type": "Event type",
+      "from": "From",
+      "to": "To",
+      "search": "Search",
+      "readsAudited": "Your search is itself recorded in the audit log.",
+      "found": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+      "sensitive": "Sensitive",
+      "by": "By {actor}"
+    },
+    "analytics": {
+      "loading": "Loading analytics",
+      "simulated": "simulated",
+      "simulatedNote": "Every figure here comes from synthetic dealers and buyers (the demo seed and the dealer simulator), so each is labelled simulated.",
+      "of": "{num} of {den}",
+      "fill": "Pool fill rate and time to fill, by creation week",
+      "week": "Week",
+      "fillRate": "Fill rate",
+      "medianHours": "Median hours to fill",
+      "dealerResponse": "Dealer response rate (sealed round)",
+      "twoValid": "Pools with at least 2 valid quotes",
+      "acceptToConfirm": "Acceptance to confirmation",
+      "confirmToDeliver": "Confirmation to delivery (closed cohort)",
+      "cancellation": "Cancellation rate",
+      "reason": {
+        "buyer": "Buyer",
+        "dealer": "Dealer",
+        "stock": "Stock",
+        "admin": "Admin",
+        "other": "Other"
+      },
+      "savings": "Savings",
+      "savingsRule": "Four labels, never added together. Values are per offer and variant, in rupees; negative means more expensive.",
+      "label": {
+        "dealer_stated_discount": "Dealer-stated discount (as stated by the dealer)",
+        "vs_catalogue_estimate": "Difference vs the catalogue estimate",
+        "vs_best_other_quote": "Difference vs the best other offer in the pool",
+        "realised": "Realised saving (buyer-confirmed invoices only)"
+      },
+      "dist": "p25 {p25} · median {median} · p75 {p75}",
+      "explain": "Where each figure comes from (ruleset, snapshot hashes)",
+      "quote": "offer",
+      "voidRate": "VOID rate (quotes with at least one acceptance)",
+      "refundLatency": "Refund latency, requested to refunded (hours)",
+      "disputeTime": "Dispute resolution time (days)",
+      "pct": "median {p50} · p95 {p95}"
+    }
   },
   "dispute": {
     "loading": "Loading the case",
@@ -459,5 +518,90 @@
     "confirmOutcome": "Confirm this outcome (second admin)",
     "proposedBy": "Proposed outcome: {outcome}. A different admin must confirm it.",
     "moneyRule": "Refunds and cancellations need a second, different admin (AMENDMENT-001)."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unavailable": "Notifications are unavailable right now. Your pools and orders are not affected.",
+    "none": "No notifications yet.",
+    "unread": "{count, plural, =0 {All read} one {# unread} other {# unread}}",
+    "markAll": "Mark all as read",
+    "markRead": "Mark as read",
+    "new": "New",
+    "draft": "Draft translation",
+    "prefs": "How we notify you",
+    "inApp": "In-app inbox",
+    "email": "Email",
+    "always": "Payment and refund messages are always sent.",
+    "saved": "Saved.",
+    "push": "Push alerts on this device",
+    "pushHint": "A short alert on this device only; open Convoy for the details.",
+    "pushUnsupported": "This browser cannot show push alerts.",
+    "pushDenied": "Alerts are blocked for this site in your browser settings.",
+    "pushFailed": "Could not change push alerts. Try again."
+  },
+  "privacy": {
+    "title": "Your privacy choices",
+    "loading": "Loading…",
+    "unavailable": "Privacy settings are unavailable right now.",
+    "notAsked": "Not asked yet",
+    "granted": "Given",
+    "withdrawn": "Withdrawn",
+    "data": "Data: {list}",
+    "retention": "Kept: {text}",
+    "withdraw": "Withdraw consent",
+    "give": "Give consent",
+    "required": "Needed to use Convoy; to stop it, delete your account.",
+    "history": "History ({count})",
+    "saved": "Saved.",
+    "exportTitle": "Download your data",
+    "exportText": "One file with everything every part of Convoy holds about you. The download link works for 15 minutes; the file is deleted after 24 hours.",
+    "exportButton": "Prepare my data",
+    "exportPending": "Collecting: {done} of {of} parts.",
+    "exportReady": "Your file is ready.",
+    "download": "Download (JSON)",
+    "linkExpires": "Link valid until {at}.",
+    "refresh": "Check again",
+    "deleteTitle": "Delete your account",
+    "deleteText": "Your account, saved cars, preferences and messages are deleted. Deposits, refunds, orders and disputes are kept for the periods the law requires, with your name and email removed. You are signed out when every part has finished.",
+    "deleteButton": "Delete my account…",
+    "deleteConfirm": "Yes, delete my account",
+    "cancel": "Cancel",
+    "deleteProgress": "Deleting: {done} of {of} parts done."
+  },
+  "clarify": {
+    "summary": "Questions about this offer ({count, plural, =0 {none answered yet} one {# answered} other {# answered}})",
+    "type": {
+      "DELIVERY_DATE": "Delivery date",
+      "STOCK_COLOUR": "Stock and colour",
+      "PRICE_ITEM": "A price item",
+      "INSURANCE": "Insurance",
+      "ACCESSORIES": "Accessories",
+      "DOCUMENTS": "Documents",
+      "OTHER": "Other"
+    },
+    "typeLabel": "What is your question about?",
+    "choose": "Choose one",
+    "question": "Your question (up to 300 characters)",
+    "noContact": "Do not include phone numbers, email addresses or links: contact details are shared only after booking. Answers are shown to everyone in this pool.",
+    "ask": "Ask the dealer",
+    "asked": "Sent. The answer will appear here for everyone in the pool.",
+    "answer": "Answer:",
+    "waiting": "Waiting for the dealer",
+    "removed": "(question removed)",
+    "dealerTitle": "Questions from buyers",
+    "yourAnswer": "Your answer (up to 500 characters, shown to every buyer in the pool)",
+    "noContactDealer": "Phone numbers, email addresses and links are refused: contact details are released only after booking.",
+    "send": "Send answer",
+    "sent": "Answer sent."
+  },
+  "dealerAnalytics": {
+    "title": "Your dealership analytics",
+    "loading": "Loading analytics",
+    "simulated": "simulated",
+    "of": "{num} of {den}",
+    "response": "Response rate (sealed rounds answered in time)",
+    "win": "Win rate (final offers that got a booking)",
+    "reliability": "Reliability score",
+    "reliabilityNote": "FINAL commitments honoured, last 90 days"
   }
 }

@@ -203,7 +203,7 @@ public class Orders {
             jdbc.update("update orders set state = 'DECLINED', decline_reason = 'MISSED_CONFIRMATION_DEADLINE', version = version + 1 where id = ?", o.get("id"));
             long v = ((Number) o.get("version")).longValue() + 1;
             outbox.append((UUID) o.get("id"), v, new ConfirmationDeclined(o.get("id").toString(), pool.toString(), "MISSED_CONFIRMATION_DEADLINE"));
-            outbox.append((UUID) o.get("id"), v, new DepositRefundRequested(o.get("id").toString(), pool.toString(), o.get("buyer_id").toString(), "MISSED_CONFIRMATION_DEADLINE"));
+            outbox.append((UUID) o.get("id"), bump((UUID) o.get("id")), new DepositRefundRequested(o.get("id").toString(), pool.toString(), o.get("buyer_id").toString(), "MISSED_CONFIRMATION_DEADLINE"));
         }
 
         int bookings = 0, voidQuotes = 0;
@@ -278,7 +278,7 @@ public class Orders {
                 outbox.append(bookingId, 1, new BookingIssued(bookingId.toString(), orderId.toString(), pool.toString(), q.get("dealership_id").toString(),
                         variant.toString(), fin.cashPayable(), promised, confirmBy.toInstant()));
                 outbox.append(orderId, v, new DepositHoldRequested(orderId.toString(), pool.toString(), c.get("buyer_id").toString(), bookingId.toString()));
-                outbox.append(orderId, v, new StockReservationRequested(orderId.toString(), bookingId.toString(), quote.toString(), variant.toString(), colour(q, variant)));
+                outbox.append(orderId, bump(orderId), new StockReservationRequested(orderId.toString(), bookingId.toString(), quote.toString(), variant.toString(), colour(q, variant)));
                 bookings++;
             }
         }
@@ -346,7 +346,7 @@ public class Orders {
         }
         o.put("snapshots", snaps);
         List<Map<String, Object>> b = jdbc.queryForList("select id, state, version, promised_delivery_date::text as promised_delivery_date, dealer_confirm_deadline, dealership_id, "
-                + "voucher_active, scheduled_date::text as scheduled_date, delivery_slot, delivered_at, overdue_flag, cancel_reason, cancelled_at, "
+                + "voucher_active, scheduled_date::text as scheduled_date, delivery_slot, delivered_at, overdue_flag, cancel_reason, cancelled_at, invoice_total_paise, invoice_confirmed_at, "
                 + "(select released_at from contact_releases r where r.booking_id = b.id) as contact_released_at from bookings b where order_id = ?", orderId);
         o.put("booking", b.isEmpty() ? null : iso(b.get(0)));
         o.put("disputes", jdbc.queryForList("select id, category, state, opened_by, created_at from disputes where order_id = ? order by created_at", orderId).stream().map(Orders::iso).toList());
@@ -452,6 +452,9 @@ public class Orders {
     }
 
     JdbcTemplate jdbc() { return jdbc; }
+
+    /** Every order event has its own version (P5.0 guard: the outbox refuses a reused one): a second event moves the row on. */
+    long bump(UUID orderId) { return jdbc.queryForObject("update orders set version = version + 1 where id = ? returning version", Long.class, orderId); }
 
     static Instant now() { return Instant.now(); }
 }

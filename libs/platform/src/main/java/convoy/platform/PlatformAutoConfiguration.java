@@ -47,7 +47,7 @@ import software.amazon.awssdk.services.sqs.SqsClientBuilder;
 /** Wires the platform into every service that has libs/platform on its classpath. */
 @AutoConfiguration
 @EnableScheduling
-@EnableConfigurationProperties(ConvoyProperties.class)
+@EnableConfigurationProperties({ConvoyProperties.class, convoy.platform.privacy.Privacy.Settings.class})
 @Import(ProblemHandler.class)
 public class PlatformAutoConfiguration implements WebMvcConfigurer {
     private final ObjectProvider<IdempotencyStore> idempotencyStore;
@@ -222,17 +222,48 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
     OutboxRelay outboxRelay(JdbcTemplate jdbc, TransactionTemplate tx, SnsClient sns, Topology topology, ObjectMapper json,
-                            ConvoyProperties p, TaskScheduler scheduler) {
+                            ConvoyProperties p, TaskScheduler scheduler, ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters) {
         OutboxRelay relay = new OutboxRelay(jdbc, tx, sns, topology, json, p.serviceName());
         scheduler.scheduleWithFixedDelay(relay::tick, Duration.ofMillis(p.messaging().relayIntervalMs()));
+        // P5.C reconciliation with audit: delivered events here == audit_events{producer=<service>} there, once the lag drains.
+        // ponytail: count(*) per scrape; keep a counter row if outboxes grow past a few million rows.
+        meters.ifAvailable(m -> {
+            io.micrometer.core.instrument.Gauge.builder("outbox_lag_seconds", jdbc, j -> j.queryForObject(
+                    "select coalesce(extract(epoch from clock_timestamp() - min(created_at)), 0) from outbox where delivered_at is null", Double.class))
+                    .tag("service", p.serviceName()).register(m);
+            io.micrometer.core.instrument.Gauge.builder("outbox_delivered_events", jdbc, j -> j.queryForObject(
+                    "select count(*) from outbox where delivered_at is not null", Double.class)).tag("service", p.serviceName()).register(m);
+        });
         return relay;
     }
 
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
     InboxConsumer inboxConsumer(ConvoyProperties p, SqsClient sqs, Topology topology, JdbcTemplate jdbc, TransactionTemplate tx,
-                                ObjectMapper json, ObjectProvider<Subscriptions> subscriptions) {
+                                ObjectMapper json, ObjectProvider<Subscriptions> subscriptions, ObjectProvider<convoy.platform.privacy.Privacy> privacy) {
+        Subscriptions subs = subscriptions.getIfAvailable(Subscriptions::new);
+        // P5.D: every service with personal tables handles export and erasure (identity coordinates them itself)
+        if (!p.serviceName().equals("identity")) privacy.ifAvailable(pr -> pr.subscribe(subs));
         return new InboxConsumer(p.serviceName(), sqs, topology, jdbc, tx, json,
-                subscriptions.getIfAvailable(Subscriptions::new), p.messaging().waitSeconds(), p.messaging().gapSnapshotAfter());
+                subs, p.messaging().waitSeconds(), p.messaging().gapSnapshotAfter());
+    }
+
+    /** P5.D: only for a service that lists personal tables (convoy.privacy.tables); retention runs daily. */
+    @Bean
+    @ConditionalOnProperty(prefix = "convoy.privacy", name = "tables[0].table")
+    convoy.platform.privacy.Privacy privacy(ConvoyProperties p, JdbcTemplate jdbc, ObjectMapper json, convoy.platform.privacy.Privacy.Settings s,
+                                            org.springframework.web.client.RestClient.Builder builder, ObjectProvider<convoy.platform.security.ServiceTokens> tokens,
+                                            TaskScheduler scheduler) {
+        org.springframework.web.client.RestClient identity = p.serviceName().equals("identity") ? builder.build()
+                : tokens.getObject().client(builder, "identity", p.identityUrl());
+        convoy.platform.privacy.Privacy privacy = new convoy.platform.privacy.Privacy(p.serviceName(), jdbc, json, identity, s);
+        scheduler.scheduleWithFixedDelay(() -> {
+            try {
+                privacy.enforceRetention();
+            } catch (RuntimeException e) {
+                org.slf4j.LoggerFactory.getLogger(PlatformAutoConfiguration.class).warn("retention pass failed: {}", e.toString());
+            }
+        }, java.time.Instant.now().plusSeconds(60), Duration.ofDays(1));
+        return privacy;
     }
 }

@@ -29,7 +29,7 @@ public record ConvoyProperties(
 
     public ConvoyProperties {
         issuers = issuers == null ? Map.of() : issuers;
-        publicPaths = publicPaths == null ? List.of("/actuator/health/**", "/actuator/health", "/v3/api-docs/**") : publicPaths;
+        publicPaths = publicPaths == null ? List.of("/actuator/health/**", "/actuator/health", "/actuator/prometheus", "/v3/api-docs/**") : publicPaths;
         aws = aws == null ? new Aws(null, "ap-south-1") : aws;
         messaging = messaging == null ? new Messaging(0, 0, null, null, 0) : messaging;
     }

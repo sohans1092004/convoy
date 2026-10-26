@@ -11,13 +11,18 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-/** Local seed: test buyers, dealer staff and an admin from identity.seed-users-file (deploy/local/seed/users.json). */
+/**
+ * Demo seed: test buyers, dealer staff and an admin from identity.seed-users-file (deploy/local/seed/users.json), only with
+ * DEMO=true, like the synthetic dealerships (P5.0): a real environment never gets test accounts.
+ */
 @Component
 public class SeedUsers implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(SeedUsers.class);
     private final IdentityApplication.IdentitySettings settings;
     private final Users users;
     private final ObjectMapper json;
+
+    @org.springframework.beans.factory.annotation.Value("${identity.demo:${DEMO:false}}") boolean demo;
 
     public SeedUsers(IdentityApplication.IdentitySettings settings, Users users, ObjectMapper json) {
         this.settings = settings;
@@ -29,6 +34,7 @@ public class SeedUsers implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        if (!demo) return;
         String path = settings.seedUsersFile();
         if (path == null || path.isBlank() || !new File(path).exists()) return;
         SeedUser[] all = json.readValue(new File(path), SeedUser[].class);

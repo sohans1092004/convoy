@@ -16,6 +16,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bookings/{id}/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["confirmInvoice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orders/{id}/disputes": {
         parameters: {
             query?: never;
@@ -411,52 +427,9 @@ export interface components {
             /** Format: int64 */
             final_cash_payable_paise: number;
         };
-        DisputeBody: {
-            category: string;
-            description: string;
-        };
-        Dispute: {
-            id: string;
-            order_id: string;
-            booking_id: string | null;
-            dealership_id: string;
-            buyer_id: string;
-            category: string;
-            description: string;
-            state: string;
-            opened_by: string;
-            owner_id: string | null;
-            awaiting_party: string | null;
-            respond_by: string | null;
-            outcome: string | null;
-            proposed_outcome: string | null;
-            resolved_at: string | null;
-            appeal_until: string | null;
-            /** Format: int32 */
-            appeal_count: number;
+        InvoiceBody: {
             /** Format: int64 */
-            version: number;
-            created_at: string;
-            history: components["schemas"]["DisputeEvent"][];
-            evidence: components["schemas"]["EvidenceFile"][];
-        };
-        DisputeEvent: {
-            actor_role: string;
-            action: string;
-            from_state: string | null;
-            to_state: string | null;
-            note: string | null;
-            at: string;
-        };
-        EvidenceFile: {
-            id: string;
-            uploader_role: string;
-            file_name: string;
-            content_type: string;
-            /** Format: int64 */
-            size_bytes: number;
-            created_at: string;
-            download_url: string;
+            invoice_total_paise: number;
         };
         BookingRef: {
             id: string;
@@ -474,6 +447,9 @@ export interface components {
             cancel_reason: string | null;
             cancelled_at: string | null;
             contact_released_at: string | null;
+            /** Format: int64 */
+            invoice_total_paise: number | null;
+            invoice_confirmed_at: string | null;
         };
         DisputeRef: {
             id: string;
@@ -538,6 +514,53 @@ export interface components {
             output: components["schemas"]["PriceOutput"];
             sha256: string;
             computed_at: string;
+        };
+        DisputeBody: {
+            category: string;
+            description: string;
+        };
+        Dispute: {
+            id: string;
+            order_id: string;
+            booking_id: string | null;
+            dealership_id: string;
+            buyer_id: string;
+            category: string;
+            description: string;
+            state: string;
+            opened_by: string;
+            owner_id: string | null;
+            awaiting_party: string | null;
+            respond_by: string | null;
+            outcome: string | null;
+            proposed_outcome: string | null;
+            resolved_at: string | null;
+            appeal_until: string | null;
+            /** Format: int32 */
+            appeal_count: number;
+            /** Format: int64 */
+            version: number;
+            created_at: string;
+            history: components["schemas"]["DisputeEvent"][];
+            evidence: components["schemas"]["EvidenceFile"][];
+        };
+        DisputeEvent: {
+            actor_role: string;
+            action: string;
+            from_state: string | null;
+            to_state: string | null;
+            note: string | null;
+            at: string;
+        };
+        EvidenceFile: {
+            id: string;
+            uploader_role: string;
+            file_name: string;
+            content_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            created_at: string;
+            download_url: string;
         };
         ConfirmBody: {
             ceiling_snapshot_hash: string;
@@ -657,6 +680,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DealerBooking"];
+                };
+            };
+        };
+    };
+    confirmInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Order"];
                 };
             };
         };

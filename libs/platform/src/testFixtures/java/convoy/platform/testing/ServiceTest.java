@@ -23,6 +23,24 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 public abstract class ServiceTest {
     @Value("${local.server.port}") protected int port;
+    @org.springframework.beans.factory.annotation.Autowired protected org.springframework.beans.factory.ObjectProvider<convoy.platform.messaging.InboxConsumer> inboxConsumers;
+    @Value("${convoy.messaging.enabled:true}") boolean messagingEnabled;
+
+    /**
+     * P5.0 version guard: no event may be dropped as stale at a version another event already used.
+     * With messaging off there is no consumer and nothing is consumed (the outbox unique constraint is the guard there);
+     * with messaging on a missing consumer fails instead of passing on nothing (P5.X).
+     */
+    @org.junit.jupiter.api.AfterEach
+    void noStaleDistinctEvents() {
+        if (!messagingEnabled) {
+            org.assertj.core.api.Assertions.assertThat(inboxConsumers.getIfAvailable()).as("messaging is off but a consumer is running").isNull();
+            return;
+        }
+        convoy.platform.messaging.InboxConsumer c = inboxConsumers.getObject(); // throws when the consumer is missing
+        org.assertj.core.api.Assertions.assertThat(c.staleDistinct.get())
+                .as("messaging.stale_distinct for %s: a producer reused an aggregate version", c.consumer()).isZero();
+    }
     protected final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
     @TestConfiguration(proxyBeanMethods = false)

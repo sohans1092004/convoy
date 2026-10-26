@@ -77,7 +77,7 @@ class TierVectorsIT extends ServiceTest {
         long minF = in.get("min_fulfilment").asLong();
         Long maxUnits = in.get("max_units").isNull() ? null : in.get("max_units").asLong();
         inTx(() -> orders.quoteFinalised(new QuoteFinalised(quote.toString(), pool.toString(), UUID.randomUUID().toString(), 1L, List.of(VARIANT), minF, maxUnits,
-                "sha", "2026.10.24-p0", tiers, List.of(Map.of("variant_id", VARIANT, "input", OrderIT.swiftInput(), "stock", Map.of("units", 200, "colours", List.of("White"), "delivery_date", "2026-12-20"))))));
+                "sha", "2026.10.24-p0", tiers, List.of(Map.of("variant_id", VARIANT, "input", OrderIT.swiftInput(), "stock", Map.of("units", 200, "colours", List.of("White"), "delivery_date", "2026-12-20"))), List.of())));
 
         JsonNode timeline = in.get("confirmations");
         int n = timeline != null ? timeline.size() : in.get("confirmed_count").asInt();

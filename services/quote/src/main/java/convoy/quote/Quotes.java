@@ -99,9 +99,12 @@ public class Quotes {
             List<Map<String, Object>> variantInputs = readList(inputs.get("variant_inputs"));
             List<String> variantIds = variantInputs.stream().map(x -> (String) x.get("variant_id")).toList();
             Map<String, Object> draft = QuotePricing.m(inputs.get("draft"));
+            long minF = QuotePricing.lng(draft.get("min_fulfilment"));
+            List<Map<String, Object>> figures = QuotePricing.figures(variantInputs, read((String) ver.get("snapshots")), QuotePricing.l(draft.get("tiers")), minF, roundSet,
+                    catalogue(poolId, roundSet), (String) ver.get("ruleset_version"), rules);
             outbox.append(id, v, new QuoteFinalised(id.toString(), poolId.toString(), q.get("dealership_id").toString(), (long) n, variantIds,
-                    QuotePricing.lng(draft.get("min_fulfilment")), QuotePricing.lng(draft.get("max_units")), (String) ver.get("snapshot_sha256"),
-                    (String) ver.get("ruleset_version"), readList(draft.get("tiers")), variantInputs));
+                    minF, QuotePricing.lng(draft.get("max_units")), (String) ver.get("snapshot_sha256"),
+                    (String) ver.get("ruleset_version"), readList(draft.get("tiers")), variantInputs, figures));
         }
     }
 
@@ -417,7 +420,7 @@ public class Quotes {
             return;
         }
         for (Map<String, Object> h : hidden) {
-            outbox.append((UUID) h.get("quote_id"), (long) h.get("id"), new convoy.contracts.events.RankChanged(h.get("quote_id").toString(), poolId.toString(),
+            outbox.append(rankStream(h.get("quote_id").toString()), (long) h.get("id"), new convoy.contracts.events.RankChanged(h.get("quote_id").toString(), poolId.toString(),
                     h.get("dealership_id").toString(), h.get("variant_id").toString(), ((Number) h.get("rank")).longValue(), ((Number) h.get("of_n")).longValue(), Ranking.RULE_VERSION));
         }
     }
@@ -437,6 +440,13 @@ public class Quotes {
         return Ranking.rank(entries);
     }
 
+    /**
+     * RankChanged has its own stream per quote, versioned by the snapshot id (monotone): under the quote's id its versions
+     * collided with the quote's own events (found by the P5.0 outbox guard), and bumping the quote's version instead would
+     * turn every competitor revision into a version conflict for this dealer's next revise.
+     */
+    static UUID rankStream(String quoteId) { return UUID.nameUUIDFromBytes(("rank:" + quoteId).getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+
     /** Appends a snapshot; a revealed one emits RankChanged when the dealer's rank or of_n moved since its last revealed one. */
     private void record(UUID poolId, int roundSet, Ranking.Ranked k, boolean revealed) {
         List<Map<String, Object>> last = jdbc.queryForList("select rank, of_n from rank_snapshots where quote_id = ?::uuid and variant_id = ?::uuid and revealed "
@@ -446,7 +456,7 @@ public class Quotes {
                 Ranking.RULE_VERSION, revealed);
         boolean changed = last.isEmpty() || (int) last.get(0).get("rank") != k.rank() || (int) last.get(0).get("of_n") != k.ofN();
         if (revealed && changed) {
-            outbox.append(UUID.fromString(k.quoteId()), id, new convoy.contracts.events.RankChanged(k.quoteId(), poolId.toString(), k.dealershipId(), k.variantId(),
+            outbox.append(rankStream(k.quoteId()), id, new convoy.contracts.events.RankChanged(k.quoteId(), poolId.toString(), k.dealershipId(), k.variantId(),
                     (long) k.rank(), (long) k.ofN(), Ranking.RULE_VERSION));
         }
     }
@@ -487,6 +497,16 @@ public class Quotes {
         out.put("submitted_at", q.get("submitted_at") == null ? null : ((Timestamp) q.get("submitted_at")).toInstant().toString());
         if ((int) q.get("current_version") > 0) {
             out.put("snapshots", read(jdbc.queryForObject("select snapshots::text from quote_versions where quote_id = ? and version_no = ?", String.class, id, q.get("current_version"))));
+        }
+        out.put("clarifications", Clarifications.forQuote(jdbc, id, null));
+        return out;
+    }
+
+    /** The round set's latest round variants by id: catalogue ex-showroom and evidence (AMENDMENT-013). */
+    Map<String, Map<String, Object>> catalogue(UUID poolId, int roundSet) {
+        Map<String, Map<String, Object>> out = new HashMap<>();
+        for (String v : jdbc.queryForList("select variants::text from rounds_replica where pool_id = ? and round_set = ? order by round_no desc limit 1", String.class, poolId, roundSet)) {
+            for (Map<String, Object> x : readList(read("{\"v\":" + v + "}").get("v"))) out.put((String) x.get("id"), x);
         }
         return out;
     }

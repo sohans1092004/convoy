@@ -82,17 +82,17 @@ Endpoints: see [api-outline.md](api-outline.md). Events: see [event-catalogue.ya
 - **Dependencies down:** Redis down → only same-instance fan-out; clients still converge via snapshot (realtime-recovery.md). If realtime itself is down, UIs poll snapshots every 10 s.
 
 ## notification
-- **Wave 2.** In-app and email (SES) notifications; web push P1.
-- **Tables:** `notifications(id, user_id, kind, payload jsonb, created_at, read_at)`, `deliveries(id, notification_id, channel, status, attempts, last_error, sent_at)`, `preferences(user_id, channel, kind, enabled)`, `templates(kind, locale, version, subject, body)`.
-- **API:** my notifications (list, mark read), preferences.
+- **Wave 2.** In-app and email notifications (SMTP: Mailpit locally, the SES SMTP interface on AWS; AMENDMENT-011); web push P1.
+- **Tables (as built in P5.A):** `links(key, target, from_version, to_version)` (recipient graph: pool/order/quote/booking/dispute -> buyer), `events(event_id, key, kind, version, payload, occurred_at)`, `notifications(id, user_id, event_id, kind, created_at, read_at, unique(user_id, event_id))`, `deliveries(notification_id, channel, status PENDING|SENT|DEAD|SKIPPED, attempts, next_attempt_at, last_error, sent_at)`, `preferences(user_id, channel IN_APP|EMAIL, enabled)`. Templates (en + Hindi draft) are a versioned resource file, not a table.
+- **API:** my notifications (E130 list, E131 mark read, E158 mark all), preferences (E159 read, E132 set). Payment and refund messages ignore preferences. Web push (P5.B): per-device subscriptions (E160 key, E161 subscribe, E162 unsubscribe); a payload-free VAPID push per message to subscribed devices, the service worker fetches the text itself.
 - **Events consumed:** user-facing events (see catalogue). Produces none.
 - **Scaling signal:** **queue depth / oldest message age** (W8: 100,000 in 30 min).
-- **Dependencies down:** SES down → deliveries retry with backoff; in-app still written; nothing upstream blocks.
+- **Dependencies down:** SMTP (SES) down → deliveries retry with backoff, DEAD after the last attempt; in-app still written; nothing upstream blocks.
 
 ## audit
 - **Wave 3.** Append-only audit log fed by every outbox (all events), sensitive-access log, admin read models and analytics views.
-- **Tables:** `audit_log(seq bigserial, event_id unique, event_type, producer, aggregate_id, actor, correlation_id, sensitive bool, payload jsonb, received_at, prev_hash, row_hash)` with INSERT/SELECT-only role and an UPDATE/DELETE trigger that raises; `sensitive_access(seq, actor, resource, action, at, row_hash)`; read models: `admin_pool_view`, `admin_refund_queue_view`, `marketplace_metrics_daily(date, metric, value, simulated bool)`.
-- **API:** admin audit search, chain verification, metrics read (admin).
+- **Tables:** `audit_log(seq identity, event_id unique null, event_type, producer, aggregate_type, aggregate_id, aggregate_version, actor, correlation_id, sensitive bool, occurred_at, recorded_at, payload jsonb, prev_hash, hash)`: one hash chain (`row_hash`), app role `audit` has INSERT/SELECT only, a trigger refuses UPDATE/DELETE/TRUNCATE, the schema is owned by `audit_owner` (migrations). Sensitive access (viewer reads, export downloads) is a row with `sensitive = true` in the same chain (P5.C), not a second table. Read models and analytics views: later in P5.
+- **API:** E163 admin audit search (every read is audited). Chain verification is a command: `docker compose run --rm audit verify-chain` (exit 1 on the first broken link). Runbook: [audit.md](../runbooks/audit.md).
 - **Events consumed:** all. Produces none.
 - **Scaling signal:** ingest lag (outbox → audit), DB write rate.
 - **Dependencies down:** audit down → nothing else blocks; events wait in its queue; reconciliation of owner counts vs audit counts detects omissions (PLAN §4.6).

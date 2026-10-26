@@ -65,12 +65,23 @@ Conventions (apply to every row, not repeated):
 | E154 | order | POST | /bookings/{id}/confirm-delivery | buyer | yes | no | invalid-transition, not-found | P4 | AZ-E154-A, AZ-E154-D, AZ-E154-X |
 | E155 | order | GET | /dealer/bookings/{id}/contact | dealer_staff, dealer_admin | no | no | not-found | P4 | AZ-E155-A, AZ-E155-D, AZ-E155-X |
 | E156 | order | GET | /admin/disputes | platform_admin | no | no | - | P4 | AZ-E156-A, AZ-E156-D |
-| E157 | identity | GET | /internal/users/{id}/contact | service:order | no | no | not-found | P4 | AZ-E157-A, AZ-E157-D |
+| E157 | identity | GET | /internal/users/{id}/contact | service:order, service:notification | no | no | not-found | P4 | AZ-E157-A, AZ-E157-D |
+| E158 | notification | POST | /me/notifications/read-all | authenticated | no | no | - | P5 | AZ-E158-A, AZ-E158-D |
+| E159 | notification | GET | /me/notification-preferences | authenticated | no | no | - | P5 | AZ-E159-A, AZ-E159-D |
+| E160 | notification | GET | /me/push-subscriptions/key | authenticated | no | no | - | P5 | AZ-E160-A, AZ-E160-D |
+| E161 | notification | PUT | /me/push-subscriptions | authenticated | no | no | validation-failed, dependency-unavailable | P5 | AZ-E161-A, AZ-E161-D |
+| E162 | notification | DELETE | /me/push-subscriptions | authenticated | no | no | - | P5 | AZ-E162-A, AZ-E162-D |
+| E163 | audit | GET | /admin/audit | platform_admin | no | no | - | P5 | AZ-E163-A, AZ-E163-D |
+| E164 | identity | GET | /me/data-export/{id} | authenticated | no | no | not-found | P5 | AZ-E164-A, AZ-E164-D, AZ-E164-X |
+| E165 | identity | POST | /internal/exports/{id}/parts | service:any | no | no | not-found | P5 | AZ-E165-A, AZ-E165-D |
+| E166 | identity | GET | /me/erasure/{id} | authenticated | no | no | not-found | P5 | AZ-E166-A, AZ-E166-D, AZ-E166-X |
+| E168 | identity | GET | /me/consents | authenticated | no | no | - | P5 | AZ-E168-A, AZ-E168-D |
+| E169 | audit | GET | /admin/analytics | platform_admin | no | no | - | P5 | AZ-E169-A, AZ-E169-D |
 | E054 | dealer | POST | /admin/dealerships/{id}/suspend | platform_admin | yes | yes | version-conflict | P3 | AZ-E054-A, AZ-E054-D |
 | E055 | dealer | GET | /internal/eligibility | service:pool | no | no | - | P1 | AZ-E055-A, AZ-E055-D |
 | E056 | dealer | POST | /bookings/{bookingId}/review | buyer | yes | no | review-not-eligible | P4 | AZ-E056-A, AZ-E056-D, AZ-E056-X, AZ-INT-07 |
 | E057 | dealer | GET | /dealerships/{id}/reviews | anonymous | no | no | not-found | P4 | AZ-E057-A |
-| E058 | dealer | GET | /dealer/analytics | dealer_admin | no | no | - | P5 | AZ-E058-A, AZ-E058-D, AZ-T5 |
+| E058 | audit | GET | /dealer/analytics | dealer_admin | no | no | - | P5 | AZ-E058-A, AZ-E058-D, AZ-T5 |
 | E060 | quote | GET | /dealer/inbox | dealer_staff, dealer_admin | no | no | - | P1 | AZ-E060-A, AZ-E060-D, AZ-T1 |
 | E061 | quote | POST | /dealer/pools/{poolId}/quotes | dealer_staff, dealer_admin | yes | no | round-not-open, deadline-passed, not-found | P1 | AZ-E061-A, AZ-E061-D, AZ-E061-X |
 | E062 | quote | PUT | /dealer/quotes/{id}/draft | dealer_staff, dealer_admin | no | yes | invalid-transition, version-conflict | P1 | AZ-E062-A, AZ-E062-D, AZ-E062-X |
@@ -107,7 +118,7 @@ Conventions (apply to every row, not repeated):
 | E098 | order | POST | /admin/disputes/{id}/assign | platform_admin | yes | no | invalid-transition | P4 | AZ-E098-A, AZ-E098-D |
 | E099 | order | POST | /admin/disputes/{id}/request-info | platform_admin | yes | no | invalid-transition | P4 | AZ-E099-A, AZ-E099-D |
 | E100 | order | POST | /admin/disputes/{id}/resolve | platform_admin | yes | no | invalid-transition, second-approval-required | P4 | AZ-E100-A, AZ-E100-D, AZ-T7 |
-| E101 | order | PUT | /bookings/{id}/invoice | buyer | yes | no | invalid-transition | P4 | AZ-E101-A, AZ-E101-D, AZ-E101-X |
+| E101 | order | PUT | /bookings/{id}/invoice | buyer | yes | no | invalid-transition, not-found | P5 | AZ-E101-A, AZ-E101-D, AZ-E101-X |
 | E102 | order | GET | /internal/pools/{id}/resolution | service:pool | no | no | not-found | P4 | AZ-E102-A, AZ-E102-D |
 | E110 | payment | POST | /internal/deposits | service:pool | yes | no | dependency-unavailable | P1 | AZ-E110-A, AZ-E110-D, AZ-SVC-03 |
 | E111 | payment | POST | /payments/{id}/checkout-callback | buyer | no | no | webhook-signature-invalid, not-found | P1 | AZ-E111-A, AZ-E111-D, AZ-E111-X |

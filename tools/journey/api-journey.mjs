@@ -2,7 +2,16 @@
 //   node tools/journey/api-journey.mjs            (stack from docker compose, demo durations)
 // Buyer signs in -> on-road estimate -> pool -> join -> commit + test deposit -> dealer quote ->
 // compare -> accept -> confirm -> tier resolves -> booking voucher. Exits non-zero on any failure.
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+// Pays through the Razorpay fake: stop at once if payment is on real test mode (scripts/require-razorpay-fake.sh).
+try {
+  execFileSync('bash', [fileURLToPath(new URL('../../scripts/require-razorpay-fake.sh', import.meta.url))], { stdio: 'inherit' });
+} catch {
+  process.exit(2);
+}
 
 const GW = process.env.GATEWAY_URL || 'http://localhost:8080';
 const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';

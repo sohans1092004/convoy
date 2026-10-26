@@ -16,6 +16,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pools/{poolId}/quotes/{quoteId}/clarifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dealer/quotes/{id}/withdraw": {
         parameters: {
             query?: never;
@@ -90,6 +106,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dealer/clarifications/{id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["answer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -259,6 +291,15 @@ export interface components {
             delivery_date: string | null;
             evidence?: string | null;
         };
+        Clarification: {
+            id: string;
+            quote_id: string;
+            question_type: string;
+            question: string | null;
+            answer: string | null;
+            asked_at: string;
+            answered_at: string | null;
+        };
         DealerQuote: {
             id: string;
             pool_id: string;
@@ -272,6 +313,7 @@ export interface components {
             snapshots?: {
                 [key: string]: components["schemas"]["TierSnapshot"][];
             };
+            clarifications: components["schemas"]["Clarification"][];
         };
         Line: {
             code: string;
@@ -305,8 +347,15 @@ export interface components {
             sha256: string;
             output: components["schemas"]["PriceOutput"];
         };
+        Ask: {
+            question_type: string | null;
+            text: string | null;
+        };
         Reason: {
             reason: string;
+        };
+        Answer: {
+            text: string | null;
         };
         Ceiling: {
             /** Format: int32 */
@@ -329,6 +378,7 @@ export interface components {
             max_units: number | null;
             snapshot_sha256: string;
             variants: components["schemas"]["OfferVariant"][];
+            clarifications: components["schemas"]["Clarification"][];
         };
         OfferVariant: {
             variant_id: string;
@@ -463,6 +513,33 @@ export interface operations {
             };
         };
     };
+    ask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                poolId: string;
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Ask"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Clarification"];
+                };
+            };
+        };
+    };
     withdraw: {
         parameters: {
             query?: never;
@@ -589,6 +666,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DealerQuote"];
+                };
+            };
+        };
+    };
+    answer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Answer"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Clarification"];
                 };
             };
         };

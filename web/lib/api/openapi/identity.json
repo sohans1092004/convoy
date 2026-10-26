@@ -1,43 +1,39 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "OpenAPI definition",
-    "version": "v0"
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
   },
-  "paths": {
-    "/me/consents/{purpose}": {
-      "put": {
-        "tags": [
-          "me-controller"
-        ],
-        "operationId": "consent",
-        "parameters": [
-          {
-            "name": "purpose",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
+  "paths" : {
+    "/me/consents/{purpose}" : {
+      "put" : {
+        "tags" : [ "me-controller" ],
+        "operationId" : "consent",
+        "parameters" : [ {
+          "name" : "purpose",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConsentBody"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConsentBody"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConsentHistory"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentHistory"
                 }
               }
             }
@@ -45,29 +41,25 @@
         }
       }
     },
-    "/staff-invites/{token}/accept": {
-      "post": {
-        "tags": [
-          "invite-controller"
-        ],
-        "operationId": "accept",
-        "parameters": [
-          {
-            "name": "token",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
+    "/staff-invites/{token}/accept" : {
+      "post" : {
+        "tags" : [ "invite-controller" ],
+        "operationId" : "accept",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaffMembership"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StaffMembership"
                 }
               }
             }
@@ -75,29 +67,63 @@
         }
       }
     },
-    "/internal/sessions/validate": {
-      "post": {
-        "tags": [
-          "internal-controller"
-        ],
-        "operationId": "validate",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ValidateBody"
+    "/me/erasure" : {
+      "post" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "requestErasure",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErasureStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/data-export" : {
+      "post" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "requestExport",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExportStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/sessions/validate" : {
+      "post" : {
+        "tags" : [ "internal-controller" ],
+        "operationId" : "validate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ValidateBody"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionValidation"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionValidation"
                 }
               }
             }
@@ -105,29 +131,27 @@
         }
       }
     },
-    "/internal/sessions/check": {
-      "post": {
-        "tags": [
-          "staff-controller"
-        ],
-        "operationId": "check",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CheckBody"
+    "/internal/sessions/check" : {
+      "post" : {
+        "tags" : [ "staff-controller" ],
+        "operationId" : "check",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CheckBody"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionCheck"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionCheck"
                 }
               }
             }
@@ -135,29 +159,27 @@
         }
       }
     },
-    "/internal/oauth/token": {
-      "post": {
-        "tags": [
-          "internal-controller"
-        ],
-        "operationId": "token",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenBody"
+    "/internal/oauth/token" : {
+      "post" : {
+        "tags" : [ "internal-controller" ],
+        "operationId" : "token",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TokenBody"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServiceToken"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceToken"
                 }
               }
             }
@@ -165,40 +187,36 @@
         }
       }
     },
-    "/dealerships/{id}/staff/invites": {
-      "post": {
-        "tags": [
-          "invite-controller"
-        ],
-        "operationId": "invite",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+    "/internal/exports/{id}/parts" : {
+      "post" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "part",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Invite"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Part"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaffInvite"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Accepted"
                 }
               }
             }
@@ -206,29 +224,36 @@
         }
       }
     },
-    "/auth/passkeys/register": {
-      "post": {
-        "tags": [
-          "passkey-controller"
-        ],
-        "operationId": "register",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Register"
+    "/internal/erasure/{id}/confirm" : {
+      "post" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "confirm",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Confirm"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PasskeyRegistered"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Accepted"
                 }
               }
             }
@@ -236,49 +261,36 @@
         }
       }
     },
-    "/auth/passkeys/register/options": {
-      "post": {
-        "tags": [
-          "passkey-controller"
-        ],
-        "operationId": "registerOptions",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PasskeyRegistrationOptions"
-                }
-              }
-            }
+    "/dealerships/{id}/staff/invites" : {
+      "post" : {
+        "tags" : [ "invite-controller" ],
+        "operationId" : "invite",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        }
-      }
-    },
-    "/auth/passkeys/authenticate": {
-      "post": {
-        "tags": [
-          "passkey-controller"
-        ],
-        "operationId": "authenticate",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Authenticate"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Invite"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Session"
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StaffInvite"
                 }
               }
             }
@@ -286,49 +298,27 @@
         }
       }
     },
-    "/auth/passkeys/authenticate/options": {
-      "post": {
-        "tags": [
-          "passkey-controller"
-        ],
-        "operationId": "authenticateOptions",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PasskeyAuthenticationOptions"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/otp/verify": {
-      "post": {
-        "tags": [
-          "auth-controller"
-        ],
-        "operationId": "verify",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OtpVerify"
+    "/auth/passkeys/register" : {
+      "post" : {
+        "tags" : [ "passkey-controller" ],
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Register"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Session"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyRegistered"
                 }
               }
             }
@@ -336,29 +326,45 @@
         }
       }
     },
-    "/auth/otp/start": {
-      "post": {
-        "tags": [
-          "auth-controller"
-        ],
-        "operationId": "start",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OtpStart"
+    "/auth/passkeys/register/options" : {
+      "post" : {
+        "tags" : [ "passkey-controller" ],
+        "operationId" : "registerOptions",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyRegistrationOptions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/authenticate" : {
+      "post" : {
+        "tags" : [ "passkey-controller" ],
+        "operationId" : "authenticate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Authenticate"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "202": {
-            "description": "Accepted",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/OtpStarted"
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Session"
                 }
               }
             }
@@ -366,19 +372,17 @@
         }
       }
     },
-    "/auth/logout": {
-      "post": {
-        "tags": [
-          "auth-controller"
-        ],
-        "operationId": "logout",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Status"
+    "/auth/passkeys/authenticate/options" : {
+      "post" : {
+        "tags" : [ "passkey-controller" ],
+        "operationId" : "authenticateOptions",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasskeyAuthenticationOptions"
                 }
               }
             }
@@ -386,111 +390,244 @@
         }
       }
     },
-    "/me": {
-      "get": {
-        "tags": [
-          "me-controller"
-        ],
-        "operationId": "me",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Me"
-                }
+    "/auth/otp/verify" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "verify",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OtpVerify"
               }
-            }
-          }
-        }
-      }
-    },
-    "/internal/users/{id}/contact": {
-      "get": {
-        "tags": [
-          "internal-controller"
-        ],
-        "operationId": "contact",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/.well-known/jwks.json": {
-      "get": {
-        "tags": [
-          "internal-controller"
-        ],
-        "operationId": "jwks",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Jwks"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/dealerships/{id}/staff/{userId}": {
-      "delete": {
-        "tags": [
-          "staff-controller"
-        ],
-        "operationId": "revoke",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
             }
           },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Session"
+                }
+              }
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/Status"
+        }
+      }
+    },
+    "/auth/otp/start" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "start",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OtpStart"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OtpStarted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "logout",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me" : {
+      "get" : {
+        "tags" : [ "me-controller" ],
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/erasure/{id}" : {
+      "get" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "erasureStatus",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErasureStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/data-export/{id}" : {
+      "get" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "export",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExportStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/consents" : {
+      "get" : {
+        "tags" : [ "data-rights" ],
+        "operationId" : "consents",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Consents"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/users/{id}/contact" : {
+      "get" : {
+        "tags" : [ "internal-controller" ],
+        "operationId" : "contact",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/jwks.json" : {
+      "get" : {
+        "tags" : [ "internal-controller" ],
+        "operationId" : "jwks",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Jwks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealerships/{id}/staff/{userId}" : {
+      "delete" : {
+        "tags" : [ "staff-controller" ],
+        "operationId" : "revoke",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "userId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Status"
                 }
               }
             }
@@ -499,595 +636,603 @@
       }
     }
   },
-  "components": {
-    "schemas": {
-      "ConsentBody": {
-        "properties": {
-          "granted": {
-            "type": "boolean"
+  "components" : {
+    "schemas" : {
+      "ConsentBody" : {
+        "properties" : {
+          "granted" : {
+            "type" : "boolean"
           },
-          "notice_version": {
-            "type": "string",
-            "minLength": 1
+          "notice_version" : {
+            "type" : "string",
+            "minLength" : 1
           }
         },
-        "required": [
-          "granted",
-          "notice_version"
-        ]
+        "required" : [ "granted", "notice_version" ]
       },
-      "ConsentEntry": {
-        "properties": {
-          "granted": {
-            "type": "boolean"
+      "ConsentEntry" : {
+        "properties" : {
+          "granted" : {
+            "type" : "boolean"
           },
-          "notice_version": {
-            "type": "string"
+          "notice_version" : {
+            "type" : "string"
           },
-          "at": {
-            "type": "string"
+          "at" : {
+            "type" : "string"
           }
         },
-        "required": [
-          "at",
-          "granted",
-          "notice_version"
-        ]
+        "required" : [ "at", "granted", "notice_version" ]
       },
-      "ConsentHistory": {
-        "properties": {
-          "purpose": {
-            "type": "string"
+      "ConsentHistory" : {
+        "properties" : {
+          "purpose" : {
+            "type" : "string"
           },
-          "granted": {
-            "type": "boolean"
+          "granted" : {
+            "type" : "boolean"
           },
-          "history": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConsentEntry"
+          "history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConsentEntry"
             }
           }
         },
-        "required": [
-          "granted",
-          "history",
-          "purpose"
-        ]
+        "required" : [ "granted", "history", "purpose" ]
       },
-      "StaffMembership": {
-        "properties": {
-          "dealership_id": {
-            "type": "string"
+      "StaffMembership" : {
+        "properties" : {
+          "dealership_id" : {
+            "type" : "string"
           },
-          "role": {
-            "type": "string"
+          "role" : {
+            "type" : "string"
           }
         },
-        "required": [
-          "dealership_id",
-          "role"
-        ]
+        "required" : [ "dealership_id", "role" ]
       },
-      "ValidateBody": {
-        "properties": {
-          "session_id": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "session_id"
-        ]
-      },
-      "SessionValidation": {
-        "properties": {
-          "user_id": {
-            "type": "string"
+      "ErasureStatus" : {
+        "properties" : {
+          "erasure_id" : {
+            "type" : "string"
           },
-          "roles": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "state" : {
+            "type" : "string"
+          },
+          "confirmed" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           },
-          "dealership_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "sid": {
-            "type": "string"
-          },
-          "session_expires_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "dealership_id",
-          "roles",
-          "session_expires_at",
-          "sid",
-          "user_id"
-        ]
-      },
-      "CheckBody": {
-        "properties": {
-          "sessions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SessionRef"
+          "pending" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
-          }
-        },
-        "required": [
-          "sessions"
-        ]
-      },
-      "SessionRef": {
-        "properties": {
-          "sid": {
-            "type": "string"
           },
-          "dealership_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "requested_at" : {
+            "type" : "string"
+          },
+          "completed_at" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required": [
-          "dealership_id",
-          "sid"
-        ]
+        "required" : [ "completed_at", "confirmed", "erasure_id", "pending", "requested_at", "state" ]
       },
-      "SessionCheck": {
-        "properties": {
-          "invalid": {
-            "type": "array",
-            "items": {
-              "type": "string"
+      "ExportStatus" : {
+        "properties" : {
+          "export_id" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "parts_received" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "parts_expected" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "requested_at" : {
+            "type" : "string"
+          },
+          "download_url" : {
+            "type" : [ "string", "null" ]
+          },
+          "link_expires_at" : {
+            "type" : [ "string", "null" ]
+          },
+          "file_deleted_after" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "download_url", "export_id", "file_deleted_after", "link_expires_at", "parts_expected", "parts_received", "requested_at", "state" ]
+      },
+      "ValidateBody" : {
+        "properties" : {
+          "session_id" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "session_id" ]
+      },
+      "SessionValidation" : {
+        "properties" : {
+          "user_id" : {
+            "type" : "string"
+          },
+          "roles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
+          },
+          "dealership_id" : {
+            "type" : [ "string", "null" ]
+          },
+          "sid" : {
+            "type" : "string"
+          },
+          "session_expires_at" : {
+            "type" : "string"
           }
         },
-        "required": [
-          "invalid"
-        ]
+        "required" : [ "dealership_id", "roles", "session_expires_at", "sid", "user_id" ]
       },
-      "TokenBody": {
-        "properties": {
-          "grant_type": {
-            "type": "string"
-          },
-          "client_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "client_secret": {
-            "type": "string",
-            "minLength": 1
-          },
-          "audience": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "audience",
-          "client_id",
-          "client_secret",
-          "grant_type"
-        ]
-      },
-      "ServiceToken": {
-        "properties": {
-          "access_token": {
-            "type": "string"
-          },
-          "token_type": {
-            "type": "string"
-          },
-          "expires_in": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scope": {
-            "type": "array",
-            "items": {
-              "type": "string"
+      "CheckBody" : {
+        "properties" : {
+          "sessions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SessionRef"
             }
           }
         },
-        "required": [
-          "access_token",
-          "expires_in",
-          "scope",
-          "token_type"
-        ]
+        "required" : [ "sessions" ]
       },
-      "Invite": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "minLength": 1
+      "SessionRef" : {
+        "properties" : {
+          "sid" : {
+            "type" : "string"
           },
-          "role": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "dealer_staff|dealer_admin"
+          "dealership_id" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required": [
-          "email",
-          "role"
-        ]
+        "required" : [ "dealership_id", "sid" ]
       },
-      "StaffInvite": {
-        "properties": {
-          "invite_id": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          },
-          "expires_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "expires_at",
-          "invite_id",
-          "role"
-        ]
-      },
-      "Register": {
-        "properties": {
-          "challenge_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "client_data_json": {
-            "type": "string",
-            "minLength": 1
-          },
-          "attestation_object": {
-            "type": "string",
-            "minLength": 1
-          },
-          "transports": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
+      "SessionCheck" : {
+        "properties" : {
+          "invalid" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "attestation_object",
-          "challenge_id",
-          "client_data_json",
-          "transports"
-        ]
+        "required" : [ "invalid" ]
       },
-      "PasskeyRegistered": {
-        "properties": {
-          "credential_id": {
-            "type": "string"
+      "TokenBody" : {
+        "properties" : {
+          "grant_type" : {
+            "type" : "string"
           },
-          "created_at": {
-            "type": "string"
+          "client_id" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "client_secret" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "audience" : {
+            "type" : "string",
+            "minLength" : 1
           }
         },
-        "required": [
-          "created_at",
-          "credential_id"
-        ]
+        "required" : [ "audience", "client_id", "client_secret", "grant_type" ]
       },
-      "PasskeyRegistrationOptions": {
-        "properties": {
-          "challenge_id": {
-            "type": "string"
+      "ServiceToken" : {
+        "properties" : {
+          "access_token" : {
+            "type" : "string"
           },
-          "challenge": {
-            "type": "string"
+          "token_type" : {
+            "type" : "string"
           },
-          "rp_id": {
-            "type": "string"
+          "expires_in" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "rp_name": {
-            "type": "string"
-          },
-          "user_handle": {
-            "type": "string"
-          },
-          "user_name": {
-            "type": "string"
-          },
-          "timeout_ms": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "exclude_credentials": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "scope" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "challenge",
-          "challenge_id",
-          "exclude_credentials",
-          "rp_id",
-          "rp_name",
-          "timeout_ms",
-          "user_handle",
-          "user_name"
-        ]
+        "required" : [ "access_token", "expires_in", "scope", "token_type" ]
       },
-      "Authenticate": {
-        "properties": {
-          "challenge_id": {
-            "type": "string",
-            "minLength": 1
+      "JsonNode" : { },
+      "Part" : {
+        "properties" : {
+          "service" : {
+            "type" : "string"
           },
-          "credential_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "client_data_json": {
-            "type": "string",
-            "minLength": 1
-          },
-          "authenticator_data": {
-            "type": "string",
-            "minLength": 1
-          },
-          "signature": {
-            "type": "string",
-            "minLength": 1
-          },
-          "user_handle": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "data" : {
+            "$ref" : "#/components/schemas/JsonNode"
           }
         },
-        "required": [
-          "authenticator_data",
-          "challenge_id",
-          "client_data_json",
-          "credential_id",
-          "signature",
-          "user_handle"
-        ]
+        "required" : [ "data", "service" ]
       },
-      "Session": {
-        "properties": {
-          "session_id": {
-            "type": "string"
-          },
-          "session_expires_at": {
-            "type": "string"
-          },
-          "user": {
-            "$ref": "#/components/schemas/User"
+      "Accepted" : {
+        "properties" : {
+          "status" : {
+            "type" : "string"
           }
         },
-        "required": [
-          "session_expires_at",
-          "session_id",
-          "user"
-        ]
+        "required" : [ "status" ]
       },
-      "User": {
-        "properties": {
-          "id": {
-            "type": "string"
+      "Confirm" : {
+        "properties" : {
+          "service" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "service" ]
+      },
+      "Invite" : {
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "minLength" : 1
           },
-          "roles": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "role" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "dealer_staff|dealer_admin"
+          }
+        },
+        "required" : [ "email", "role" ]
+      },
+      "StaffInvite" : {
+        "properties" : {
+          "invite_id" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "expires_at" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "expires_at", "invite_id", "role" ]
+      },
+      "Register" : {
+        "properties" : {
+          "challenge_id" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "client_data_json" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "attestation_object" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "transports" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "id",
-          "roles"
-        ]
+        "required" : [ "attestation_object", "challenge_id", "client_data_json", "transports" ]
       },
-      "PasskeyAuthenticationOptions": {
-        "properties": {
-          "challenge_id": {
-            "type": "string"
+      "PasskeyRegistered" : {
+        "properties" : {
+          "credential_id" : {
+            "type" : "string"
           },
-          "challenge": {
-            "type": "string"
-          },
-          "rp_id": {
-            "type": "string"
-          },
-          "timeout_ms": {
-            "type": "integer",
-            "format": "int64"
+          "created_at" : {
+            "type" : "string"
           }
         },
-        "required": [
-          "challenge",
-          "challenge_id",
-          "rp_id",
-          "timeout_ms"
-        ]
+        "required" : [ "created_at", "credential_id" ]
       },
-      "OtpVerify": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "minLength": 1
+      "PasskeyRegistrationOptions" : {
+        "properties" : {
+          "challenge_id" : {
+            "type" : "string"
           },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\d{6}"
-          }
-        },
-        "required": [
-          "code",
-          "email"
-        ]
-      },
-      "OtpStart": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "email"
-        ]
-      },
-      "OtpStarted": {
-        "properties": {
-          "status": {
-            "type": "string"
+          "challenge" : {
+            "type" : "string"
           },
-          "expires_in_seconds": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "required": [
-          "expires_in_seconds",
-          "status"
-        ]
-      },
-      "Status": {
-        "properties": {
-          "status": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "Consent": {
-        "properties": {
-          "purpose": {
-            "type": "string"
+          "rp_id" : {
+            "type" : "string"
           },
-          "granted": {
-            "type": "boolean"
+          "rp_name" : {
+            "type" : "string"
           },
-          "notice_version": {
-            "type": "string"
+          "user_handle" : {
+            "type" : "string"
           },
-          "at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "at",
-          "granted",
-          "notice_version",
-          "purpose"
-        ]
-      },
-      "Me": {
-        "properties": {
-          "id": {
-            "type": "string"
+          "user_name" : {
+            "type" : "string"
           },
-          "email": {
-            "type": "string"
+          "timeout_ms" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "roles": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "dealership_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "consents": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Consent"
+          "exclude_credentials" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "consents",
-          "dealership_id",
-          "email",
-          "id",
-          "roles"
-        ]
+        "required" : [ "challenge", "challenge_id", "exclude_credentials", "rp_id", "rp_name", "timeout_ms", "user_handle", "user_name" ]
       },
-      "Jwks": {
-        "properties": {
-          "keys": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Key"
+      "Authenticate" : {
+        "properties" : {
+          "challenge_id" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "credential_id" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "client_data_json" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "authenticator_data" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "signature" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "user_handle" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "authenticator_data", "challenge_id", "client_data_json", "credential_id", "signature", "user_handle" ]
+      },
+      "Session" : {
+        "properties" : {
+          "session_id" : {
+            "type" : "string"
+          },
+          "session_expires_at" : {
+            "type" : "string"
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/User"
+          }
+        },
+        "required" : [ "session_expires_at", "session_id", "user" ]
+      },
+      "User" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "roles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
             }
           }
         },
-        "required": [
-          "keys"
-        ]
+        "required" : [ "id", "roles" ]
       },
-      "Key": {
-        "properties": {
-          "kty": {
-            "type": "string"
+      "PasskeyAuthenticationOptions" : {
+        "properties" : {
+          "challenge_id" : {
+            "type" : "string"
           },
-          "crv": {
-            "type": "string"
+          "challenge" : {
+            "type" : "string"
           },
-          "x": {
-            "type": "string"
+          "rp_id" : {
+            "type" : "string"
           },
-          "y": {
-            "type": "string"
-          },
-          "kid": {
-            "type": "string"
-          },
-          "use": {
-            "type": "string"
-          },
-          "alg": {
-            "type": "string"
-          },
-          "nbf": {
-            "type": "integer",
-            "format": "int64"
+          "timeout_ms" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required": [
-          "alg",
-          "crv",
-          "kid",
-          "kty",
-          "nbf",
-          "use",
-          "x",
-          "y"
-        ]
+        "required" : [ "challenge", "challenge_id", "rp_id", "timeout_ms" ]
+      },
+      "OtpVerify" : {
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "minLength" : 1
+          },
+          "code" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "\\d{6}"
+          }
+        },
+        "required" : [ "code", "email" ]
+      },
+      "OtpStart" : {
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "email" ]
+      },
+      "OtpStarted" : {
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "expires_in_seconds" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "expires_in_seconds", "status" ]
+      },
+      "Status" : {
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ]
+      },
+      "Consent" : {
+        "properties" : {
+          "purpose" : {
+            "type" : "string"
+          },
+          "granted" : {
+            "type" : "boolean"
+          },
+          "notice_version" : {
+            "type" : "string"
+          },
+          "at" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "at", "granted", "notice_version", "purpose" ]
+      },
+      "Me" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "roles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "dealership_id" : {
+            "type" : [ "string", "null" ]
+          },
+          "consents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Consent"
+            }
+          }
+        },
+        "required" : [ "consents", "dealership_id", "email", "id", "roles" ]
+      },
+      "Consents" : {
+        "properties" : {
+          "notice_version" : {
+            "type" : "string"
+          },
+          "purposes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Purpose"
+            }
+          }
+        },
+        "required" : [ "notice_version", "purposes" ]
+      },
+      "Purpose" : {
+        "properties" : {
+          "purpose" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "notice" : {
+            "type" : "string"
+          },
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "retention" : {
+            "type" : "string"
+          },
+          "withdrawable" : {
+            "type" : "boolean"
+          },
+          "granted" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConsentEntry"
+            }
+          }
+        },
+        "required" : [ "data", "granted", "history", "notice", "purpose", "retention", "title", "withdrawable" ]
+      },
+      "Jwks" : {
+        "properties" : {
+          "keys" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Key"
+            }
+          }
+        },
+        "required" : [ "keys" ]
+      },
+      "Key" : {
+        "properties" : {
+          "kty" : {
+            "type" : "string"
+          },
+          "crv" : {
+            "type" : "string"
+          },
+          "x" : {
+            "type" : "string"
+          },
+          "y" : {
+            "type" : "string"
+          },
+          "kid" : {
+            "type" : "string"
+          },
+          "use" : {
+            "type" : "string"
+          },
+          "alg" : {
+            "type" : "string"
+          },
+          "nbf" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "alg", "crv", "kid", "kty", "nbf", "use", "x", "y" ]
       }
     }
   }

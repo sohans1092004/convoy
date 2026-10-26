@@ -24,6 +24,8 @@ public class MessagingMetrics {
             String c = consumer.consumer();
             FunctionCounter.builder("inbox_duplicates_total", consumer, x -> x.duplicates.get()).tag("consumer", c).register(meters);
             FunctionCounter.builder("stale_events_total", consumer, x -> x.stale.get()).tag("consumer", c).register(meters);
+            // messaging.stale_distinct: must stay 0 (asserted after every test and every journey)
+            FunctionCounter.builder("messaging.stale_distinct", consumer, x -> x.staleDistinct.get()).tag("consumer", c).register(meters);
             FunctionCounter.builder("parked_events_total", consumer, x -> x.parked.get()).tag("consumer", c).register(meters);
             FunctionCounter.builder("snapshot_fallbacks_total", consumer, x -> x.snapshots.get()).tag("consumer", c).register(meters);
             FunctionCounter.builder("inbox_applied_total", consumer, x -> x.applied.get()).tag("consumer", c).register(meters);

@@ -19,6 +19,20 @@ management:
   endpoints.web.exposure.include: health,info,prometheus
   endpoint.health.probes.enabled: true
 convoy:
+  privacy: # P5.D (docs/privacy/retention.md): deposits, refunds and the ledger are kept under a pseudonym
+    tables:
+      - {table: payments, column: buyer_id, action: PSEUDONYMISE, category: payments, rewrite: [deposit_key]}
+      - {table: refunds, column: requested_by, action: PSEUDONYMISE, category: payments}
+      - {table: refunds, column: approved_by, action: PSEUDONYMISE, category: payments}
+      - {table: admin_audit, column: actor, action: PSEUDONYMISE, category: staff-actions}
+    retention:
+      # payments, refunds, ledger: 8 years (Companies Act 2013 s.128(5); CGST Act s.36 is 72 months); legal review flagged.
+      # Whole journal entries go together, so the ledger stays balanced.
+      - {category: payments, days: 2922, sql: "delete from journal_lines where entry_id in (select e.id from journal_entries e join payments p on p.id = e.payment_id where p.created_at < :cutoff)"}
+      - {category: payments, days: 2922, sql: "delete from journal_entries where payment_id in (select id from payments where created_at < :cutoff)"}
+      - {category: payments, days: 2922, sql: "delete from reconciliation_mismatches where payment_id in (select id from payments where created_at < :cutoff)"}
+      - {category: payments, days: 2922, sql: "delete from refunds where payment_id in (select id from payments where created_at < :cutoff)"}
+      - {category: payments, days: 2922, sql: "delete from payments where created_at < :cutoff"}
   service-name: payment
   identity-url: ${IDENTITY_URL:http://identity:8080}
   client-id: payment
@@ -32,6 +46,7 @@ convoy:
   public-paths:
     - /actuator/health
     - /actuator/health/**
+    - /actuator/prometheus
     - /v3/api-docs/**
     - /webhooks/razorpay
 payment:

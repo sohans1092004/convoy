@@ -67,6 +67,7 @@ public class GatewayApplication {
                                 .retry(c -> c.setRetries(2).setMethods(org.springframework.http.HttpMethod.GET).setSeries()
                                         .setExceptions(java.net.ConnectException.class, java.io.IOException.class)))
                         .metadata(AUDIENCE, "realtime").uri(u.get("realtime")))
+                .route("me-notifications", r -> r.path("/api/me/notifications", "/api/me/notifications/**", "/api/me/notification-preferences", "/api/me/push-subscriptions", "/api/me/push-subscriptions/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "notification").uri(u.get("notification")))
                 .route("me-orders", r -> r.path("/api/me/orders", "/api/me/orders/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("me-payments", r -> r.path("/api/me/payments/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
                 .route("me-saved-cars", r -> r.path("/api/me/saved-cars", "/api/me/saved-cars/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "catalog").uri(u.get("catalog")))
@@ -76,6 +77,7 @@ public class GatewayApplication {
                 .route("pool-quotes", r -> r.path("/api/pools/*/quotes", "/api/pools/*/quotes/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "quote").uri(u.get("quote")))
                 .route("pool", r -> r.path("/api/pools", "/api/pools/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "pool").uri(u.get("pool")))
                 .route("dealer-bookings", r -> r.path("/api/dealer/bookings", "/api/dealer/bookings/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
+                .route("dealer-analytics", r -> r.path("/api/dealer/analytics").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "audit").uri(u.get("audit")))
                 .route("dealer-quotes", r -> r.path("/api/dealer/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "quote").uri(u.get("quote")))
                 .route("dealerships", r -> r.path("/api/dealerships/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "dealer").uri(u.get("dealer")))
                 .route("orders", r -> r.path("/api/orders/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
@@ -84,6 +86,7 @@ public class GatewayApplication {
                 .route("bookings", r -> r.path("/api/bookings/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("disputes", r -> r.path("/api/disputes/**", "/api/admin/disputes", "/api/admin/disputes/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("admin-money", r -> r.path("/api/admin/refunds", "/api/admin/refunds/**", "/api/admin/reconciliation/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
+                .route("admin-audit", r -> r.path("/api/admin/audit", "/api/admin/analytics").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "audit").uri(u.get("audit")))
                 .route("admin-dealerships", r -> r.path("/api/admin/dealerships", "/api/admin/dealerships/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "dealer").uri(u.get("dealer")))
                 .route("payments", r -> r.path("/api/payments/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
                 .build();

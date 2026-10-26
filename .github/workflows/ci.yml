@@ -109,7 +109,7 @@ jobs:
       - name: Build the images once and start the stack (demo durations, Razorpay fake)
         run: |
           bash scripts/dev-env.sh
-          docker compose up -d --build
+          docker compose --profile tracing up -d --build # the journey asserts one trace across services
           bash scripts/wait-stack.sh
       - name: Schema isolation
         run: docker compose exec -T postgres psql -U convoy_admin -d convoy -q < deploy/local/checks/schema-isolation.sql
@@ -121,7 +121,7 @@ jobs:
       - name: P1 journey (360 px) with axe; the desktop viewport and other browser suites run nightly
         run: |
           pnpm install --frozen-lockfile
-          cd web && pnpm exec playwright install --with-deps chromium && pnpm exec playwright test e2e/journey.spec.ts --project=mobile-360
+          cd web && pnpm exec playwright install --with-deps chromium && TRACING=1 pnpm exec playwright test e2e/journey.spec.ts --project=mobile-360
       - uses: actions/upload-artifact@v4
         if: always()
         with:

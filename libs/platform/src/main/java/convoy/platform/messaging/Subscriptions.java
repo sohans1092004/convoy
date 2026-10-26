@@ -23,7 +23,9 @@ public class Subscriptions {
         /** Receives every event type of the aggregate: stale rule and gap detection (park, retry, snapshot). */
         FULL,
         /** Receives some event types: stale rule only (a gap may be an event it does not receive). */
-        PARTIAL;
+        PARTIAL,
+        /** AMENDMENT-010 (notification): each event is its own message, never a state overwrite: inbox dedupe only, no stale rule. */
+        EVENTS;
 
         public static Kind of(String consumer, String aggregate) {
             String k = SubscriptionKinds.ALL.get(consumer + ":" + aggregate);

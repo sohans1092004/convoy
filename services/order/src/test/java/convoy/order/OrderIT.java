@@ -76,7 +76,7 @@ class OrderIT extends ServiceTest {
         List<Map<String, Object>> tiers = List.of(Map.of("min", 1, "max", 4, "discount_paise", 1000000), new HashMap<>(Map.of("min", 5, "discount_paise", 2500000)));
         tiers.get(1).put("max", null);
         inTx(() -> orders.quoteFinalised(new QuoteFinalised(quote.toString(), pool.toString(), DEALERSHIP.toString(), 1L, List.of(VARIANT), minFulfilment, maxUnits,
-                "sha", "2026.10.24-p0", tiers, List.of(Map.of("variant_id", VARIANT, "input", swiftInput(), "stock", Map.of("units", 10, "colours", List.of("White"), "delivery_date", "2026-11-20"))))));
+                "sha", "2026.10.24-p0", tiers, List.of(Map.of("variant_id", VARIANT, "input", swiftInput(), "stock", Map.of("units", 10, "colours", List.of("White"), "delivery_date", "2026-11-20"))), List.of())));
         List<UUID> bs = new ArrayList<>();
         List<Map<String, Object>> acceptances = new ArrayList<>();
         for (int i = 0; i < buyers; i++) {
@@ -200,7 +200,7 @@ class OrderIT extends ServiceTest {
         inTx(() -> orders.resolve(s.pool(), 1));
         assertThat(jdbc.queryForObject("select count(*) from orders where pool_id = ? and state = 'VOIDED'", Integer.class, s.pool())).isEqualTo(2);
         JsonNode issued = JSON.readTree(jdbc.queryForObject("select payload::text from outbox where event_type = 'BookingsIssued' and payload->>'pool_id' = ?", String.class, s.pool().toString()));
-        assertThat(issued.path("bookings_count").asInt()).isZero();
+        assertThat(issued.required("bookings_count").asInt()).isZero(); // required: a missing field must not read as 0
         assertThat(issued.path("void_buyer_ids")).hasSize(2);
         // AMENDMENT-002: with zero bookings the pool decides (re-round choice or expiry); order requests no QUOTE_VOID refund itself.
         assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'DepositRefundRequested' and payload->>'pool_id' = ?", Integer.class, s.pool().toString())).isZero();

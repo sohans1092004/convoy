@@ -23,6 +23,7 @@
       "additionalProperties": false,
       "required": [
         "dealership_id",
+        "figures",
         "final_version_no",
         "max_units",
         "min_fulfilment",
@@ -85,6 +86,12 @@
           }
         },
         "variant_inputs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "figures": {
           "type": "array",
           "items": {
             "type": "object"

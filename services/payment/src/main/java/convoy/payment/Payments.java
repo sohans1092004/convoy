@@ -425,8 +425,12 @@ public class Payments {
     }
 
     private void initiate(UUID refundId) {
-        Map<String, Object> r = jdbc.queryForMap("select r.state, r.amount_paise, p.razorpay_payment_id from refunds r join payments p on p.id = r.payment_id "
-                + "where r.id = ? for update of r skip locked", refundId);
+        // Another attempt holds the row, or already moved it on: not this attempt's failure, so nothing is counted (it used to
+        // throw here and burn one of the scheduled retries).
+        List<Map<String, Object>> rows = jdbc.queryForList("select r.state, r.amount_paise, p.razorpay_payment_id from refunds r join payments p on p.id = r.payment_id "
+                + "where r.id = ? and r.state in ('REFUND_REQUESTED', 'REFUND_FAILED') for update of r skip locked", refundId);
+        if (rows.isEmpty()) return;
+        Map<String, Object> r = rows.get(0);
         REFUND.check((String) r.get("state"), "REFUND_INITIATED");
         String rpPayment = (String) r.get("razorpay_payment_id");
         String receipt = refundId.toString();

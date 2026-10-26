@@ -19,6 +19,11 @@ management:
   endpoints.web.exposure.include: health,info,prometheus
   endpoint.health.probes.enabled: true
 convoy:
+  privacy: # P5.D (docs/privacy/retention.md): participation stays (it backs the deposit ledger), under a pseudonym
+    tables:
+      - {table: preferences, column: buyer_id, action: DELETE, category: preferences}
+      - {table: memberships, column: buyer_id, action: PSEUDONYMISE, category: pool-participation}
+      - {table: pools, column: created_by, action: PSEUDONYMISE, category: pool-participation}
   service-name: pool
   identity-url: ${IDENTITY_URL:http://identity:8080}
   client-id: pool

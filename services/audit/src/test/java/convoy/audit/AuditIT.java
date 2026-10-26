@@ -1,0 +1,300 @@
+package convoy.audit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import convoy.platform.messaging.Uuid7;
+import convoy.platform.testing.ServiceTest;
+import convoy.platform.testing.TestTokens;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
+import software.amazon.awssdk.services.sqs.SqsClient;
+
+/**
+ * P5.C: every service's events, injected into audit's standard queues reversed and twice each, give exactly one row per
+ * event; the log is append-only (grants + trigger) and verify-chain detects a superuser's edit; the viewer is for
+ * platform admins only and every read is itself audited (AZ-E163).
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "convoy.messaging.enabled=true", "convoy.messaging.wait-seconds=1",
+        "spring.flyway.user=test", "spring.flyway.password=test", // Testcontainers' superuser runs the migration (creates the app role)
+        "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused"})
+@Import(ServiceTest.Config.class)
+class AuditIT extends ServiceTest {
+    static final ObjectMapper JSON = new ObjectMapper();
+    static final LocalStackContainer LS = new LocalStackContainer(DockerImageName.parse("localstack/localstack:4.14.0"))
+            .withServices(LocalStackContainer.Service.SNS, LocalStackContainer.Service.SQS);
+
+    static {
+        LS.start();
+    }
+
+    @DynamicPropertySource
+    static void aws(DynamicPropertyRegistry r) {
+        r.add("convoy.aws.endpoint", () -> LS.getEndpoint().toString());
+        r.add("convoy.aws.region", LS::getRegion);
+    }
+
+    @AfterAll
+    static void stop() { LS.stop(); }
+
+    @Autowired SqsClient sqs;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired Chain chain;
+
+    record Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload, UUID id, Instant at) {
+        Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload, UUID id) { this(type, producer, aggregate, version, payload, id, null); }
+        Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload) { this(type, producer, aggregate, version, payload, Uuid7.next()); }
+        Ev at(Instant t) { return new Ev(type, producer, aggregate, version, payload, id, t); }
+    }
+
+    void inject(List<Ev> events, UUID correlation) throws Exception {
+        for (Ev e : events) {
+            Map<String, Object> env = new LinkedHashMap<>();
+            env.put("event_id", e.id().toString());
+            env.put("event_type", e.type());
+            env.put("schema_version", 1);
+            env.put("aggregate_id", e.aggregate().toString());
+            env.put("aggregate_version", e.version());
+            env.put("occurred_at", (e.at() == null ? Instant.now() : e.at()).toString());
+            env.put("correlation_id", correlation.toString());
+            env.put("causation_id", null);
+            env.put("producer", e.producer());
+            env.put("payload", e.payload());
+            String queue = sqs.getQueueUrl(b -> b.queueName("convoy-audit--" + e.producer() + "-events")).queueUrl();
+            String body = JSON.writeValueAsString(env);
+            sqs.sendMessage(b -> b.queueUrl(queue).messageBody(body));
+        }
+    }
+
+    long count(String sql, Object... args) { return jdbc.queryForObject(sql, Long.class, args); }
+
+    static Map<String, Object> m(Object... kv) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (int i = 0; i < kv.length; i += 2) out.put((String) kv[i], kv[i + 1]);
+        return out;
+    }
+
+    @Test
+    void reversedBacklogWithDuplicatesIsRecordedOnceAndTamperingIsDetected() throws Exception {
+        UUID pool = UUID.randomUUID(), buyer = UUID.randomUUID(), dealership = UUID.randomUUID(), admin = UUID.randomUUID(), user = UUID.randomUUID();
+        UUID corr = UUID.randomUUID();
+        List<Ev> story = List.of(
+                new Ev("MemberCommitted", "pool", pool, 3, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", buyer, "payment_id", UUID.randomUUID(),
+                        "interested_count", 1, "committed_count", 1, "kept_from_previous_round", false)),
+                new Ev("PoolReady", "pool", pool, 4, m("pool_id", pool, "committed_count", 1)),
+                new Ev("PoolCompleted", "pool", pool, 9, m("pool_id", pool)),
+                new Ev("DealershipVerified", "dealer", dealership, 2, m("dealership_id", dealership, "brands", List.of("Tata"), "city", "Pune",
+                        "verified_by", admin, "registered_by", UUID.randomUUID())),
+                new Ev("ErasureRequested", "identity", user, 5, m("erasure_id", UUID.randomUUID(), "user_id", user, "requested_at", Instant.now().toString())));
+        List<Ev> backlog = new ArrayList<>(story.reversed()); // v9 before v3: the old FULL rule would have dropped v3 and v4
+        backlog.addAll(story);
+        inject(backlog, corr);
+
+        long end = System.currentTimeMillis() + 60_000;
+        while (count("select count(*) from audit_log where correlation_id = ?", corr) < story.size() && System.currentTimeMillis() < end) Thread.sleep(200);
+        Thread.sleep(1500); // a late duplicate would show up here
+        assertThat(count("select count(*) from audit_log where correlation_id = ?", corr)).isEqualTo(story.size());
+        assertThat(count("select count(*) from audit_log where aggregate_id = ? and aggregate_type = 'pool'", pool)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select actor from audit_log where event_type = 'DealershipVerified' and aggregate_id = ?", String.class, dealership))
+                .isEqualTo("user:" + admin);
+        assertThat(jdbc.queryForObject("select actor from audit_log where event_type = 'PoolReady' and aggregate_id = ?", String.class, pool)).isEqualTo("service:pool");
+        assertThat(jdbc.queryForObject("select sensitive from audit_log where event_type = 'ErasureRequested' and aggregate_id = ?", Boolean.class, user)).isTrue();
+        assertThat(chain.verify()).isNull();
+
+        // append-only: the app role has INSERT and SELECT only ...
+        for (String priv : List.of("UPDATE", "DELETE", "TRUNCATE")) {
+            assertThat(jdbc.queryForObject("select has_table_privilege('audit', 'audit_log', ?)", Boolean.class, priv)).as(priv).isFalse();
+        }
+        for (String priv : List.of("INSERT", "SELECT")) {
+            assertThat(jdbc.queryForObject("select has_table_privilege('audit', 'audit_log', ?)", Boolean.class, priv)).as(priv).isTrue();
+        }
+        // ... and the trigger refuses changes even from a superuser
+        long seq = jdbc.queryForObject("select seq from audit_log where event_type = 'PoolReady' and aggregate_id = ?", Long.class, pool);
+        assertThatThrownBy(() -> jdbc.update("update audit_log set actor = 'user:someone' where seq = ?", seq)).rootCause().hasMessageContaining("append-only");
+        assertThatThrownBy(() -> jdbc.update("delete from audit_log where seq = ?", seq)).rootCause().hasMessageContaining("append-only");
+        assertThatThrownBy(() -> jdbc.update("truncate audit_log")).rootCause().hasMessageContaining("append-only");
+
+        // a superuser who disables the trigger and edits a row: verify-chain finds that exact row
+        String original = jdbc.queryForObject("select payload::text from audit_log where seq = ?", String.class, seq);
+        tamper("update audit_log set payload = jsonb_set(payload, '{committed_count}', '99') where seq = " + seq);
+        assertThat(chain.verify()).isEqualTo(new Chain.Broken(seq, "row content does not match its hash"));
+        tamper("update audit_log set payload = '" + original + "'::jsonb where seq = " + seq);
+        assertThat(chain.verify()).isNull();
+        // deleting a row in the middle breaks the next link
+        long last = count("select max(seq) from audit_log");
+        long middle = jdbc.queryForObject("select max(seq) from audit_log where seq < ?", Long.class, last);
+        jdbc.execute("create temp table saved as select * from audit_log where seq = " + middle);
+        tamper("delete from audit_log where seq = " + middle);
+        assertThat(chain.verify()).isEqualTo(new Chain.Broken(last, "prev_hash does not match the previous row"));
+        jdbc.execute("insert into audit_log overriding system value select * from saved"); // put it back for the other tests
+        assertThat(chain.verify()).isNull();
+    }
+
+    void tamper(String sql) {
+        jdbc.execute("alter table audit_log disable trigger audit_log_append_only");
+        try {
+            jdbc.execute(sql);
+        } finally {
+            jdbc.execute("alter table audit_log enable trigger audit_log_append_only");
+        }
+    }
+
+    @Test
+    void viewerIsForPlatformAdminsAndEveryReadIsAudited() throws Exception {
+        UUID admin = UUID.randomUUID(), dealership = UUID.randomUUID(), corr = UUID.randomUUID();
+        inject(List.of(new Ev("DealershipSuspended", "dealer", dealership, 7, m("dealership_id", dealership, "reason", "test"))), corr);
+        long end = System.currentTimeMillis() + 60_000;
+        while (count("select count(*) from audit_log where correlation_id = ?", corr) < 1 && System.currentTimeMillis() < end) Thread.sleep(200);
+
+        String token = TestTokens.admin("audit", admin);
+        JsonNode page = JSON.readTree(get("/admin/audit?aggregate_id=" + dealership + "&event_type=DealershipSuspended", token).body());
+        assertThat(page.path("entries")).hasSize(1);
+        assertThat(page.path("entries").get(0).path("actor").asText()).isEqualTo("service:dealer");
+        assertThat(JSON.readTree(get("/admin/audit?actor=service:dealer&aggregate_type=dealership&from=2000-01-01T00:00:00Z&to=2999-01-01T00:00:00Z", token).body())
+                .path("entries").size()).isGreaterThanOrEqualTo(1);
+        // each read above left a sensitive AuditViewed row with the admin as actor and the filters used
+        assertThat(count("select count(*) from audit_log where event_type = 'AuditViewed' and actor = ? and sensitive", "user:" + admin)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select payload->>'aggregate_id' from audit_log where event_type = 'AuditViewed' and actor = ? order by seq limit 1",
+                String.class, "user:" + admin)).isEqualTo(dealership.toString());
+        assertThat(chain.verify()).isNull();
+
+        // AZ-E163: buyer and dealer refused, no token refused; refused reads leave no row
+        assertThat(get("/admin/audit", TestTokens.buyer("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/admin/audit", TestTokens.dealer("audit", UUID.randomUUID(), UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/admin/audit", null).status()).isEqualTo(401);
+        assertThat(count("select count(*) from audit_log where event_type = 'AuditViewed'")).isEqualTo(2);
+    }
+
+    /** E169 (P5.E): one pool's story through to delivery, each metrics.md figure counted by hand. No other test injects these types. */
+    @Test
+    void analyticsCountEveryMetricFromTheLogAndKeepTheFourSavingsLabelsApart() throws Exception {
+        UUID pool = UUID.randomUUID(), round = UUID.randomUUID(), d1 = UUID.randomUUID(), d2 = UUID.randomUUID(), d3 = UUID.randomUUID();
+        UUID q1 = UUID.randomUUID(), q2 = UUID.randomUUID(), o1 = UUID.randomUUID(), o2 = UUID.randomUUID(), b1 = UUID.randomUUID(), b2 = UUID.randomUUID(), corr = UUID.randomUUID();
+        UUID o3 = UUID.randomUUID(), rf1 = UUID.randomUUID(), rf2 = UUID.randomUUID(), dp = UUID.randomUUID();
+        Instant t0 = Instant.now().minusSeconds(10 * 86400);
+        String v = UUID.randomUUID().toString(), now = Instant.now().toString(), past = Instant.now().minusSeconds(60).toString();
+        java.util.function.BiFunction<Long, Long, Map<String, Object>> fig = (ceiling, estimate) -> {
+            Map<String, Object> f = new LinkedHashMap<>(m("variant_id", v, "round_set", 1, "mode", "BUYER_CONFIG", "ceiling_tier_index", 0, "ceiling_cash_payable_paise", ceiling,
+                    "ceiling_discount_paise", 700 - ceiling, "ceiling_snapshot_sha256", "c" + ceiling, "catalogue_ex_showroom_paise", 500, "catalogue_evidence", "CATALOGUE_ESTIMATE"));
+            f.put("catalogue_estimate_cash_payable_paise", estimate);
+            f.put("catalogue_snapshot_sha256", estimate == null ? null : "e" + estimate);
+            return f;
+        };
+        inject(List.of(
+                new Ev("PoolCreated", "pool", pool, 1, m("pool_id", pool)),
+                new Ev("PoolReady", "pool", pool, 2, m("pool_id", pool, "committed_count", 2)),
+                new Ev("QuoteRoundOpened", "pool", pool, 3, m("pool_id", pool, "round_id", round, "kind", "SEALED", "deadline", Instant.now().plusSeconds(3600).toString(),
+                        "invited_dealership_ids", List.of(d1, d2, d3))),
+                new Ev("QuoteSubmitted", "quote", q1, 1, m("quote_id", q1, "pool_id", pool, "dealership_id", d1, "committed_at", Instant.now().plusSeconds(5).toString())),
+                new Ev("QuoteSubmitted", "quote", q2, 1, m("quote_id", q2, "pool_id", pool, "dealership_id", d2, "committed_at", Instant.now().plusSeconds(5).toString())),
+                new Ev("RoundClosed", "pool", pool, 4, m("pool_id", pool, "kind", "FINAL", "valid_quote_count", 2)),
+                new Ev("QuoteFinalised", "quote", q1, 3, m("quote_id", q1, "pool_id", pool, "dealership_id", d1, "ruleset_version", "r1", "figures", List.of(fig.apply(600L, 700L)))),
+                new Ev("QuoteFinalised", "quote", q2, 3, m("quote_id", q2, "pool_id", pool, "dealership_id", d2, "ruleset_version", "r1", "figures", List.of(fig.apply(650L, null)))),
+                new Ev("OrderCreated", "order", o1, 1, m("order_id", o1, "pool_id", pool, "quote_id", q1, "variant_id", v, "confirmation_deadline", past)),
+                new Ev("OrderCreated", "order", o2, 1, m("order_id", o2, "pool_id", pool, "quote_id", q1, "variant_id", v, "confirmation_deadline", past)),
+                new Ev("ConfirmationRecorded", "order", o1, 2, m("order_id", o1, "pool_id", pool, "quote_id", q1, "confirmed_at", now)),
+                new Ev("BookingIssued", "order", b1, 1, m("booking_id", b1, "order_id", o1, "pool_id", pool, "dealership_id", d1, "variant_id", v)),
+                new Ev("BookingIssued", "order", b2, 1, m("booking_id", b2, "order_id", o2, "pool_id", pool, "dealership_id", d1, "variant_id", v)),
+                new Ev("BookingDelivered", "order", b1, 2, m("booking_id", b1, "order_id", o1)),
+                new Ev("InvoiceConfirmed", "order", b1, 3, m("booking_id", b1, "invoice_total_paise", 640)),
+                new Ev("BookingCancelled", "order", b2, 2, m("booking_id", b2, "order_id", o2, "reason", "DEALER_CANCELLED")),
+                // P5 gaps: q2 accepted (deadline ahead, so not in the confirmation cohort) and VOID; q1 RESOLVED
+                new Ev("OrderCreated", "order", o3, 1, m("order_id", o3, "pool_id", pool, "quote_id", q2, "variant_id", v, "confirmation_deadline", Instant.now().plusSeconds(3600).toString())),
+                new Ev("TierResolved", "order", UUID.randomUUID(), 1, m("pool_id", pool, "quote_id", q1, "outcome", "RESOLVED")),
+                new Ev("TierResolved", "order", UUID.randomUUID(), 1, m("pool_id", pool, "quote_id", q2, "outcome", "VOID")),
+                // refunds: 2 h and 4 h; one still open (not counted). Dispute: 3 days.
+                new Ev("RefundRequested", "payment", UUID.randomUUID(), 1, m("refund_id", rf1)).at(t0),
+                new Ev("RefundCompleted", "payment", UUID.randomUUID(), 2, m("refund_id", rf1)).at(t0.plusSeconds(7200)),
+                new Ev("RefundRequested", "payment", UUID.randomUUID(), 1, m("refund_id", rf2)).at(t0),
+                new Ev("RefundCompleted", "payment", UUID.randomUUID(), 2, m("refund_id", rf2)).at(t0.plusSeconds(14400)),
+                new Ev("RefundRequested", "payment", UUID.randomUUID(), 1, m("refund_id", UUID.randomUUID())).at(t0),
+                new Ev("DisputeOpened", "order", dp, 1, m("dispute_id", dp, "dealership_id", d1)).at(t0),
+                new Ev("DisputeResolved", "order", dp, 2, m("dispute_id", dp, "outcome", "NO_ACTION")).at(t0.plusSeconds(3 * 86400)),
+                // reliability: the latest score counts
+                new Ev("ReliabilityScoreChanged", "dealer", d1, 5, m("dealership_id", d1, "score", 100, "cause", "BOOKING_DELIVERED")).at(t0),
+                new Ev("ReliabilityScoreChanged", "dealer", d1, 6, m("dealership_id", d1, "score", 50, "cause", "BOOKING_DEALER_CANCELLED")).at(t0.plusSeconds(60))), corr);
+        long end = System.currentTimeMillis() + 60_000;
+        while (count("select count(*) from audit_log where correlation_id = ?", corr) < 30 && System.currentTimeMillis() < end) Thread.sleep(200);
+
+        Resp r = get("/admin/analytics", TestTokens.admin("audit", UUID.randomUUID()));
+        assertThat(r.status()).as(r.body()).isEqualTo(200);
+        JsonNode a = JSON.readTree(r.body());
+        assertThat(a.path("simulated").isBoolean() && !a.path("simulated").asBoolean()).as("simulated present and false: DEMO unset").isTrue();
+        assertThat(a.at("/fill/0/created").asInt()).isEqualTo(1);
+        assertThat(a.at("/fill/0/filled").asInt()).isEqualTo(1);
+        assertThat(a.at("/dealer_response/invited").asInt()).isEqualTo(3);
+        assertThat(a.at("/dealer_response/responded").asInt()).isEqualTo(2);
+        assertThat(a.at("/pools_with_two_valid_quotes/two_or_more").asInt()).isEqualTo(1);
+        assertThat(a.at("/acceptance_to_confirmation/orders").asInt()).isEqualTo(2);
+        assertThat(a.at("/acceptance_to_confirmation/confirmed").asInt()).isEqualTo(1);
+        assertThat(a.at("/confirmation_to_delivery/closed_bookings").asInt()).isEqualTo(2);
+        assertThat(a.at("/confirmation_to_delivery/delivered").asInt()).isEqualTo(1);
+        assertThat(a.at("/cancellation/cancelled").asInt()).isEqualTo(1);
+        assertThat(a.at("/cancellation/by_reason/dealer").asInt()).isEqualTo(1);
+        // savings: each label its own distribution, in paise, with the hashes it came from
+        JsonNode s = a.path("savings");
+        assertThat(s.at("/dealer_stated_discount/n").asInt()).isEqualTo(2);
+        assertThat(s.at("/dealer_stated_discount/median_paise").asLong()).isEqualTo(50);
+        assertThat(s.at("/vs_catalogue_estimate/n").asInt()).as("hidden without a catalogue estimate").isEqualTo(1);
+        assertThat(s.at("/vs_catalogue_estimate/median_paise").asLong()).isEqualTo(100);
+        assertThat(s.at("/vs_best_other_quote/n").asInt()).isEqualTo(2);
+        assertThat(s.at("/vs_best_other_quote/p25_paise").asLong()).as("shown honestly when worse").isEqualTo(-50);
+        assertThat(s.at("/vs_best_other_quote/p75_paise").asLong()).isEqualTo(50);
+        assertThat(s.at("/realised/n").asInt()).as("only from a confirmed invoice").isEqualTo(1);
+        assertThat(s.at("/realised/median_paise").asLong()).isEqualTo(60);
+        assertThat(s.at("/realised/items/0/snapshot_sha256/0").asText()).isEqualTo("e700");
+        assertThat(s.at("/vs_best_other_quote/items/0/ruleset_version").asText()).isEqualTo("r1");
+        assertThat(a.at("/void_rate/accepted_quotes").asInt()).isEqualTo(2);
+        assertThat(a.at("/void_rate/void_quotes").asInt()).isEqualTo(1);
+        assertThat(a.at("/refund_latency_hours/n").asInt()).as("open refund not counted").isEqualTo(2);
+        assertThat(a.at("/refund_latency_hours/p50").asDouble()).isEqualTo(3.0);
+        assertThat(a.at("/refund_latency_hours/p95").asDouble()).isEqualTo(3.9);
+        assertThat(a.at("/dispute_resolution_days/n").asInt()).isEqualTo(1);
+        assertThat(a.at("/dispute_resolution_days/p50").asDouble()).isEqualTo(3.0);
+
+        // E058: a dealer admin sees only their own dealership, whatever the request says (AZ-T5, AZ-E058-A/D)
+        JsonNode mine = JSON.readTree(get("/dealer/analytics", TestTokens.user("audit", UUID.randomUUID(), List.of("dealer_admin"), d1)).body());
+        assertThat(mine.path("dealership_id").asText()).isEqualTo(d1.toString());
+        assertThat(mine.has("simulated")).isTrue();
+        assertThat(mine.at("/response/invited").asInt()).isEqualTo(1);
+        assertThat(mine.at("/response/responded").asInt()).isEqualTo(1);
+        assertThat(mine.at("/win/final_quotes").asInt()).isEqualTo(1);
+        assertThat(mine.at("/win/won").asInt()).isEqualTo(1);
+        assertThat(mine.path("reliability_score_percent").asInt()).isEqualTo(50);
+        JsonNode theirs = JSON.readTree(get("/dealer/analytics", TestTokens.user("audit", UUID.randomUUID(), List.of("dealer_admin"), d2)).body());
+        assertThat(theirs.at("/win/won").asInt()).isZero();
+        assertThat(theirs.path("reliability_score_percent").isNull()).isTrue();
+        Resp spoof = get("/dealer/analytics?dealership_id=" + d1, TestTokens.user("audit", UUID.randomUUID(), List.of("dealer_admin"), d2));
+        assertThat(JSON.readTree(spoof.body()).path("dealership_id").asText()).as("a parameter cannot name another dealership").isEqualTo(d2.toString());
+        assertThat(spoof.body()).doesNotContain(d1.toString());
+        assertThat(get("/dealer/analytics", TestTokens.dealer("audit", UUID.randomUUID(), d1)).status()).as("dealer_staff").isEqualTo(403);
+        assertThat(get("/dealer/analytics", TestTokens.buyer("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/dealer/analytics", TestTokens.admin("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/dealer/analytics", null).status()).isEqualTo(401);
+
+        // AZ-E169: platform admins only
+        assertThat(get("/admin/analytics", TestTokens.buyer("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/admin/analytics", TestTokens.dealer("audit", UUID.randomUUID(), UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/admin/analytics", null).status()).isEqualTo(401);
+    }
+
+    @Test
+    void openApiMatchesWebClient() { assertOpenApiMatchesWebClient("audit"); }
+}

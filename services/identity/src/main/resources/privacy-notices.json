@@ -1,0 +1,29 @@
+{
+  "version": "2026-10-26-p5",
+  "purposes": [
+    {
+      "purpose": "ACCOUNT",
+      "withdrawable": false,
+      "title": "Your account and sign-in",
+      "notice": "We keep your email address (encrypted), your language and your passkeys so you can sign in, and we send sign-in codes to that address. This is needed to use Convoy: to stop it, delete your account. What we keep after deletion and for how long is listed under Retention.",
+      "data": ["email address", "language", "passkeys", "sessions"],
+      "retention": "Until you delete your account."
+    },
+    {
+      "purpose": "DEPOSITS",
+      "withdrawable": false,
+      "title": "Test deposits, refunds and the ledger",
+      "notice": "When you commit to a pool we record your test deposit, its refund or release and the ledger entries. Tax and company law require us to keep these records: after you delete your account they stay, with your identity replaced by a random code.",
+      "data": ["deposits", "refunds", "ledger entries"],
+      "retention": "8 years (Companies Act 2013 s.128(5)); legal review flagged."
+    },
+    {
+      "purpose": "DEALER_DISCLOSURE",
+      "withdrawable": true,
+      "title": "Sharing your contact with your dealer",
+      "notice": "When you confirm an offer, the dealer of that offer receives your email address so they can arrange the delivery. You can withdraw this at any time: dealers then no longer receive it. A dealer who already received it keeps it under their own obligations.",
+      "data": ["email address"],
+      "retention": "Shared only after you confirm; withdrawal stops any further sharing."
+    }
+  ]
+}

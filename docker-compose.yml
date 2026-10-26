@@ -39,6 +39,9 @@ services:
       DB_PASSWORD_ORDER: ${DB_PASSWORD_ORDER}
       DB_PASSWORD_PAYMENT: ${DB_PASSWORD_PAYMENT}
       DB_PASSWORD_REALTIME: ${DB_PASSWORD_REALTIME}
+      DB_PASSWORD_NOTIFICATION: ${DB_PASSWORD_NOTIFICATION}
+      DB_PASSWORD_AUDIT: ${DB_PASSWORD_AUDIT}
+      DB_PASSWORD_AUDIT_OWNER: ${DB_PASSWORD_AUDIT_OWNER}
       TZ: UTC
     volumes:
       - ./deploy/local/postgres:/docker-entrypoint-initdb.d:ro
@@ -68,7 +71,10 @@ services:
     ports: ["127.0.0.1:8025:8025"]
     mem_limit: 64m
 
+  # Profiles (P5.0): the default stack is lean. `--profile tracing` adds Jaeger (the journey's trace assertion needs it, with
+  # TRACING=1); `--profile ha` adds realtime-2 (set REALTIME_2_URL=http://realtime-2:8080 so the gateway balances to it).
   jaeger:
+    profiles: [tracing]
     image: jaegertracing/jaeger:2.22.0
     command: ["--config", "/etc/jaeger/config.yaml"] # default all-in-one config with max_traces capped
     volumes: ["./deploy/local/jaeger/config.yaml:/etc/jaeger/config.yaml:ro"]
@@ -79,7 +85,8 @@ services:
     image: otel/opentelemetry-collector-contrib:0.163.2
     command: ["--config=/etc/otelcol/collector.yaml"]
     volumes: ["./deploy/local/otel/collector.yaml:/etc/otelcol/collector.yaml:ro"]
-    depends_on: [jaeger]
+    depends_on:
+      jaeger: { condition: service_started, required: false } # without the tracing profile spans are dropped at the collector
     mem_limit: 160m
 
   razorpay-fake:
@@ -104,9 +111,18 @@ services:
       CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME}
       CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
       CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER}
+      CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
+      CLIENT_SECRET_CATALOG: ${CLIENT_SECRET_CATALOG}
+      CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER}
+      CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE}
+      CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT}
+      EXPORT_PUBLIC_ENDPOINT: http://localhost:4566
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       SEED_USERS_FILE: /seed/users.json
+      DEMO: ${DEMO:-true} # test users load only in a demo environment (P5.0)
     volumes: ["./deploy/local/seed:/seed:ro"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -125,6 +141,8 @@ services:
       REDIS_HOST: redis
       CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
       GATEWAY_KEY_DIR: /keys
+      # lean stack: both balancer entries point at realtime-1; with the ha profile set REALTIME_2_URL=http://realtime-2:8080
+      REALTIME_2_URL: ${REALTIME_2_URL:-http://realtime-1:8080}
     volumes: ["gateway-keys:/keys"]
     ports: ["127.0.0.1:8080:8080"]
     depends_on:
@@ -137,6 +155,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: catalog
+      CLIENT_SECRET_CATALOG: ${CLIENT_SECRET_CATALOG}
       DB_PASSWORD: ${DB_PASSWORD_CATALOG}
 
   dealer:
@@ -145,6 +164,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: dealer
+      CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER}
       DB_PASSWORD: ${DB_PASSWORD_DEALER}
       # Demo seed (P4.0): the local stack and CI are demo environments; a lite deploy seeds only with DEMO=true.
       DEMO: ${DEMO:-true}
@@ -185,6 +205,7 @@ services:
 
   realtime-2:
     <<: *realtime
+    profiles: [ha]
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: realtime
@@ -199,6 +220,7 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: quote
+      CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE}
       DB_PASSWORD: ${DB_PASSWORD_QUOTE}
 
   order:
@@ -217,11 +239,43 @@ services:
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: payment
+      CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT}
       DB_PASSWORD: ${DB_PASSWORD_PAYMENT}
       RAZORPAY_BASE_URL: ${RAZORPAY_BASE_URL}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+
+  # Notification (wave 2, P5.A): in-app inbox + email over SMTP to Mailpit (AMENDMENT-011). Nothing upstream waits for it.
+  notification:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: notification } }
+    mem_limit: 360m
+    depends_on:
+      postgres: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+      mailpit: { condition: service_started }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: notification
+      DB_PASSWORD: ${DB_PASSWORD_NOTIFICATION}
+      CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+
+  audit:
+    <<: *service
+    build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: audit } }
+    mem_limit: 360m
+    depends_on:
+      postgres: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      OTEL_SERVICE_NAME: audit
+      DB_PASSWORD: ${DB_PASSWORD_AUDIT}
+      DB_OWNER_PASSWORD: ${DB_PASSWORD_AUDIT_OWNER}
+      DEMO: ${DEMO:-true} # E169 labels every figure "simulated" on the demo stack (synthetic dealers and buyers)
 
   web:
     build: { context: ., dockerfile: web/Dockerfile }

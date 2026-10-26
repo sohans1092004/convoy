@@ -11,7 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const specDir = join(root, 'lib', 'api', 'openapi');
 const outDir = join(root, 'lib', 'api', 'schema');
-const SERVICES = ['identity', 'catalog', 'dealer', 'pool', 'quote', 'order', 'payment'];
+const SERVICES = ['identity', 'catalog', 'dealer', 'pool', 'quote', 'order', 'payment', 'notification', 'audit'];
 mkdirSync(specDir, { recursive: true });
 mkdirSync(outDir, { recursive: true });
 

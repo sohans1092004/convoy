@@ -17,7 +17,8 @@ public record QuoteFinalised(
         @JsonProperty("snapshot_sha256") String snapshotSha256,
         @JsonProperty("ruleset_version") String rulesetVersion,
         @JsonProperty("tiers") List<Map<String, Object>> tiers,
-        @JsonProperty("variant_inputs") List<Map<String, Object>> variantInputs) implements EventPayload {
+        @JsonProperty("variant_inputs") List<Map<String, Object>> variantInputs,
+        @JsonProperty("figures") List<Map<String, Object>> figures) implements EventPayload {
     public static final String TYPE = "QuoteFinalised";
     public static final String PRODUCER = "quote";
     public static final String AGGREGATE = "quote";

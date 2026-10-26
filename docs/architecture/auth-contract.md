@@ -57,7 +57,7 @@ sequenceDiagram
 
 ## 5. Service tokens (service-to-service)
 - Client credentials grant at identity `POST /internal/oauth/token` with `client_id` / secret (Secrets Manager); token is an ES256 JWT `{iss: convoy-identity, sub: <service>, aud: <callee>, scope: [..], exp: 5 min}`.
-- Callers and scopes: pool → payment `deposits:create`; pool → quote `rounds:summary`; pool → dealer `eligibility:read`; pool → order `resolution:read`; pool → catalog `models:read` (added in P1: brand and variants of a new pool, E029); realtime → pool `pools:access` (added in P2: who may watch a pool stream, E044, and its version for the gap fallback, E045); services → identity `erasure:confirm`.
+- Callers and scopes: pool → payment `deposits:create`; pool → quote `rounds:summary`; pool → dealer `eligibility:read`; pool → order `resolution:read`; pool → catalog `models:read` (added in P1: brand and variants of a new pool, E029); realtime → pool `pools:access` (added in P2: who may watch a pool stream, E044, and its version for the gap fallback, E045); notification → identity `contacts:read` (added in P5: the recipient's email at send time, E157; never stored); services → identity `erasure:confirm`.
 - Callees check `aud` and scope per endpoint (AZ-SVC-01..03). Human JWTs are never accepted on `/internal/**` and service tokens never on human endpoints.
 
 ## 6. Revocation timing

@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { timeline, type DepositState, type StepStatus } from '@/lib/order-timeline';
+import { paise } from '@/lib/quote-builder';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
 
@@ -115,6 +116,29 @@ function ReviewForm({ bookingId }: { bookingId: string }) {
       </label>
       <Button type="submit" className="self-start" loading={send.state.kind === 'loading'} disabled={send.state.kind === 'success'}>{t('postReview')}</Button>
       <CommandStatus state={send.state} successText={t('reviewPosted')} />
+    </form>
+  );
+}
+
+/** E101 (P5.E): after delivery the buyer confirms the invoice total once; it is the only source of a realised-saving figure. */
+function InvoiceForm({ bookingId, confirmed }: { bookingId: string; confirmed: number | null | undefined }) {
+  const t = useTranslations('lifecycle');
+  const [total, setTotal] = React.useState('');
+  const [done, setDone] = React.useState<number | null>(confirmed ?? null);
+  const send = useCommand(async (key: string) => {
+    const p = paise(total);
+    const r = await call(api.PUT('/bookings/{id}/invoice', { params: { path: { id: bookingId } }, body: { invoice_total_paise: p ?? 0 }, headers: { 'Idempotency-Key': key } }));
+    setDone(r.data.booking?.invoice_total_paise ?? p);
+  });
+  if (done != null) return <CardText>{t('invoiceConfirmed', { total: rupees(done) })}</CardText>;
+  return (
+    <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); void send.execute(); }}>
+      <label className="flex flex-col gap-1 text-sm">{t('invoiceTotal')}
+        <input inputMode="decimal" className="rounded-lg border border-border bg-surface p-2" value={total} onChange={(e) => setTotal(e.target.value)} required />
+      </label>
+      <p className="text-xs text-muted">{t('invoiceNote')}</p>
+      <Button type="submit" variant="secondary" className="self-start" loading={send.state.kind === 'loading'}>{t('invoiceConfirm')}</Button>
+      <CommandStatus state={send.state} successText={t('invoiceThanks')} />
     </form>
   );
 }
@@ -220,6 +244,7 @@ export function OrderView({ orderId }: { orderId: string }) {
           <CardTitle>{tl('deliveredTitle')}</CardTitle>
           <CardText>{tl('deliveredBody', { at: ist(b.delivered_at) })}</CardText>
           <ReviewForm bookingId={b.id} />
+          <InvoiceForm bookingId={b.id} confirmed={b.invoice_total_paise} />
         </Card>
       ) : null}
       {['CANCELLED', 'DECLINED', 'VOIDED'].includes(o.state) ? (

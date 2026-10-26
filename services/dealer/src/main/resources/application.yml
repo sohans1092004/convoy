@@ -19,6 +19,13 @@ management:
   endpoints.web.exposure.include: health,info,prometheus
   endpoint.health.probes.enabled: true
 convoy:
+  privacy: # P5.D (docs/privacy/retention.md): reliability counts stay; review text goes
+    tables:
+      - {table: reviews, column: buyer_id, action: PSEUDONYMISE, category: reviews, clear: [body]}
+      - {table: delivered_bookings, column: buyer_id, action: PSEUDONYMISE, category: dealer-reliability}
+      - {table: dealership_audit, column: actor, action: PSEUDONYMISE, category: staff-actions}
+      - {table: dealerships, column: registered_by, action: PSEUDONYMISE, category: staff-actions}
+      - {table: dealerships, column: verified_by, action: PSEUDONYMISE, category: staff-actions}
   service-name: dealer
   identity-url: ${IDENTITY_URL:http://identity:8080}
   client-id: dealer

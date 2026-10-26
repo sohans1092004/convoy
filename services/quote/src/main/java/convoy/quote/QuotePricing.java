@@ -175,5 +175,58 @@ public final class QuotePricing {
         return out;
     }
 
+    /**
+     * AMENDMENT-013: per variant, the figures behind the savings labels, from the version's stored snapshots. The catalogue
+     * estimate is the same configuration (BUYER_CONFIG) priced with the round's catalogue ex-showroom and no discount; null when
+     * that price is UNVERIFIED, missing, or the loaded ruleset is not the version's (it could not be reproduced).
+     */
+    public static List<Map<String, Object>> figures(List<Map<String, Object>> variantInputs, Map<String, Object> snapshots, List<Object> tiers, long minF, long roundSet,
+                                                    Map<String, Map<String, Object>> catalogue, String rulesetVersion, Map<String, Object> rules) {
+        boolean sameRules = rulesetVersion.equals(m(rules.get("ruleset")).get("ruleset_version"));
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> vi : variantInputs) {
+            String vid = (String) vi.get("variant_id");
+            List<Object> perTier = l(snapshots.get(vid));
+            List<Tiers.Tier> ladder = new ArrayList<>();
+            for (int i = 0; i < tiers.size(); i++) {
+                ladder.add(new Tiers.Tier(lng(m(tiers.get(i)).get("min")), lng(m(tiers.get(i)).get("max")), lng(m(perTier.get(i)).get("cash_payable_paise"))));
+            }
+            int ci = Tiers.tierFor(ladder, minF);
+            Map<String, Object> ceiling = m(perTier.get(ci));
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("variant_id", vid);
+            f.put("round_set", roundSet);
+            f.put("mode", "BUYER_CONFIG");
+            f.put("ceiling_tier_index", (long) ci);
+            f.put("ceiling_discount_paise", lng(ceiling.get("discount_paise")));
+            f.put("ceiling_cash_payable_paise", lng(ceiling.get("cash_payable_paise")));
+            f.put("ceiling_snapshot_sha256", ceiling.get("sha256"));
+            Map<String, Object> cat = catalogue.getOrDefault(vid, Map.of());
+            Long exShowroom = lng(cat.get("catalogue_ex_showroom_paise"));
+            String evidence = (String) cat.get("catalogue_evidence");
+            Long estimate = null;
+            String estimateSha = null;
+            if (sameRules && exShowroom != null && evidence != null && !"UNVERIFIED".equals(evidence)) {
+                Map<String, Object> in = new LinkedHashMap<>(m(vi.get("input")));
+                Map<String, Object> vehicle = new LinkedHashMap<>(m(in.get("vehicle")));
+                vehicle.put("ex_showroom_paise", exShowroom);
+                vehicle.put("ex_showroom_evidence", evidence);
+                in.put("vehicle", vehicle);
+                in.put("discount", Map.of("amount_paise", 0L, "base", "EX_SHOWROOM", "evidence", DC));
+                Map<String, Object> body = PriceEngine.snapshotBody(in, rules);
+                if ("OK".equals(m(body.get("output")).get("status"))) {
+                    estimate = lng(m(body.get("output")).get("cash_payable_paise"));
+                    estimateSha = CanonicalJson.sha256(body);
+                }
+            }
+            f.put("catalogue_ex_showroom_paise", exShowroom);
+            f.put("catalogue_evidence", evidence);
+            f.put("catalogue_estimate_cash_payable_paise", estimate);
+            f.put("catalogue_snapshot_sha256", estimateSha);
+            out.add(f);
+        }
+        return out;
+    }
+
     static final Set<String> LIVE = Set.of("SUBMITTED", "REVISED", "FINAL");
 }

@@ -34,6 +34,8 @@ A = allow, O = allow on own resource only (own account / own membership / own or
 | Quote cancel after FINAL | write | — | — | — | D | — | AZ-E066-D |
 | Quote comparison (visible versions, breakdown) | read | — | P (pool member) | — | — | A | AZ-E069-X |
 | Own rank per variant | read | — | — | D | D | A | AZ-RNK-01..03 |
+| Clarification (ask / answer) | write | — | P (committed member, FINAL quote) | D (answer, own quote) | D (answer, own quote) | — | AZ-E071-X, AZ-E072-X |
+| Clarification answers | read | — | P (pool member; own open questions) | D (all of own quote) | D | — | AZ-E070-X |
 | Competitor quote values / ranks | read | — | — | — | — | A (audited) | **AZ-T3**, AZ-T5 |
 | Buyer contact details | read | — | O | after booking, own dealership's bookings only, purpose-limited fields | same | A (audited) | **AZ-T2** |
 | Order / confirmation / voucher | read/write | — | O | — | — | A (read, audited) | AZ-E081-X, AZ-E082-X |
@@ -43,6 +45,8 @@ A = allow, O = allow on own resource only (own account / own membership / own or
 | Dispute evidence | read | — | O | D | D | A (audited) | AZ-E093-X, AZ-T7 |
 | Refund queue / manual resolve | read/write | — | — | — | — | A (+ second, different admin; AMENDMENT-001) | AZ-INT-08 |
 | Dealer analytics | read | — | — | — | D | A | **AZ-T5** |
+| Marketplace analytics (E169) | read | — | — | — | — | A | AZ-E169-D |
+| Invoice total (E101) | write | — | O (delivered booking, once) | — | — | — | AZ-E101-X |
 | Staff invite/revoke | write | — | — | — | D | A | AZ-E012-X, **AZ-T6** |
 | Reviews | write | — | O (delivered booking only) | — | — | hide only | AZ-INT-07 |
 | Audit log | read | — | — | — | — | A (access itself audited) | AZ-E140-D, **AZ-T7** |

@@ -2,6 +2,8 @@
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import * as React from 'react';
+import { AnalyticsView } from '@/components/analytics-view';
+import { AuditViewer } from '@/components/audit-viewer';
 import { CommandStatus } from '@/components/command-status';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,12 +80,12 @@ function VerificationRow({ d, refresh }: { d: Registration; refresh: () => Promi
 
 export function AdminConsole() {
   const t = useTranslations('admin');
-  const [tab, setTab] = React.useState<'refunds' | 'disputes' | 'verification' | 'reconciliation'>('refunds');
+  const [tab, setTab] = React.useState<'refunds' | 'disputes' | 'verification' | 'reconciliation' | 'audit' | 'analytics'>('refunds');
   const refunds = useSnapshot(() => call(api.GET('/admin/refunds')), [], 15_000);
   const disputes = useSnapshot(() => call(api.GET('/admin/disputes')), [], 15_000);
   const queue = useSnapshot(() => call(api.GET('/admin/dealerships', { params: { query: { status: 'PENDING_VERIFICATION' } } })), [], 30_000);
   const runs = useSnapshot(() => call(api.GET('/admin/reconciliation/runs')), [], 60_000);
-  const TABS = ['refunds', 'disputes', 'verification', 'reconciliation'] as const;
+  const TABS = ['refunds', 'disputes', 'verification', 'reconciliation', 'audit', 'analytics'] as const;
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-extrabold">{t('title')}</h1>
@@ -112,6 +114,8 @@ export function AdminConsole() {
             {r.mismatches.length > 0 ? <ul className="text-sm">{r.mismatches.map((m, i) => <li key={i}><Badge tone="warning">{m.mismatch_class}</Badge> {m.detail}</li>)}</ul> : null}
           </Card>
         ))) : <Skeleton className="h-32" label={t('loading')} />) : null}
+        {tab === 'audit' ? <AuditViewer /> : null}
+        {tab === 'analytics' ? <AnalyticsView /> : null}
       </div>
     </div>
   );

@@ -38,7 +38,16 @@ public final class Api {
 
     /** snapshots only once submitted (variant id -> one snapshot per tier). */
     public record DealerQuote(String id, String poolId, String state, long version, QuoteDraft draft, int currentVersion, @Nullable String submittedAt,
-                              @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, List<TierSnapshot>> snapshots) {}
+                              @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, List<TierSnapshot>> snapshots, List<Clarification> clarifications) {}
+
+    // ---- clarifications (E071, E072)
+
+    /** question is null once the asking buyer erased their account; answer is null while open. */
+    public record Clarification(String id, String quoteId, String questionType, @Nullable String question, @Nullable String answer, String askedAt, @Nullable String answeredAt) {}
+
+    public record Ask(@Nullable String questionType, @Nullable String text) {}
+
+    public record Answer(@Nullable String text) {}
 
     public record RoundVariant(String id, String code, String name, @Nullable String fuel, @Nullable String transmission, @Nullable Integer engineCc, @Nullable Long catalogueExShowroomPaise,
                                @Nullable String catalogueEvidence, @Nullable Boolean cityConfirmed) {}
@@ -71,7 +80,7 @@ public final class Api {
     public record OfferVariant(String variantId, String variantCode, Ceiling ceiling, Projection projection, List<TierView> tiers, Stock stock) {}
 
     public record Offer(String quoteId, String dealershipId, String state, int versionNo, String committedAt, long minFulfilment, @Nullable Long maxUnits,
-                        String snapshotSha256, List<OfferVariant> variants) {}
+                        String snapshotSha256, List<OfferVariant> variants, List<Clarification> clarifications) {}
 
     public record Offers(String poolId, List<Offer> quotes, String rankingRule) {}
 }

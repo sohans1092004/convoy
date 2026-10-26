@@ -1,0 +1,62 @@
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application.name: notification
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/convoy}
+    username: notification
+    password: ${DB_PASSWORD}
+    hikari.maximum-pool-size: ${DB_POOL_SIZE:8}
+    hikari.schema: notification
+  flyway:
+    schemas: notification
+    default-schema: notification
+    locations: classpath:db/platform,classpath:db/migration
+  mail: # same keys as identity (AMENDMENT-011): Mailpit locally; the SES SMTP interface on AWS (credentials from Secrets Manager, P6)
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+  threads.virtual.enabled: true
+logging.structured.format.console: ecs
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+  endpoint.health.probes.enabled: true
+convoy:
+  privacy: # P5.D (docs/privacy/retention.md): everything here is deleted with the account
+    tables:
+      - {table: deliveries, column: notification_id, where: "notification_id in (select id from notifications where user_id = ?)", action: DELETE, category: messages}
+      - {table: notifications, column: user_id, action: DELETE, category: messages}
+      - {table: preferences, column: user_id, action: DELETE, category: messages}
+      - {table: push_subscriptions, column: user_id, action: DELETE, category: messages}
+      - {table: links, column: target, where: "target = 'user:' || ?::text", action: DELETE, category: messages}
+      - {table: events, column: payload, where: "payload->>'buyer_id' = ?::text", action: DELETE, category: messages}
+  service-name: notification
+  identity-url: ${IDENTITY_URL:http://identity:8080}
+  client-id: notification
+  client-secret: ${CLIENT_SECRET_NOTIFICATION:}
+  issuers:
+    convoy-gateway: ${GATEWAY_JWKS:http://gateway:8080/.well-known/jwks.json}
+    convoy-identity: ${IDENTITY_JWKS:http://identity:8080/.well-known/jwks.json}
+  aws:
+    endpoint: ${AWS_ENDPOINT:}
+    region: ${AWS_REGION:ap-south-1}
+notification:
+  mail-from: ${MAIL_FROM:no-reply@convoy.test}
+  # Email retries: 5 s, 10 s, 20 s ... capped at 10 min; DEAD after 8 attempts (about 25 min).
+  max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:8}
+  base-backoff: ${NOTIFICATION_BASE_BACKOFF:5s}
+  max-backoff: 10m
+  poll-every: ${NOTIFICATION_POLL_EVERY:2s}
+  # Web push (P5.B): VAPID keys from .env (scripts/gen-vapid.mjs); blank = push off. Only these push services are called.
+  vapid-public-key: ${VAPID_PUBLIC_KEY:}
+  vapid-private-key: ${VAPID_PRIVATE_KEY:}
+  vapid-subject: ${VAPID_SUBJECT:mailto:no-reply@convoy.test}
+  push-endpoints: ${PUSH_ENDPOINTS:https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|[a-z0-9.-]+[.]notify[.]windows[.]com|web[.]push[.]apple[.]com)/.+}

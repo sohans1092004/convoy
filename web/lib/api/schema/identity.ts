@@ -32,6 +32,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/erasure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestErasure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/data-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/sessions/validate": {
         parameters: {
             query?: never;
@@ -74,6 +106,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/exports/{id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["part"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/erasure/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirm"];
         delete?: never;
         options?: never;
         head?: never;
@@ -224,6 +288,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/erasure/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["erasureStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/data-export/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/users/{id}/contact": {
         parameters: {
             query?: never;
@@ -294,6 +406,26 @@ export interface components {
             dealership_id: string;
             role: string;
         };
+        ErasureStatus: {
+            erasure_id: string;
+            state: string;
+            confirmed: string[];
+            pending: string[];
+            requested_at: string;
+            completed_at: string | null;
+        };
+        ExportStatus: {
+            export_id: string;
+            state: string;
+            /** Format: int32 */
+            parts_received: number;
+            /** Format: int32 */
+            parts_expected: number;
+            requested_at: string;
+            download_url: string | null;
+            link_expires_at: string | null;
+            file_deleted_after: string | null;
+        };
         ValidateBody: {
             session_id: string;
         };
@@ -326,6 +458,17 @@ export interface components {
             /** Format: int64 */
             expires_in: number;
             scope: string[];
+        };
+        JsonNode: unknown;
+        Part: {
+            service: string;
+            data: components["schemas"]["JsonNode"];
+        };
+        Accepted: {
+            status: string;
+        };
+        Confirm: {
+            service: string;
         };
         Invite: {
             /** Format: email */
@@ -412,6 +555,20 @@ export interface components {
             dealership_id: string | null;
             consents: components["schemas"]["Consent"][];
         };
+        Consents: {
+            notice_version: string;
+            purposes: components["schemas"]["Purpose"][];
+        };
+        Purpose: {
+            purpose: string;
+            title: string;
+            notice: string;
+            data: string[];
+            retention: string;
+            withdrawable: boolean;
+            granted: boolean | null;
+            history: components["schemas"]["ConsentEntry"][];
+        };
         Jwks: {
             keys: components["schemas"]["Key"][];
         };
@@ -479,6 +636,46 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StaffMembership"];
+                };
+            };
+        };
+    };
+    requestErasure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErasureStatus"];
+                };
+            };
+        };
+    };
+    requestExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExportStatus"];
                 };
             };
         };
@@ -551,6 +748,58 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ServiceToken"];
+                };
+            };
+        };
+    };
+    part: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Part"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Accepted"];
+                };
+            };
+        };
+    };
+    confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Confirm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Accepted"];
                 };
             };
         };
@@ -753,6 +1002,70 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    erasureStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErasureStatus"];
+                };
+            };
+        };
+    };
+    export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExportStatus"];
+                };
+            };
+        };
+    };
+    consents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Consents"];
                 };
             };
         };

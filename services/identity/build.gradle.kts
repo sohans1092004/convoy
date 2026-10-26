@@ -3,6 +3,7 @@ plugins { alias(libs.plugins.spring.boot) }
 dependencies {
     implementation(project(":libs:platform"))
     implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("software.amazon.awssdk:s3") // P5.D data export: private bucket + pre-signed links (LocalStack locally)
     implementation(libs.webauthn4j.core) // passkeys (E003-E005); Apache-2.0
     testImplementation(testFixtures(project(":libs:contracts")))
     testImplementation(testFixtures(project(":libs:platform")))

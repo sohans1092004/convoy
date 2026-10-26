@@ -105,7 +105,7 @@ class IdentityIT extends ServiceTest {
         assertThat(t.status()).isEqualTo(200);
         assertThat(JSON.readTree(t.body()).at("/scope/0").asText()).isEqualTo("deposits:create");
         assertThat(send("POST", "/internal/oauth/token", null, "{\"client_id\":\"pool\",\"client_secret\":\"wrong\",\"audience\":\"payment\"}", Map.of()).status()).isEqualTo(401);
-        assertThat(send("POST", "/internal/oauth/token", null, "{\"client_id\":\"pool\",\"client_secret\":\"pool-secret\",\"audience\":\"identity\"}", Map.of()).status()).isEqualTo(403);
+        assertThat(send("POST", "/internal/oauth/token", null, "{\"client_id\":\"pool\",\"client_secret\":\"pool-secret\",\"audience\":\"realtime\"}", Map.of()).status()).isEqualTo(403); // pool has identity since P5.D (privacy:write), never realtime
         JsonNode jwks = JSON.readTree(get("/.well-known/jwks.json", null).body());
         assertThat(jwks.at("/keys/0/kty").asText()).isEqualTo("EC");
         assertThat(jwks.at("/keys/0/d").isMissingNode()).isTrue(); // public keys only
@@ -117,10 +117,30 @@ class IdentityIT extends ServiceTest {
         send("POST", "/auth/otp/start", anon(), "{\"email\":\"" + email + "\"}", Map.of());
         JsonNode v = JSON.readTree(send("POST", "/auth/otp/verify", anon(), "{\"email\":\"" + email + "\",\"code\":\"" + lastCode(email) + "\"}", Map.of()).body());
         String token = TestTokens.buyer("identity", UUID.fromString(v.at("/user/id").asText()));
-        send("PUT", "/me/consents/DEALER_DISCLOSURE", token, "{\"granted\":true,\"notice_version\":\"n1\"}", Map.of());
-        JsonNode h = JSON.readTree(send("PUT", "/me/consents/DEALER_DISCLOSURE", token, "{\"granted\":false,\"notice_version\":\"n1\"}", Map.of()).body());
+        String n = "{\"granted\":%s,\"notice_version\":\"2026-10-26-p5\"}";
+        UUID user = UUID.fromString(v.at("/user/id").asText());
+        String contact = "/internal/users/" + user + "/contact";
+        assertThat(get(contact, TestTokens.service("identity", "order", java.util.List.of("contacts:read"))).status()).isEqualTo(200);
+        send("PUT", "/me/consents/DEALER_DISCLOSURE", token, n.formatted(true), Map.of());
+        JsonNode h = JSON.readTree(send("PUT", "/me/consents/DEALER_DISCLOSURE", token, n.formatted(false), Map.of()).body());
         assertThat(h.path("history")).hasSize(2);
         assertThat(JSON.readTree(get("/me", token).body()).path("email").asText()).isEqualTo(email);
+        // P5.D: withdrawn -> dealers (through order) no longer get the contact; notification still emails the buyer
+        assertThat(get(contact, TestTokens.service("identity", "order", java.util.List.of("contacts:read"))).status()).isEqualTo(404);
+        assertThat(get(contact, TestTokens.service("identity", "notification", java.util.List.of("contacts:read"))).status()).isEqualTo(200);
+        // only withdrawable purposes can be withdrawn, only against the current notice, only known purposes
+        assertThat(send("PUT", "/me/consents/ACCOUNT", token, n.formatted(false), Map.of()).status()).isEqualTo(400);
+        assertThat(send("PUT", "/me/consents/DEALER_DISCLOSURE", token, "{\"granted\":true,\"notice_version\":\"n1\"}", Map.of()).status()).isEqualTo(400);
+        assertThat(send("PUT", "/me/consents/MARKETING", token, n.formatted(true), Map.of()).status()).isEqualTo(400);
+        // E168: every purpose with its notice, my current choice and history
+        JsonNode all = JSON.readTree(get("/me/consents", token).body());
+        assertThat(all.path("notice_version").asText()).isEqualTo("2026-10-26-p5");
+        assertThat(all.path("purposes").findValuesAsText("purpose")).containsExactly("ACCOUNT", "DEPOSITS", "DEALER_DISCLOSURE");
+        JsonNode dd = all.path("purposes").get(2);
+        assertThat(dd.path("granted").asBoolean(true)).isFalse();
+        assertThat(dd.path("withdrawable").asBoolean()).isTrue();
+        assertThat(dd.path("history")).hasSize(2);
+        assertThat(all.path("purposes").get(0).path("granted").isNull()).isTrue();
     }
 
     @Autowired Users users;

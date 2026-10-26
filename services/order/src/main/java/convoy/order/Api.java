@@ -17,7 +17,7 @@ public final class Api {
 
     public record BookingRef(String id, String state, long version, @Nullable String promisedDeliveryDate, String dealerConfirmDeadline, String dealershipId, boolean voucherActive,
                              @Nullable String scheduledDate, @Nullable String deliverySlot, @Nullable String deliveredAt, boolean overdueFlag, @Nullable String cancelReason,
-                             @Nullable String cancelledAt, @Nullable String contactReleasedAt) {}
+                             @Nullable String cancelledAt, @Nullable String contactReleasedAt, @Nullable Long invoiceTotalPaise, @Nullable String invoiceConfirmedAt) {}
 
     public record DisputeRef(String id, String category, String state, String openedBy, String createdAt) {}
 

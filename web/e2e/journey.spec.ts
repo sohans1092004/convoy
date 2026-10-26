@@ -31,6 +31,16 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // The P1 journey through real services and events:
 // sign in -> model -> on-road estimate -> pool -> join (double click) -> commit + test deposit ->
 // dealer quote -> compare -> accept -> confirm -> tier resolves -> booking voucher.
+// Same guard as scripts/require-razorpay-fake.sh: the journey pays through the fake's checkout, so stop at once on real test mode.
+test.beforeAll(() => {
+  let url = '';
+  try {
+    url = execFileSync('docker', ['compose', 'exec', '-T', 'payment', 'printenv', 'RAZORPAY_BASE_URL'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
+  } catch { /* reported below */ }
+  if (url !== 'http://razorpay-fake:9090') {
+    throw new Error(`STOP: payment is not on the local Razorpay fake (RAZORPAY_BASE_URL='${url || 'unreachable'}'). Set RAZORPAY_BASE_URL=http://razorpay-fake:9090 and RAZORPAY_KEY_ID=rzp_test_fake in .env, then docker compose up -d payment web razorpay-fake.`);
+  }
+});
 const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const JAEGER = process.env.JAEGER_URL || 'http://localhost:16686';
 // Separate accounts per project: parallel sign-ins must never read each other's OTP mail.
@@ -243,6 +253,26 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
     await expect(page.getByText('Thank you. Your review is posted.')).toBeVisible();
     await axe(page, 'order (delivered)');
     step('review posted');
+
+    // P5.F: the right in-app messages arrived for this run (once each), and each has its email in Mailpit.
+    type Note = { kind: string; subject: string; link: string; created_at: string };
+    let mine: Note[] = [];
+    const want = ['DEPOSIT_RECEIVED', 'COMPARISON_READY', 'CONFIRMATION_NEEDED', 'TIER_RESOLVED', 'BOOKING_CONFIRMED', 'DELIVERY_SCHEDULED'];
+    await expect.poll(async () => {
+      const r = await (await page.request.get('/api/me/notifications?limit=200')).json();
+      mine = (r.notifications as Note[]).filter((n) => Date.parse(n.created_at) >= t0);
+      return want.filter((k) => !mine.some((n) => n.kind === k));
+    }, { timeout: 60_000, intervals: [2000], message: 'in-app notifications missing' }).toEqual([]);
+    for (const k of ['DEPOSIT_RECEIVED', 'CONFIRMATION_NEEDED', 'TIER_RESOLVED', 'BOOKING_CONFIRMED', 'DELIVERY_SCHEDULED']) {
+      expect(mine.filter((n) => n.kind === k), `exactly one ${k}`).toHaveLength(1);
+    }
+    expect(mine.find((n) => n.kind === 'CONFIRMATION_NEEDED')!.link).toBe(order);
+    await expect.poll(async () => {
+      const r = await (await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent('to:' + plan.buyer)}&limit=200`)).json();
+      const subjects = (r.messages ?? []).filter((m: { Created: string }) => Date.parse(m.Created) >= t0 - 2000).map((m: { Subject: string }) => m.Subject);
+      return mine.filter((n) => !subjects.includes(n.subject)).map((n) => n.kind);
+    }, { timeout: 90_000, intervals: [3000], message: 'emails missing in Mailpit' }).toEqual([]);
+    step(`notifications: ${mine.length} in-app since the start, each with its email (${[...new Set(mine.map((n) => n.kind))].sort().join(', ')})`);
   }
 
   if (CANCEL) {
@@ -269,7 +299,8 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   }
 
   // One trace spans web -> gateway -> pool -> SNS/SQS -> order (the accept call; order builds its acceptance read model).
-  await expect.poll(async () => {
+  // Needs the tracing profile (Jaeger): CI and nightly set TRACING=1; the lean local stack skips it.
+  if (process.env.TRACING === '1') await expect.poll(async () => {
     const q = new URLSearchParams({ 'query.service_name': 'order', 'query.operation_name': 'consume AcceptanceChanged',
       'query.start_time_min': new Date(t0).toISOString(), 'query.start_time_max': new Date(Date.now() + 60_000).toISOString(), 'query.num_traces': '20' });
     const r = await (await fetch(`${JAEGER}/api/v3/traces?${q}`)).json();
@@ -280,20 +311,33 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
     }
     return [...byTrace.values()].some((s) => ['web', 'gateway', 'pool', 'order'].every((x) => s.has(x)));
   }, { timeout: 60_000, intervals: [3000] }).toBe(true);
-  step('trace web -> gateway -> pool -> SNS/SQS -> order found in Jaeger');
+  if (process.env.TRACING === '1') step('trace web -> gateway -> pool -> SNS/SQS -> order found in Jaeger');
   console.log(JSON.stringify({ project: info.project.name, journey_seconds: (Date.now() - t0) / 1000, axe: axeFindings }));
 });
 
 test.afterAll(() => {
-  // Ledger balances and every deposit is in a valid AMENDMENT-003 state after the journeys.
-  const sql = "select (select coalesce(sum(dr),0) = coalesce(sum(cr),0) from journal_lines) as balanced, "
-    + "(select count(*) from payments where state not in ('INITIATED','PENDING','CAPTURED','FAILED','VOIDED_UNPAID','HELD_FOR_BOOKING','REFUND_PENDING','REFUNDED','RELEASED')) as invalid";
-  try {
-    const out = execFileSync('docker', ['compose', 'exec', '-T', 'postgres', 'sh', '-c', `PGPASSWORD="$DB_PASSWORD_PAYMENT" psql -U payment -d convoy -At -c "${sql}"`],
-      { cwd: '..', encoding: 'utf8' }).trim();
-    console.log(`ledger check: ${out}`);
-    expect(out).toBe('t|0');
-  } catch (e) {
-    console.log(`ledger check skipped: ${(e as Error).message.split('\n')[0]}`);
+  // P5.0 version guard: no service dropped an event as stale at a version another event already used.
+  // Every consumer must answer: a failed scrape would hide a dropped event (until P5.C every scrape got 401 and counted nothing).
+  let distinct = 0;
+  const read: string[] = [];
+  for (const svc of ['identity', 'pool', 'quote', 'order', 'payment', 'dealer', 'realtime-1', 'notification', 'audit']) {
+    const text = execFileSync('docker', ['compose', 'exec', '-T', svc, 'wget', '-qO-', 'localhost:8080/actuator/prometheus'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' });
+    for (const line of text.split('\n')) if (line.startsWith('messaging_stale_distinct')) { distinct += Number(line.split(' ').pop()); read.push(svc); }
   }
+  console.log(`messaging.stale_distinct across services: ${distinct} (read from ${read.join(', ')})`);
+  expect(distinct).toBe(0);
+  expect(read).toHaveLength(9);
+  // Ledger balances and every deposit is in a valid AMENDMENT-003 state after the journeys.
+  // P5.X: no try/catch (it swallowed a failed expect too) and an empty ledger is not "balanced".
+  const sql = "select (select count(*) > 0 and sum(dr) = sum(cr) from journal_lines) as balanced, "
+    + "(select count(*) from payments where state not in ('INITIATED','PENDING','CAPTURED','FAILED','VOIDED_UNPAID','HELD_FOR_BOOKING','REFUND_PENDING','REFUNDED','RELEASED')) as invalid";
+  const out = execFileSync('docker', ['compose', 'exec', '-T', 'postgres', 'sh', '-c', `PGPASSWORD="$DB_PASSWORD_PAYMENT" psql -U payment -d convoy -At -c "${sql}"`],
+    { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
+  console.log(`ledger check: ${out}`);
+  expect(out).toBe('t|0');
+  // P5.F: the audit hash chain verifies after everything above (exit 1 = tampered; execFileSync throws on it).
+  const chain = execFileSync('docker', ['compose', 'run', '--rm', '-T', 'audit', 'verify-chain'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const verdict = chain.split(/\r?\n/).find((l) => l.startsWith('audit chain') || l.startsWith('AUDIT CHAIN')) ?? '';
+  console.log(verdict);
+  expect(verdict).toMatch(/^audit chain intact: [1-9]\d* rows$/);
 });
