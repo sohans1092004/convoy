@@ -16,6 +16,8 @@ dependencies {
     api(libs.otel.api)
     api("software.amazon.awssdk:sns")
     api("software.amazon.awssdk:sqs")
+    // /actuator/prometheus (exposed since P1, but without a registry it never existed: P5.C found it via the stale_distinct guard)
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation(testFixtures(project(":libs:contracts")))

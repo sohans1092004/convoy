@@ -297,15 +297,16 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
 
 test.afterAll(() => {
   // P5.0 version guard: no service dropped an event as stale at a version another event already used.
+  // Every consumer must answer: a failed scrape would hide a dropped event (until P5.C every scrape got 401 and counted nothing).
   let distinct = 0;
-  for (const svc of ['identity', 'pool', 'quote', 'order', 'payment', 'dealer', 'realtime-1']) {
-    try {
-      const text = execFileSync('docker', ['compose', 'exec', '-T', svc, 'wget', '-qO-', 'localhost:8080/actuator/prometheus'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' });
-      for (const line of text.split('\n')) if (line.startsWith('messaging_stale_distinct')) distinct += Number(line.split(' ').pop());
-    } catch { /* a service without a consumer or not running has nothing to count */ }
+  const read: string[] = [];
+  for (const svc of ['identity', 'pool', 'quote', 'order', 'payment', 'dealer', 'realtime-1', 'notification', 'audit']) {
+    const text = execFileSync('docker', ['compose', 'exec', '-T', svc, 'wget', '-qO-', 'localhost:8080/actuator/prometheus'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' });
+    for (const line of text.split('\n')) if (line.startsWith('messaging_stale_distinct')) { distinct += Number(line.split(' ').pop()); read.push(svc); }
   }
-  console.log(`messaging.stale_distinct across services: ${distinct}`);
+  console.log(`messaging.stale_distinct across services: ${distinct} (read from ${read.join(', ')})`);
   expect(distinct).toBe(0);
+  expect(read).toHaveLength(9);
   // Ledger balances and every deposit is in a valid AMENDMENT-003 state after the journeys.
   const sql = "select (select coalesce(sum(dr),0) = coalesce(sum(cr),0) from journal_lines) as balanced, "
     + "(select count(*) from payments where state not in ('INITIATED','PENDING','CAPTURED','FAILED','VOIDED_UNPAID','HELD_FOR_BOOKING','REFUND_PENDING','REFUNDED','RELEASED')) as invalid";

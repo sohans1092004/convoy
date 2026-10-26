@@ -36,6 +36,7 @@ gateway:
     order: ${ORDER_URL:http://order:8080}
     payment: ${PAYMENT_URL:http://payment:8080}
     notification: ${NOTIFICATION_URL:http://notification:8080}
+    audit: ${AUDIT_URL:http://audit:8080}
     realtime: ${REALTIME_URL:lb://realtime}
   limits:
     otp: { max: "${RATE_OTP_MAX:10}", window: 10m }

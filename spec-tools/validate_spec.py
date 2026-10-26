@@ -172,8 +172,8 @@ def _(errs):
         declared[k] = s['kind']
         if s['kind'] not in ('FULL', 'PARTIAL', 'EVENTS'):
             errs.append(f'subscription {k}: kind must be FULL, PARTIAL or EVENTS, got {s["kind"]}')
-        if s['kind'] == 'EVENTS' and s['consumer'] != 'notification':
-            errs.append(f'subscription {k}: EVENTS is for notification only (AMENDMENT-010)')
+        if s['kind'] == 'EVENTS' and s['consumer'] not in ('notification', 'audit'):
+            errs.append(f'subscription {k}: EVENTS is for notification and audit only (AMENDMENT-010, AMENDMENT-012)')
     for k, names in got.items():
         want = 'FULL' if names == total[k[1]] else 'PARTIAL'
         if k not in declared:

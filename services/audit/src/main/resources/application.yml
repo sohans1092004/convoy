@@ -1,0 +1,32 @@
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application.name: audit
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/convoy}
+    username: audit                       # INSERT + SELECT on audit_log only
+    password: ${DB_PASSWORD}
+    hikari.maximum-pool-size: ${DB_POOL_SIZE:8}
+    hikari.schema: audit
+  flyway:
+    user: ${DB_OWNER_USER:audit_owner}    # owns the schema; used for migrations only
+    password: ${DB_OWNER_PASSWORD:}
+    schemas: audit
+    default-schema: audit
+    locations: classpath:db/platform,classpath:db/migration
+    placeholders.app_role: audit
+  threads.virtual.enabled: true
+logging.structured.format.console: ecs
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+  endpoint.health.probes.enabled: true
+convoy:
+  service-name: audit
+  identity-url: ${IDENTITY_URL:http://identity:8080}
+  issuers:
+    convoy-gateway: ${GATEWAY_JWKS:http://gateway:8080/.well-known/jwks.json}
+    convoy-identity: ${IDENTITY_JWKS:http://identity:8080/.well-known/jwks.json}
+  aws:
+    endpoint: ${AWS_ENDPOINT:}
+    region: ${AWS_REGION:ap-south-1}
