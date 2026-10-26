@@ -11,6 +11,7 @@ BUYER=${BUYER_EMAIL:-buyer1@convoy.test}
 sql() { docker compose exec -T postgres psql -U convoy_admin -d convoy -tAc "$1"; }
 mails() { curl -s "$MAILPIT/api/v1/search?query=$(node -e "process.stdout.write(encodeURIComponent('to:$BUYER subject:\"$1\"'))")&limit=1" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).messages_count))"; }
 
+bash scripts/require-razorpay-fake.sh # the journeys pay through the fake; never spend a run on real test mode
 docker compose stop notification >/dev/null
 echo "notification stopped"
 # JOURNEY: any buyer journey that joins, commits, pays and confirms. The API journey needs the Razorpay fake; with real

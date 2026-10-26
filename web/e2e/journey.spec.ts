@@ -31,6 +31,16 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // The P1 journey through real services and events:
 // sign in -> model -> on-road estimate -> pool -> join (double click) -> commit + test deposit ->
 // dealer quote -> compare -> accept -> confirm -> tier resolves -> booking voucher.
+// Same guard as scripts/require-razorpay-fake.sh: the journey pays through the fake's checkout, so stop at once on real test mode.
+test.beforeAll(() => {
+  let url = '';
+  try {
+    url = execFileSync('docker', ['compose', 'exec', '-T', 'payment', 'printenv', 'RAZORPAY_BASE_URL'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
+  } catch { /* reported below */ }
+  if (url !== 'http://razorpay-fake:9090') {
+    throw new Error(`STOP: payment is not on the local Razorpay fake (RAZORPAY_BASE_URL='${url || 'unreachable'}'). Set RAZORPAY_BASE_URL=http://razorpay-fake:9090 and RAZORPAY_KEY_ID=rzp_test_fake in .env, then docker compose up -d payment web razorpay-fake.`);
+  }
+});
 const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const JAEGER = process.env.JAEGER_URL || 'http://localhost:16686';
 // Separate accounts per project: parallel sign-ins must never read each other's OTP mail.

@@ -36,6 +36,11 @@ migrations, no test accounts.
 ./gradlew test                                     # unit and integration tests (Testcontainers)
 cd web && pnpm test && pnpm lint                   # web unit tests and lint
 cd web && pnpm exec playwright test e2e/journey.spec.ts --project=mobile-360   # single-dealer journey (stack running)
+bash scripts/reset-demo.sh            # clear pools/orders/payments/notifications of the local DEMO stack and re-seed
+bash tools/notification/isolation.sh  # P5.A: notification down -> buyer still commits/confirms; backlog delivered once
 ```
+
+Journeys pay through the local Razorpay fake and stop at once if payment is on real test mode
+(`scripts/require-razorpay-fake.sh`). Real test-mode keys live commented out in `.env`, for one-off runs only.
 
 Nightly-only journeys: `THREE_DEALERS=1 LIFECYCLE=1` (full lifecycle) and `CANCEL=1` (dealer cancels after FINAL).
