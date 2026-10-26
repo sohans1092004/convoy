@@ -47,3 +47,8 @@ notification:
   base-backoff: ${NOTIFICATION_BASE_BACKOFF:5s}
   max-backoff: 10m
   poll-every: ${NOTIFICATION_POLL_EVERY:2s}
+  # Web push (P5.B): VAPID keys from .env (scripts/gen-vapid.mjs); blank = push off. Only these push services are called.
+  vapid-public-key: ${VAPID_PUBLIC_KEY:}
+  vapid-private-key: ${VAPID_PRIVATE_KEY:}
+  vapid-subject: ${VAPID_SUBJECT:mailto:no-reply@convoy.test}
+  push-endpoints: ${PUSH_ENDPOINTS:https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|[a-z0-9.-]+[.]notify[.]windows[.]com|web[.]push[.]apple[.]com)/.+}

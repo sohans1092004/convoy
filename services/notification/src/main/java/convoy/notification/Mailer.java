@@ -78,13 +78,18 @@ public class Mailer {
         } catch (HttpClientErrorException.NotFound e) {
             jdbc.update("update deliveries set status = 'DEAD', attempts = ?, last_error = 'no such user' where notification_id = ? and channel = 'EMAIL'", attempts, id);
         } catch (RuntimeException e) {
-            boolean dead = attempts >= s.maxAttempts();
-            long wait = Math.min(s.baseBackoff().toMillis() << Math.min(attempts - 1, 20), s.maxBackoff().toMillis());
-            jdbc.update("update deliveries set status = ?, attempts = ?, last_error = ?, next_attempt_at = clock_timestamp() + make_interval(secs => ?) "
-                    + "where notification_id = ? and channel = 'EMAIL'", dead ? "DEAD" : "PENDING", attempts, String.valueOf(e.getMessage()), wait / 1000.0, id);
-            if (dead) log.error("ALARM EMAIL_DEAD notification {} after {} attempts: {}", id, attempts, e.toString());
-            else log.warn("email {} attempt {} failed, retry in {} ms: {}", id, attempts, wait, e.toString());
+            failed(jdbc, s, id, "EMAIL", attempts, e);
         }
         return true;
+    }
+
+    /** Backoff by the DB clock; DEAD (with an ALARM line) after the last attempt. Shared by the email and push channels. */
+    static void failed(JdbcTemplate jdbc, NotificationApplication.Settings s, UUID id, String channel, int attempts, Exception e) {
+        boolean dead = attempts >= s.maxAttempts();
+        long wait = Math.min(s.baseBackoff().toMillis() << Math.min(attempts - 1, 20), s.maxBackoff().toMillis());
+        jdbc.update("update deliveries set status = ?, attempts = ?, last_error = ?, next_attempt_at = clock_timestamp() + make_interval(secs => ?) "
+                + "where notification_id = ? and channel = ?", dead ? "DEAD" : "PENDING", attempts, String.valueOf(e.getMessage()), wait / 1000.0, id, channel);
+        if (dead) log.error("ALARM {}_DEAD notification {} after {} attempts: {}", channel, id, attempts, e.toString());
+        else log.warn("{} {} attempt {} failed, retry in {} ms: {}", channel, id, attempts, wait, e.toString());
     }
 }

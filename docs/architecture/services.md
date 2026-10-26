@@ -84,7 +84,7 @@ Endpoints: see [api-outline.md](api-outline.md). Events: see [event-catalogue.ya
 ## notification
 - **Wave 2.** In-app and email notifications (SMTP: Mailpit locally, the SES SMTP interface on AWS; AMENDMENT-011); web push P1.
 - **Tables (as built in P5.A):** `links(key, target, from_version, to_version)` (recipient graph: pool/order/quote/booking/dispute -> buyer), `events(event_id, key, kind, version, payload, occurred_at)`, `notifications(id, user_id, event_id, kind, created_at, read_at, unique(user_id, event_id))`, `deliveries(notification_id, channel, status PENDING|SENT|DEAD|SKIPPED, attempts, next_attempt_at, last_error, sent_at)`, `preferences(user_id, channel IN_APP|EMAIL, enabled)`. Templates (en + Hindi draft) are a versioned resource file, not a table.
-- **API:** my notifications (E130 list, E131 mark read, E158 mark all), preferences (E159 read, E132 set). Payment and refund messages ignore preferences.
+- **API:** my notifications (E130 list, E131 mark read, E158 mark all), preferences (E159 read, E132 set). Payment and refund messages ignore preferences. Web push (P5.B): per-device subscriptions (E160 key, E161 subscribe, E162 unsubscribe); a payload-free VAPID push per message to subscribed devices, the service worker fetches the text itself.
 - **Events consumed:** user-facing events (see catalogue). Produces none.
 - **Scaling signal:** **queue depth / oldest message age** (W8: 100,000 in 30 min).
 - **Dependencies down:** SMTP (SES) down → deliveries retry with backoff, DEAD after the last attempt; in-app still written; nothing upstream blocks.

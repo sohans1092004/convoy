@@ -58,9 +58,41 @@ class NotificationIT extends ServiceTest {
         return StubServer.Reply.json("{\"user_id\":\"" + id + "\",\"email\":\"" + id + "@convoy.test\"}");
     });
 
+    /** P5.B: a local push service; records what it receives. /push/gone answers 410 (subscription expired). */
+    static final List<StubServer.Req> PUSHED = new java.util.concurrent.CopyOnWriteArrayList<>();
+    static final StubServer PUSH = new StubServer()
+            .on("/push/gone", r -> new StubServer.Reply(410, "{}", 0))
+            .on("/push/.*", r -> {
+                PUSHED.add(r);
+                return new StubServer.Reply(201, "{}", 0);
+            });
+    static final java.security.KeyPair VAPID;
+
     static {
         LS.start();
         MAILPIT.start();
+        try {
+            java.security.KeyPairGenerator g = java.security.KeyPairGenerator.getInstance("EC");
+            g.initialize(new java.security.spec.ECGenParameterSpec("secp256r1"));
+            VAPID = g.generateKeyPair();
+        } catch (java.security.GeneralSecurityException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    static byte[] b32(java.math.BigInteger v) {
+        byte[] raw = v.toByteArray(), out = new byte[32];
+        System.arraycopy(raw, Math.max(0, raw.length - 32), out, Math.max(0, 32 - raw.length), Math.min(32, raw.length));
+        return out;
+    }
+
+    static String vapidPublic() {
+        java.security.spec.ECPoint w = ((java.security.interfaces.ECPublicKey) VAPID.getPublic()).getW();
+        byte[] out = new byte[65];
+        out[0] = 4;
+        System.arraycopy(b32(w.getAffineX()), 0, out, 1, 32);
+        System.arraycopy(b32(w.getAffineY()), 0, out, 33, 32);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(out);
     }
 
     @DynamicPropertySource
@@ -69,6 +101,10 @@ class NotificationIT extends ServiceTest {
         r.add("convoy.aws.region", LS::getRegion);
         r.add("spring.mail.host", MAILPIT::getHost);
         r.add("spring.mail.port", () -> MAILPIT.getMappedPort(1025));
+        r.add("notification.vapid-public-key", NotificationIT::vapidPublic);
+        r.add("notification.vapid-private-key", () -> java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(b32(((java.security.interfaces.ECPrivateKey) VAPID.getPrivate()).getS())));
+        r.add("notification.push-endpoints", () -> java.util.regex.Pattern.quote(PUSH.url()) + "/push/.+");
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -81,6 +117,7 @@ class NotificationIT extends ServiceTest {
     @AfterAll
     static void stop() {
         IDENTITY.close();
+        PUSH.close();
         LS.stop();
         MAILPIT.stop();
     }
@@ -223,6 +260,54 @@ class NotificationIT extends ServiceTest {
         } finally {
             Faults.disarm("notification.send");
         }
+    }
+
+    /** P5.B: opted-in devices get a VAPID-signed, payload-free push per message; expired ones are dropped; AZ-E160..E162. */
+    @Test
+    void pushGoesToOptedInDevicesOnlySignedWithVapid() throws Exception {
+        UUID buyer = UUID.randomUUID(), other = UUID.randomUUID(), pool = UUID.randomUUID();
+        String token = TestTokens.buyer("notification", buyer), otherToken = TestTokens.buyer("notification", other);
+        String ok = PUSH.url() + "/push/" + buyer, gone = PUSH.url() + "/push/gone";
+        assertThat(JSON.readTree(get("/me/push-subscriptions/key", token).body()).path("public_key").asText()).isEqualTo(vapidPublic());
+        assertThat(get("/me/push-subscriptions/key", null).status()).isEqualTo(401);
+        for (String e : List.of(ok, gone)) {
+            assertThat(send("PUT", "/me/push-subscriptions", token, "{\"endpoint\":\"" + e + "\",\"p256dh\":\"k\",\"auth\":\"a\"}", Map.of()).status()).isEqualTo(200);
+        }
+        // only allow-listed push services (the service POSTs there: anything else would be an SSRF)
+        assertThat(send("PUT", "/me/push-subscriptions", token, "{\"endpoint\":\"http://169.254.169.254/latest\",\"p256dh\":\"k\",\"auth\":\"a\"}", Map.of()).status()).isEqualTo(400);
+        assertThat(send("PUT", "/me/push-subscriptions", null, "{\"endpoint\":\"" + ok + "\",\"p256dh\":\"k\",\"auth\":\"a\"}", Map.of()).status()).isEqualTo(401);
+
+        inject(List.of(
+                new Ev("MemberCommitted", "pool", pool, 1, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", buyer, "payment_id", UUID.randomUUID(),
+                        "interested_count", 2, "committed_count", 2, "kept_from_previous_round", false)),
+                new Ev("MemberCommitted", "pool", pool, 2, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", other, "payment_id", UUID.randomUUID(),
+                        "interested_count", 2, "committed_count", 2, "kept_from_previous_round", false)),
+                new Ev("PoolReady", "pool", pool, 3, m("pool_id", pool, "committed_count", 2))));
+        await("pushed", () -> count("select count(*) from deliveries d join notifications n on n.id = d.notification_id where n.user_id = ? and d.channel = 'PUSH' and d.status = 'SENT'", buyer) == 1);
+        assertThat(count("select count(*) from deliveries d join notifications n on n.id = d.notification_id where n.user_id = ? and d.channel = 'PUSH'", other)).isZero();
+        assertThat(count("select count(*) from push_subscriptions where endpoint = ?", gone)).isZero();
+
+        List<StubServer.Req> mine = PUSHED.stream().filter(r -> r.path().equals("/push/" + buyer)).toList();
+        assertThat(mine).hasSize(1);
+        StubServer.Req r = mine.get(0);
+        assertThat(r.body()).isEmpty(); // no personal or money data through the push service
+        assertThat(r.headers().get("TTL")).containsExactly("86400");
+        String auth = r.headers().get("Authorization").get(0);
+        assertThat(auth).startsWith("vapid t=").endsWith(", k=" + vapidPublic());
+        String[] jwt = auth.substring("vapid t=".length(), auth.indexOf(',')).split("[.]");
+        JsonNode claims = JSON.readTree(java.util.Base64.getUrlDecoder().decode(jwt[1]));
+        assertThat(claims.path("aud").asText()).isEqualTo(PUSH.url());
+        assertThat(claims.path("sub").asText()).startsWith("mailto:");
+        java.security.Signature sig = java.security.Signature.getInstance("SHA256withECDSAinP1363Format");
+        sig.initVerify(VAPID.getPublic());
+        sig.update((jwt[0] + "." + jwt[1]).getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        assertThat(sig.verify(java.util.Base64.getUrlDecoder().decode(jwt[2]))).isTrue();
+
+        // opt out: only the caller's own subscription, idempotent
+        String q = "/me/push-subscriptions?endpoint=" + java.net.URLEncoder.encode(ok, java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(send("DELETE", q, otherToken, null, Map.of()).body()).contains("\"removed\":0");
+        assertThat(send("DELETE", q, token, null, Map.of()).body()).contains("\"removed\":1");
+        assertThat(send("DELETE", q, token, null, Map.of()).body()).contains("\"removed\":0");
     }
 
     @Test

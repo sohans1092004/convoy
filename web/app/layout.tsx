@@ -6,12 +6,13 @@ import Link from 'next/link';
 import { Toaster } from '@/components/ui/toast';
 import { LocaleSwitch } from '@/components/locale-switch';
 import { SignOutButton } from '@/components/sign-out';
+import { ServiceWorkerRegister } from '@/components/sw-register';
 import { QueryProvider } from '@/lib/query';
 import { gatewayGet } from '@/lib/gateway';
 import './globals.css';
 
 export const metadata: Metadata = { title: 'Convoy', description: 'Group car buying with sealed, itemised dealer offers.' };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f5c4d' };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations('nav');
@@ -25,6 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale === 'hi' ? 'hi-IN' : 'en-IN'}>
       <body className="min-h-screen">
+        <ServiceWorkerRegister />
         <NextIntlClientProvider>
           <QueryProvider>
           <Toaster>

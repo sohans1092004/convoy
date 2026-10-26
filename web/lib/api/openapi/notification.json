@@ -5,6 +5,58 @@
     "version" : "v0"
   },
   "paths" : {
+    "/me/push-subscriptions" : {
+      "put" : {
+        "tags" : [ "pusher" ],
+        "operationId" : "subscribe",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PushSubscription"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PushSubscription"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "pusher" ],
+        "operationId" : "unsubscribe",
+        "parameters" : [ {
+          "name" : "endpoint",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Removed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/notification-preferences" : {
       "get" : {
         "tags" : [ "inbox" ],
@@ -94,6 +146,24 @@
         }
       }
     },
+    "/me/push-subscriptions/key" : {
+      "get" : {
+        "tags" : [ "pusher" ],
+        "operationId" : "key",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PushKey"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/notifications" : {
       "get" : {
         "tags" : [ "inbox" ],
@@ -133,6 +203,20 @@
   },
   "components" : {
     "schemas" : {
+      "PushSubscription" : {
+        "properties" : {
+          "endpoint" : {
+            "type" : "string"
+          },
+          "p256dh" : {
+            "type" : "string"
+          },
+          "auth" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "auth", "endpoint", "p256dh" ]
+      },
       "Preferences" : {
         "properties" : {
           "in_app" : {
@@ -160,6 +244,14 @@
           }
         },
         "required" : [ "marked" ]
+      },
+      "PushKey" : {
+        "properties" : {
+          "public_key" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "public_key" ]
       },
       "InboxPage" : {
         "properties" : {
@@ -204,6 +296,15 @@
           }
         },
         "required" : [ "body", "created_at", "draft", "id", "kind", "link", "read_at", "subject" ]
+      },
+      "Removed" : {
+        "properties" : {
+          "removed" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "removed" ]
       }
     }
   }

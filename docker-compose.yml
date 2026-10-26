@@ -112,6 +112,8 @@ services:
       CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       SEED_USERS_FILE: /seed/users.json
       DEMO: ${DEMO:-true} # test users load only in a demo environment (P5.0)
     volumes: ["./deploy/local/seed:/seed:ro"]

@@ -93,7 +93,10 @@ public class Inbox {
                     insert into notifications(user_id, event_id, kind)
                     select substr(u.k, 6)::uuid, e.event_id, e.kind from up u join events e on e.event_id = u.event_id where u.k like 'user:%'
                     on conflict (user_id, event_id) do nothing
-                    returning id, user_id, kind)
+                    returning id, user_id, kind),
+                push as (
+                    insert into deliveries(notification_id, channel)
+                    select ins.id, 'PUSH' from ins where exists (select 1 from push_subscriptions s where s.user_id = ins.user_id))
                 insert into deliveries(notification_id, channel, status)
                 select ins.id, 'EMAIL', case when ins.kind = any(?) or coalesce(p.enabled, true) then 'PENDING' else 'SKIPPED' end
                 from ins left join preferences p on p.user_id = ins.user_id and p.channel = 'EMAIL'

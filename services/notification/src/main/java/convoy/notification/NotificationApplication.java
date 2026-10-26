@@ -21,9 +21,13 @@ import org.springframework.web.client.RestClient;
 public class NotificationApplication {
     public static void main(String[] args) { SpringApplication.run(NotificationApplication.class, args); }
 
-    /** Email retries: attempt n waits base * 2^n (capped at maxBackoff); after maxAttempts the delivery is DEAD. */
+    /**
+     * Email and push retries: attempt n waits base * 2^n (capped at maxBackoff); after maxAttempts the delivery is DEAD.
+     * Push is off while the VAPID keys are blank (scripts/gen-vapid.mjs writes them to .env); pushEndpoints allow-lists push services.
+     */
     @ConfigurationProperties(prefix = "notification")
-    public record Settings(String mailFrom, int maxAttempts, Duration baseBackoff, Duration maxBackoff, Duration pollEvery) {}
+    public record Settings(String mailFrom, int maxAttempts, Duration baseBackoff, Duration maxBackoff, Duration pollEvery,
+                           String vapidPublicKey, String vapidPrivateKey, String vapidSubject, String pushEndpoints) {}
 
     @Bean
     Subscriptions subscriptions(Inbox in) {

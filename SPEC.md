@@ -139,6 +139,7 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Source: the owner's decision (2026-10-26). Files: services.md, notification Mailer + application.yml, identity application.yml, docker-compose.yml, NotificationIT. Vectors: none. Phase: P5 (P6 adds the SES SMTP credentials).
 
 ### Contract additions in P5 (owner's P5.A instructions, 2026-10-26)
+- P5.B web push: E160 `GET /me/push-subscriptions/key`, E161 `PUT /me/push-subscriptions`, E162 `DELETE /me/push-subscriptions?endpoint=`. Opt-in is per device (a subscription); pushes are VAPID-signed and carry no payload (the service worker reads the newest message through the BFF), endpoints are limited to known push services (`PUSH_ENDPOINTS`). Delivery channel `PUSH` next to `EMAIL`, same retries and DEAD state.
 - notification consumes `MemberLeft` (a buyer who left stops getting pool messages).
 - E158 `POST /me/notifications/read-all`, E159 `GET /me/notification-preferences` next to E130–E132; preferences are per user and channel (IN_APP, EMAIL), not per kind; payment and refund messages are always sent.
 - notification → identity `contacts:read` (E157) to read the recipient's email at send time.

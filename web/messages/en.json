@@ -474,6 +474,11 @@
     "inApp": "In-app inbox",
     "email": "Email",
     "always": "Payment and refund messages are always sent.",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "push": "Push alerts on this device",
+    "pushHint": "A short alert on this device only; open Convoy for the details.",
+    "pushUnsupported": "This browser cannot show push alerts.",
+    "pushDenied": "Alerts are blocked for this site in your browser settings.",
+    "pushFailed": "Could not change push alerts. Try again."
   }
 }

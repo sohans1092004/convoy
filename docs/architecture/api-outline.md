@@ -68,6 +68,9 @@ Conventions (apply to every row, not repeated):
 | E157 | identity | GET | /internal/users/{id}/contact | service:order, service:notification | no | no | not-found | P4 | AZ-E157-A, AZ-E157-D |
 | E158 | notification | POST | /me/notifications/read-all | authenticated | no | no | - | P5 | AZ-E158-A, AZ-E158-D |
 | E159 | notification | GET | /me/notification-preferences | authenticated | no | no | - | P5 | AZ-E159-A, AZ-E159-D |
+| E160 | notification | GET | /me/push-subscriptions/key | authenticated | no | no | - | P5 | AZ-E160-A, AZ-E160-D |
+| E161 | notification | PUT | /me/push-subscriptions | authenticated | no | no | validation-failed, dependency-unavailable | P5 | AZ-E161-A, AZ-E161-D |
+| E162 | notification | DELETE | /me/push-subscriptions | authenticated | no | no | - | P5 | AZ-E162-A, AZ-E162-D |
 | E054 | dealer | POST | /admin/dealerships/{id}/suspend | platform_admin | yes | yes | version-conflict | P3 | AZ-E054-A, AZ-E054-D |
 | E055 | dealer | GET | /internal/eligibility | service:pool | no | no | - | P1 | AZ-E055-A, AZ-E055-D |
 | E056 | dealer | POST | /bookings/{bookingId}/review | buyer | yes | no | review-not-eligible | P4 | AZ-E056-A, AZ-E056-D, AZ-E056-X, AZ-INT-07 |

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { api, call, type Schemas } from '@/lib/api';
 import { ist } from '@/lib/format';
+import { disablePush, enablePush, pushSubscription, pushSupported } from '@/lib/push';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -17,6 +18,22 @@ export function NotificationInbox({ initial, prefs }: { initial: InboxPage; pref
   const [items, setItems] = React.useState(initial.notifications);
   const [p, setP] = React.useState<Preferences>(prefs ?? { in_app: true, email: true });
   const [saved, setSaved] = React.useState(false);
+  // Push is per device: null = not checked yet (no window on the server), 'unsupported' hides the switch.
+  const [push, setPush] = React.useState<boolean | 'unsupported' | null>(null);
+  const [pushError, setPushError] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!pushSupported()) setPush('unsupported'); // eslint-disable-line react-hooks/set-state-in-effect -- feature detection after hydration
+    else void pushSubscription().then((s) => setPush(Boolean(s)), () => setPush(false));
+  }, []);
+  const togglePush = async (on: boolean) => {
+    setPushError(null);
+    try {
+      await (on ? enablePush() : disablePush());
+      setPush(on);
+    } catch (e) {
+      setPushError(e instanceof Error && e.message === 'denied' ? t('pushDenied') : t('pushFailed'));
+    }
+  };
   const now = () => new Date().toISOString();
 
   const markRead = async (id: string) => {
@@ -71,6 +88,13 @@ export function NotificationInbox({ initial, prefs }: { initial: InboxPage; pref
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={p.email} onChange={(e) => void save({ ...p, email: e.target.checked })} /> {t('email')}
         </label>
+        {push === 'unsupported' ? <p className="text-sm text-muted">{t('pushUnsupported')}</p> : (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={push === true} disabled={push === null} onChange={(e) => void togglePush(e.target.checked)} data-testid="push-toggle" /> {t('push')}
+          </label>
+        )}
+        <p className="text-xs text-muted">{t('pushHint')}</p>
+        {pushError ? <p className="text-xs text-danger" role="alert">{pushError}</p> : null}
         <p className="text-xs text-muted">{t('always')}</p>
         {saved ? <p className="text-xs" role="status">{t('saved')}</p> : null}
       </Card>
