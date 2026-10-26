@@ -183,7 +183,8 @@ public class InboxConsumer implements SmartLifecycle {
                     duplicates.incrementAndGet();
                     return;
                 }
-                if (!versionOk(env, sub.aggregate(), Subscriptions.Kind.of(consumer, sub.aggregate()))) return;
+                Subscriptions.Kind kind = Subscriptions.Kind.of(consumer, sub.aggregate());
+                if (kind != Subscriptions.Kind.EVENTS && !versionOk(env, sub.aggregate(), kind)) return;
                 convoy.platform.Faults.hit("consumer.handle:" + env.eventId()); // MF-5: a handler that fails for this event until fixed
                 EventPayload payload = (EventPayload) json.convertValue(env.payload(), sub.type());
                 sub.handler().handle(env, payload);

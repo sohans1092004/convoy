@@ -1,0 +1,73 @@
+{
+  "_note": "P5.A templates. {field} is replaced from the event payload; *_paise fields render as rupees, timestamps in IST. Hindi is a machine draft (draft: true) until a native speaker reviews it.",
+  "POOL_READY": {
+    "link": "/pools/{pool_id}",
+    "en": {"subject": "Your pool is ready for quotes", "body": "Enough buyers have committed ({committed_count}). Dealers are being invited to quote."},
+    "hi": {"draft": true, "subject": "आपका पूल कोटेशन के लिए तैयार है", "body": "पर्याप्त खरीदार जुड़ गए हैं ({committed_count})। डीलरों को कोटेशन के लिए बुलाया जा रहा है।"}
+  },
+  "ROUND_OPENED": {
+    "link": "/pools/{pool_id}",
+    "en": {"subject": "Dealers are quoting now", "body": "The sealed quote round is open until {deadline}."},
+    "hi": {"draft": true, "subject": "डीलर अभी कोटेशन दे रहे हैं", "body": "सीलबंद कोटेशन राउंड {deadline} तक खुला है।"}
+  },
+  "FINAL_ROUND_OPENED": {
+    "link": "/pools/{pool_id}",
+    "en": {"subject": "Best-and-final round open", "body": "Dealers can improve their offers until {deadline}."},
+    "hi": {"draft": true, "subject": "अंतिम राउंड खुला है", "body": "डीलर {deadline} तक अपने ऑफ़र बेहतर कर सकते हैं।"}
+  },
+  "ROUND_CLOSED": {
+    "link": "/pools/{pool_id}",
+    "en": {"subject": "Quote round closed", "body": "The round closed with {valid_quote_count} valid quotes."},
+    "hi": {"draft": true, "subject": "कोटेशन राउंड बंद हुआ", "body": "राउंड {valid_quote_count} मान्य कोटेशन के साथ बंद हुआ।"}
+  },
+  "COMPARISON_READY": {
+    "link": "/pools/{pool_id}/compare",
+    "en": {"subject": "Compare the final offers", "body": "The final offers are ready to compare. Decide by {decision_deadline}."},
+    "hi": {"draft": true, "subject": "अंतिम ऑफ़र की तुलना करें", "body": "अंतिम ऑफ़र तुलना के लिए तैयार हैं। {decision_deadline} तक निर्णय लें।"}
+  },
+  "CONFIRMATION_NEEDED": {
+    "link": "/orders/{order_id}",
+    "en": {"subject": "Confirm your offer", "body": "Confirm at a ceiling of {ceiling_cash_payable_paise} by {confirmation_deadline}. The price can only fall."},
+    "hi": {"draft": true, "subject": "अपने ऑफ़र की पुष्टि करें", "body": "{confirmation_deadline} तक {ceiling_cash_payable_paise} की अधिकतम कीमत पर पुष्टि करें। कीमत केवल घट सकती है।"}
+  },
+  "TIER_RESOLVED": {
+    "link": "/orders",
+    "en": {"subject": "Your final price is set", "body": "{confirmed_count} buyers confirmed. Outcome: {outcome}. Final price: {resolved_cash_payable_paise}."},
+    "hi": {"draft": true, "subject": "आपकी अंतिम कीमत तय हुई", "body": "{confirmed_count} खरीदारों ने पुष्टि की। परिणाम: {outcome}। अंतिम कीमत: {resolved_cash_payable_paise}।"}
+  },
+  "DEPOSIT_RECEIVED": {
+    "link": "/pools/{pool_id}",
+    "en": {"subject": "Deposit received (TEST: no real money)", "body": "We received your deposit of {amount_paise}."},
+    "hi": {"draft": true, "subject": "जमा राशि प्राप्त हुई (टेस्ट: असली पैसा नहीं)", "body": "हमें आपकी {amount_paise} की जमा राशि मिल गई है।"}
+  },
+  "REFUND_DONE": {
+    "link": "/orders",
+    "en": {"subject": "Your refund is complete", "body": "Your deposit has been refunded in full."},
+    "hi": {"draft": true, "subject": "आपका रिफ़ंड पूरा हुआ", "body": "आपकी जमा राशि पूरी तरह लौटा दी गई है।"}
+  },
+  "BOOKING_CONFIRMED": {
+    "link": "/orders",
+    "en": {"subject": "The dealer confirmed your booking", "body": "Your booking is confirmed by the dealer."},
+    "hi": {"draft": true, "subject": "डीलर ने आपकी बुकिंग की पुष्टि की", "body": "डीलर ने आपकी बुकिंग की पुष्टि कर दी है।"}
+  },
+  "DELIVERY_SCHEDULED": {
+    "link": "/orders",
+    "en": {"subject": "Delivery scheduled", "body": "Your delivery is scheduled for {scheduled_date}."},
+    "hi": {"draft": true, "subject": "डिलीवरी तय हुई", "body": "आपकी डिलीवरी {scheduled_date} को तय है।"}
+  },
+  "DISPUTE_OPENED": {
+    "link": "/disputes/{dispute_id}",
+    "en": {"subject": "A case was opened", "body": "A case ({category}) was opened on your order."},
+    "hi": {"draft": true, "subject": "एक मामला खोला गया", "body": "आपके ऑर्डर पर एक मामला ({category}) खोला गया है।"}
+  },
+  "DISPUTE_UPDATED": {
+    "link": "/disputes/{dispute_id}",
+    "en": {"subject": "Your case was updated", "body": "Your case moved to {to_state}."},
+    "hi": {"draft": true, "subject": "आपके मामले में अपडेट", "body": "आपका मामला {to_state} स्थिति में है।"}
+  },
+  "DISPUTE_RESOLVED": {
+    "link": "/disputes/{dispute_id}",
+    "en": {"subject": "Your case was resolved", "body": "Outcome: {outcome}."},
+    "hi": {"draft": true, "subject": "आपका मामला सुलझ गया", "body": "परिणाम: {outcome}।"}
+  }
+}

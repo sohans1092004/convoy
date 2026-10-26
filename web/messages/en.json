@@ -10,7 +10,8 @@
     "testMode": "TEST MODE: no real money",
     "saved": "My cars",
     "account": "Account",
-    "admin": "Admin"
+    "admin": "Admin",
+    "notifications": "Notifications"
   },
   "home": {
     "title": "Buy the same car together, with prices you can check",
@@ -459,5 +460,20 @@
     "confirmOutcome": "Confirm this outcome (second admin)",
     "proposedBy": "Proposed outcome: {outcome}. A different admin must confirm it.",
     "moneyRule": "Refunds and cancellations need a second, different admin (AMENDMENT-001)."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unavailable": "Notifications are unavailable right now. Your pools and orders are not affected.",
+    "none": "No notifications yet.",
+    "unread": "{count, plural, =0 {All read} one {# unread} other {# unread}}",
+    "markAll": "Mark all as read",
+    "markRead": "Mark as read",
+    "new": "New",
+    "draft": "Draft translation",
+    "prefs": "How we notify you",
+    "inApp": "In-app inbox",
+    "email": "Email",
+    "always": "Payment and refund messages are always sent.",
+    "saved": "Saved."
   }
 }

@@ -128,6 +128,17 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Owner: dealer service (Q-021). Exposed on `GET /dealerships/{id}` as `reliability {honoured, total, score_percent, window_days}`; `ReliabilityScoreChanged` on every counted outcome.
 - Source: the owner's P4.E instruction (2026-10-26: "a simple, documented formula ... show it with the sample size"). Files: OPEN_QUESTIONS.md (Q-036), cancellation-rules.md, Reputation.java. Phase: P4.
 
+**AMENDMENT-010 — Notification subscriptions are dedupe-only (refines AMENDMENT-006 for notification).**
+- Rule: notification's subscriptions use a third kind, `EVENTS`: inbox dedupe on event_id only, no aggregate_version stale rule. Each event is its own message and never overwrites state, so dropping an older version would lose a message. Queues stay standard (AMENDMENT-006). Recipients are resolved from a graph that tolerates any arrival order (membership links keep their own versions). Only notification may declare `EVENTS` (validate_spec.py).
+- Reason: with standard queues and several pollers, a backlog replay applies v11 before v2..v10 and the stale rule drops them (P5.A isolation requirement: backlog delivered exactly once).
+- Source: the owner's answer in P5.A (2026-10-26). Files: event-catalogue.yaml (header, subscriptions), validate_spec.py, Subscriptions.java, InboxConsumer.java, gen_contracts.py. Vectors: none. Phase: P5.
+
+### Contract additions in P5 (owner's P5.A instructions, 2026-10-26)
+- notification consumes `MemberLeft` (a buyer who left stops getting pool messages).
+- E158 `POST /me/notifications/read-all`, E159 `GET /me/notification-preferences` next to E130–E132; preferences are per user and channel (IN_APP, EMAIL), not per kind; payment and refund messages are always sent.
+- notification → identity `contacts:read` (E157) to read the recipient's email at send time.
+- Email is sent in English while the Hindi templates are drafts; in-app messages follow the user's locale and mark Hindi as a draft.
+
 ### Contract additions in P4 (owner's P4 instructions, 2026-10-26)
 - E154 `POST /bookings/{id}/confirm-delivery` (buyer): the owner's P4.D flow has the buyer confirm delivery (BKG-T05 by the buyer), next to E090 where the dealer scans the buyer's voucher. Either releases the deposit and posts the success fee.
 - E155 `GET /dealer/bookings/{id}/contact` (dealer staff) and E157 `GET /internal/users/{id}/contact` (identity, `service:order`, scope `contacts:read`): contact release to the dealer of the confirmed quote only. The buyer consents when confirming (`order.contact_consents`, version `2026-10-26-p4`); the release is a saga step after the deposit hold and stock reservation (`order.contact_releases`).

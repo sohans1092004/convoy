@@ -117,7 +117,7 @@ def files():
                                          + ');\n}\n')
     subs = miniyaml.load(str(CATALOGUE))['subscriptions']
     out[JAVA_DIR / 'SubscriptionKinds.java'] = (f'// {HEADER}\npackage convoy.contracts.events;\n\nimport java.util.Map;\n\n'
-                                                '/** "consumer:aggregate" -> FULL (gap detection) or PARTIAL (stale rule only), from event-catalogue.yaml. */\n'
+                                                '/** "consumer:aggregate" -> FULL (gap detection), PARTIAL (stale rule only) or EVENTS (dedupe only), from event-catalogue.yaml. */\n'
                                                 'public final class SubscriptionKinds {\n    private SubscriptionKinds() {}\n\n'
                                                 '    public static final Map<String, String> ALL = Map.ofEntries(\n'
                                                 + ',\n'.join(f'        Map.entry("{s["consumer"]}:{s["aggregate"]}", "{s["kind"]}")' for s in subs)

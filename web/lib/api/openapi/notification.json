@@ -1,0 +1,210 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "paths" : {
+    "/me/notification-preferences" : {
+      "get" : {
+        "tags" : [ "inbox" ],
+        "operationId" : "preferences",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Preferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "inbox" ],
+        "operationId" : "setPreferences",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Preferences"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/notifications/{id}/read" : {
+      "post" : {
+        "tags" : [ "inbox" ],
+        "operationId" : "read",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Read"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/notifications/read-all" : {
+      "post" : {
+        "tags" : [ "inbox" ],
+        "operationId" : "readAll",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Marked"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/notifications" : {
+      "get" : {
+        "tags" : [ "inbox" ],
+        "operationId" : "list",
+        "parameters" : [ {
+          "name" : "locale",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "en"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InboxPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Preferences" : {
+        "properties" : {
+          "in_app" : {
+            "type" : "boolean"
+          },
+          "email" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "email", "in_app" ]
+      },
+      "Read" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id" ]
+      },
+      "Marked" : {
+        "properties" : {
+          "marked" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "marked" ]
+      },
+      "InboxPage" : {
+        "properties" : {
+          "notifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Notification"
+            }
+          },
+          "unread_count" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "notifications", "unread_count" ]
+      },
+      "Notification" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "link" : {
+            "type" : "string"
+          },
+          "draft" : {
+            "type" : "boolean"
+          },
+          "created_at" : {
+            "type" : "string"
+          },
+          "read_at" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "body", "created_at", "draft", "id", "kind", "link", "read_at", "subject" ]
+      }
+    }
+  }
+}

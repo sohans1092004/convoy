@@ -170,13 +170,15 @@ def _(errs):
         if k in declared:
             errs.append(f'subscription {k} declared twice')
         declared[k] = s['kind']
-        if s['kind'] not in ('FULL', 'PARTIAL'):
-            errs.append(f'subscription {k}: kind must be FULL or PARTIAL, got {s["kind"]}')
+        if s['kind'] not in ('FULL', 'PARTIAL', 'EVENTS'):
+            errs.append(f'subscription {k}: kind must be FULL, PARTIAL or EVENTS, got {s["kind"]}')
+        if s['kind'] == 'EVENTS' and s['consumer'] != 'notification':
+            errs.append(f'subscription {k}: EVENTS is for notification only (AMENDMENT-010)')
     for k, names in got.items():
         want = 'FULL' if names == total[k[1]] else 'PARTIAL'
         if k not in declared:
             errs.append(f'subscription {k} missing (should be {want})')
-        elif declared[k] != want:
+        elif declared[k] != want and declared[k] != 'EVENTS':
             errs.append(f'subscription {k} is {declared[k]} but the consumer receives {len(names)}/{len(total[k[1]])} event types: {want}')
     for k in set(declared) - set(got):
         errs.append(f'subscription {k} declared but {k[0]} consumes no {k[1]} event')

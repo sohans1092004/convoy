@@ -83,8 +83,8 @@ Endpoints: see [api-outline.md](api-outline.md). Events: see [event-catalogue.ya
 
 ## notification
 - **Wave 2.** In-app and email (SES) notifications; web push P1.
-- **Tables:** `notifications(id, user_id, kind, payload jsonb, created_at, read_at)`, `deliveries(id, notification_id, channel, status, attempts, last_error, sent_at)`, `preferences(user_id, channel, kind, enabled)`, `templates(kind, locale, version, subject, body)`.
-- **API:** my notifications (list, mark read), preferences.
+- **Tables (as built in P5.A):** `links(key, target, from_version, to_version)` (recipient graph: pool/order/quote/booking/dispute -> buyer), `events(event_id, key, kind, version, payload, occurred_at)`, `notifications(id, user_id, event_id, kind, created_at, read_at, unique(user_id, event_id))`, `deliveries(notification_id, channel, status PENDING|SENT|DEAD|SKIPPED, attempts, next_attempt_at, last_error, sent_at)`, `preferences(user_id, channel IN_APP|EMAIL, enabled)`. Templates (en + Hindi draft) are a versioned resource file, not a table.
+- **API:** my notifications (E130 list, E131 mark read, E158 mark all), preferences (E159 read, E132 set). Payment and refund messages ignore preferences.
 - **Events consumed:** user-facing events (see catalogue). Produces none.
 - **Scaling signal:** **queue depth / oldest message age** (W8: 100,000 in 30 min).
 - **Dependencies down:** SES down → deliveries retry with backoff; in-app still written; nothing upstream blocks.

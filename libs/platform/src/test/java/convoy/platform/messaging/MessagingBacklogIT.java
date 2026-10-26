@@ -108,8 +108,9 @@ class MessagingBacklogIT {
         assertEquals(n, done, "I-1 every event reached the inbox exactly once");
         assertEquals(n, jdbc.queryForObject("select count(distinct event_id) from inbox where consumer = 'notification'", Integer.class));
         assertEquals(n, effects.get() + restarted.stale.get(), "each event applied or ignored as stale, once (I-2)");
-        // No regression: for every pool, the last applied version is the highest.
-        assertEquals(pools.size(), jdbc.queryForObject("select count(*) from aggregate_versions where consumer = 'notification' and last_version = ?", Integer.class, perPool));
+        // AMENDMENT-010: notification is an EVENTS subscriber, so nothing may be dropped as stale on the unordered replay.
+        assertEquals(0, restarted.stale.get(), "EVENTS kind: no event dropped as stale");
+        assertEquals(n, effects.get(), "EVENTS kind: every event applied exactly once");
         assertEquals(0, topology.depth(topology.dlqs().keySet().iterator().next()), "I-4 DLQ empty");
         long nonIncreasingAfterPeak = 0;
         for (int i = ages.indexOf(ages.stream().max(Long::compare).orElse(0L)) + 1; i < ages.size(); i++) {

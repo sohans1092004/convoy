@@ -67,6 +67,7 @@ public class GatewayApplication {
                                 .retry(c -> c.setRetries(2).setMethods(org.springframework.http.HttpMethod.GET).setSeries()
                                         .setExceptions(java.net.ConnectException.class, java.io.IOException.class)))
                         .metadata(AUDIENCE, "realtime").uri(u.get("realtime")))
+                .route("me-notifications", r -> r.path("/api/me/notifications", "/api/me/notifications/**", "/api/me/notification-preferences").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "notification").uri(u.get("notification")))
                 .route("me-orders", r -> r.path("/api/me/orders", "/api/me/orders/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
                 .route("me-payments", r -> r.path("/api/me/payments/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "payment").uri(u.get("payment")))
                 .route("me-saved-cars", r -> r.path("/api/me/saved-cars", "/api/me/saved-cars/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "catalog").uri(u.get("catalog")))

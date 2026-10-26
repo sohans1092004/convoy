@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toast';
 import { LocaleSwitch } from '@/components/locale-switch';
 import { SignOutButton } from '@/components/sign-out';
 import { QueryProvider } from '@/lib/query';
+import { gatewayGet } from '@/lib/gateway';
 import './globals.css';
 
 export const metadata: Metadata = { title: 'Convoy', description: 'Group car buying with sealed, itemised dealer offers.' };
@@ -19,6 +20,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const signedIn = Boolean(jar.get('cv_sid'));
   const roles = (jar.get('cv_roles')?.value ?? '').split(',');
   const dealer = roles.some((r) => r.startsWith('dealer'));
+  // Bell (P5.A): unread count from notification; when that service is down the bell shows no count and nothing else changes.
+  const unread = signedIn ? (await gatewayGet<{ unread_count: number }>('/me/notifications?limit=1')).data?.unread_count : undefined;
   return (
     <html lang={locale === 'hi' ? 'hi-IN' : 'en-IN'}>
       <body className="min-h-screen">
@@ -37,7 +40,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {dealer ? <Link href="/dealer" className="text-sm font-medium">{t('dealer')}</Link> : null}
                 {dealer ? <Link href="/dealer/bookings" className="text-sm font-medium">{t('bookings')}</Link> : null}
                 {roles.includes('platform_admin') ? <Link href="/admin" className="text-sm font-medium">{t('admin')}</Link> : null}
-                <span className="ml-auto flex items-center gap-4"><LocaleSwitch />{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>
+                <span className="ml-auto flex items-center gap-4">
+                  {signedIn ? (
+                    <Link href="/notifications" className="relative text-sm font-medium" aria-label={unread ? `${t('notifications')} (${unread})` : t('notifications')} data-testid="bell">
+                      <span aria-hidden="true">🔔</span>
+                      {unread ? <span aria-hidden="true" className="absolute -right-3 -top-2 rounded-full bg-primary px-1.5 text-xs font-bold text-bg">{unread > 99 ? '99+' : unread}</span> : null}
+                    </Link>
+                  ) : null}
+                  <LocaleSwitch />{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>
               </nav>
             </header>
             <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{children}</main>

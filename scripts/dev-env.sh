@@ -15,6 +15,8 @@ add CLIENT_SECRET_POOL "$(rnd)"
 add CLIENT_SECRET_REALTIME "$(rnd)"
 add CLIENT_SECRET_ORDER "$(rnd)" # P4.B: order reads a buyer's contact from identity after a booking is issued
 add DB_PASSWORD_REALTIME "$(rnd)"
+add DB_PASSWORD_NOTIFICATION "$(rnd)" # P5.A
+add CLIENT_SECRET_NOTIFICATION "$(rnd)" # P5.A: notification reads a recipient's email (E157) at send time
 add RAZORPAY_BASE_URL "http://razorpay-fake:9090"
 add RAZORPAY_KEY_ID "rzp_test_fake"
 add RAZORPAY_KEY_SECRET "$(rnd)"

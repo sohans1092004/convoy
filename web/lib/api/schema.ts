@@ -6,8 +6,9 @@ import type { components as poolComponents, paths as pool } from './schema/pool'
 import type { components as quoteComponents, paths as quote } from './schema/quote';
 import type { components as orderComponents, paths as order } from './schema/order';
 import type { components as paymentComponents, paths as payment } from './schema/payment';
+import type { components as notificationComponents, paths as notification } from './schema/notification';
 
-export type paths = identity & catalog & dealer & pool & quote & order & payment;
+export type paths = identity & catalog & dealer & pool & quote & order & payment & notification;
 
 /** Response and request records per service, e.g. Schemas['pool']['Pool']. */
 export interface Schemas {
@@ -18,4 +19,5 @@ export interface Schemas {
   quote: quoteComponents['schemas'];
   order: orderComponents['schemas'];
   payment: paymentComponents['schemas'];
+  notification: notificationComponents['schemas'];
 }

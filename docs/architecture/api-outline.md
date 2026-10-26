@@ -65,7 +65,9 @@ Conventions (apply to every row, not repeated):
 | E154 | order | POST | /bookings/{id}/confirm-delivery | buyer | yes | no | invalid-transition, not-found | P4 | AZ-E154-A, AZ-E154-D, AZ-E154-X |
 | E155 | order | GET | /dealer/bookings/{id}/contact | dealer_staff, dealer_admin | no | no | not-found | P4 | AZ-E155-A, AZ-E155-D, AZ-E155-X |
 | E156 | order | GET | /admin/disputes | platform_admin | no | no | - | P4 | AZ-E156-A, AZ-E156-D |
-| E157 | identity | GET | /internal/users/{id}/contact | service:order | no | no | not-found | P4 | AZ-E157-A, AZ-E157-D |
+| E157 | identity | GET | /internal/users/{id}/contact | service:order, service:notification | no | no | not-found | P4 | AZ-E157-A, AZ-E157-D |
+| E158 | notification | POST | /me/notifications/read-all | authenticated | no | no | - | P5 | AZ-E158-A, AZ-E158-D |
+| E159 | notification | GET | /me/notification-preferences | authenticated | no | no | - | P5 | AZ-E159-A, AZ-E159-D |
 | E054 | dealer | POST | /admin/dealerships/{id}/suspend | platform_admin | yes | yes | version-conflict | P3 | AZ-E054-A, AZ-E054-D |
 | E055 | dealer | GET | /internal/eligibility | service:pool | no | no | - | P1 | AZ-E055-A, AZ-E055-D |
 | E056 | dealer | POST | /bookings/{bookingId}/review | buyer | yes | no | review-not-eligible | P4 | AZ-E056-A, AZ-E056-D, AZ-E056-X, AZ-INT-07 |

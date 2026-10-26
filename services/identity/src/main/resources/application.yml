@@ -57,6 +57,9 @@ identity:
     order:
       secret: "${CLIENT_SECRET_ORDER}"
       scopes: { identity: [contacts:read] } # P4.B: a buyer's contact, only for a released booking
+    notification:
+      secret: "${CLIENT_SECRET_NOTIFICATION}"
+      scopes: { identity: [contacts:read] } # P5.A: the recipient's email, read at send time
     realtime:
       secret: "${CLIENT_SECRET_REALTIME}"
       scopes: { pool: [pools:access], identity: [sessions:check] }
