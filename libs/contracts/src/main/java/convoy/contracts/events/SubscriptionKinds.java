@@ -52,6 +52,8 @@ public final class SubscriptionKinds {
         Map.entry("audit:quote", "EVENTS"),
         Map.entry("dealer:quote", "PARTIAL"),
         Map.entry("notification:quote", "EVENTS"),
+        Map.entry("audit:clarification", "EVENTS"),
+        Map.entry("notification:clarification", "EVENTS"),
         Map.entry("order:quote", "PARTIAL"),
         Map.entry("pool:quote", "PARTIAL"),
         Map.entry("realtime:quote", "PARTIAL"),

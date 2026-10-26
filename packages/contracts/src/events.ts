@@ -94,6 +94,15 @@ export interface ClarificationAnswered {
   question_type: string;
 }
 
+/** Owner: quote. Consumers: notification, audit. FIFO: False. */
+export interface ClarificationAsked {
+  quote_id: string;
+  pool_id: string;
+  clarification_id: string;
+  question_type: string;
+  dealer_user_id: string;
+}
+
 /** Owner: order. Consumers: realtime, notification, audit. FIFO: False. */
 export interface ConfirmationDeclined {
   order_id: string;
@@ -598,6 +607,7 @@ export interface EventPayloads {
   BookingsIssued: BookingsIssued;
   CatalogPriceUpdated: CatalogPriceUpdated;
   ClarificationAnswered: ClarificationAnswered;
+  ClarificationAsked: ClarificationAsked;
   ConfirmationDeclined: ConfirmationDeclined;
   ConfirmationRecorded: ConfirmationRecorded;
   DataExportDownloaded: DataExportDownloaded;
@@ -672,6 +682,7 @@ export const EVENT_PRODUCERS: Record<EventType, string> = {
   BookingsIssued: "order",
   CatalogPriceUpdated: "catalog",
   ClarificationAnswered: "quote",
+  ClarificationAsked: "quote",
   ConfirmationDeclined: "order",
   ConfirmationRecorded: "order",
   DataExportDownloaded: "identity",

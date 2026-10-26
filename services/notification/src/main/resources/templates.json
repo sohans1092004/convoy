@@ -30,6 +30,16 @@
     "en": {"subject": "Confirm your offer", "body": "Confirm at a ceiling of {ceiling_cash_payable_paise} by {confirmation_deadline}. The price can only fall."},
     "hi": {"draft": true, "subject": "अपने ऑफ़र की पुष्टि करें", "body": "{confirmation_deadline} तक {ceiling_cash_payable_paise} की अधिकतम कीमत पर पुष्टि करें। कीमत केवल घट सकती है।"}
   },
+  "CLARIFICATION_ASKED": {
+    "link": "/dealer/quotes/{quote_id}",
+    "en": {"subject": "A buyer asked about your offer", "body": "New question ({question_type}). Answer it on the offer page."},
+    "hi": {"draft": true, "subject": "एक खरीदार ने आपके ऑफ़र के बारे में पूछा", "body": "नया प्रश्न ({question_type})। ऑफ़र पेज पर जवाब दें।"}
+  },
+  "CLARIFICATION_ANSWERED": {
+    "link": "/pools/{pool_id}",
+    "en": {"subject": "A dealer answered a question", "body": "The dealer answered a {question_type} question about their offer."},
+    "hi": {"draft": true, "subject": "डीलर ने एक प्रश्न का जवाब दिया", "body": "डीलर ने अपने ऑफ़र के बारे में {question_type} प्रश्न का जवाब दिया।"}
+  },
   "TIER_RESOLVED": {
     "link": "/orders",
     "en": {"subject": "Your final price is set", "body": "{confirmed_count} buyers confirmed. Outcome: {outcome}. Final price: {resolved_cash_payable_paise}."},

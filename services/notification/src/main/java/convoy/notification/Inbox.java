@@ -67,10 +67,13 @@ public class Inbox {
         if (committed) fanout("pool:" + poolId);
     }
 
-    void event(Envelope e, String kind, String key) {
+    void event(Envelope e, String kind, String key) { event(e, kind, key, e.aggregateVersion()); }
+
+    /** `version` is compared with pool membership versions; Long.MAX_VALUE = every current member (event of another aggregate). */
+    void event(Envelope e, String kind, String key, long version) {
         lock();
         jdbc.update("insert into events(event_id, key, kind, version, payload, occurred_at) values (?, ?, ?, ?, ?::jsonb, ?::timestamptz) on conflict do nothing",
-                e.eventId(), key, kind, e.aggregateVersion(), e.payload().toString(), e.occurredAt());
+                e.eventId(), key, kind, version, e.payload().toString(), e.occurredAt());
         fanout(key);
     }
 

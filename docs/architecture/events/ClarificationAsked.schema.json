@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://convoy.example/schemas/events/ClarificationAsked.schema.json",
+  "title": "ClarificationAsked v1",
+  "description": "Owner: quote. Consumers: notification, audit. FIFO: False.",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "event_type": {
+      "const": "ClarificationAsked"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "const": "quote"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clarification_id",
+        "dealer_user_id",
+        "pool_id",
+        "question_type",
+        "quote_id"
+      ],
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "clarification_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "question_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dealer_user_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

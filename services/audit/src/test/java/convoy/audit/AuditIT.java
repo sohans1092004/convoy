@@ -58,8 +58,10 @@ class AuditIT extends ServiceTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired Chain chain;
 
-    record Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload, UUID id) {
+    record Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload, UUID id, Instant at) {
+        Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload, UUID id) { this(type, producer, aggregate, version, payload, id, null); }
         Ev(String type, String producer, UUID aggregate, long version, Map<String, Object> payload) { this(type, producer, aggregate, version, payload, Uuid7.next()); }
+        Ev at(Instant t) { return new Ev(type, producer, aggregate, version, payload, id, t); }
     }
 
     void inject(List<Ev> events, UUID correlation) throws Exception {
@@ -70,7 +72,7 @@ class AuditIT extends ServiceTest {
             env.put("schema_version", 1);
             env.put("aggregate_id", e.aggregate().toString());
             env.put("aggregate_version", e.version());
-            env.put("occurred_at", Instant.now().toString());
+            env.put("occurred_at", (e.at() == null ? Instant.now() : e.at()).toString());
             env.put("correlation_id", correlation.toString());
             env.put("causation_id", null);
             env.put("producer", e.producer());
@@ -185,6 +187,8 @@ class AuditIT extends ServiceTest {
     void analyticsCountEveryMetricFromTheLogAndKeepTheFourSavingsLabelsApart() throws Exception {
         UUID pool = UUID.randomUUID(), round = UUID.randomUUID(), d1 = UUID.randomUUID(), d2 = UUID.randomUUID(), d3 = UUID.randomUUID();
         UUID q1 = UUID.randomUUID(), q2 = UUID.randomUUID(), o1 = UUID.randomUUID(), o2 = UUID.randomUUID(), b1 = UUID.randomUUID(), b2 = UUID.randomUUID(), corr = UUID.randomUUID();
+        UUID o3 = UUID.randomUUID(), rf1 = UUID.randomUUID(), rf2 = UUID.randomUUID(), dp = UUID.randomUUID();
+        Instant t0 = Instant.now().minusSeconds(10 * 86400);
         String v = UUID.randomUUID().toString(), now = Instant.now().toString(), past = Instant.now().minusSeconds(60).toString();
         java.util.function.BiFunction<Long, Long, Map<String, Object>> fig = (ceiling, estimate) -> {
             Map<String, Object> f = new LinkedHashMap<>(m("variant_id", v, "round_set", 1, "mode", "BUYER_CONFIG", "ceiling_tier_index", 0, "ceiling_cash_payable_paise", ceiling,
@@ -210,9 +214,24 @@ class AuditIT extends ServiceTest {
                 new Ev("BookingIssued", "order", b2, 1, m("booking_id", b2, "order_id", o2, "pool_id", pool, "dealership_id", d1, "variant_id", v)),
                 new Ev("BookingDelivered", "order", b1, 2, m("booking_id", b1, "order_id", o1)),
                 new Ev("InvoiceConfirmed", "order", b1, 3, m("booking_id", b1, "invoice_total_paise", 640)),
-                new Ev("BookingCancelled", "order", b2, 2, m("booking_id", b2, "order_id", o2, "reason", "DEALER_CANCELLED"))), corr);
+                new Ev("BookingCancelled", "order", b2, 2, m("booking_id", b2, "order_id", o2, "reason", "DEALER_CANCELLED")),
+                // P5 gaps: q2 accepted (deadline ahead, so not in the confirmation cohort) and VOID; q1 RESOLVED
+                new Ev("OrderCreated", "order", o3, 1, m("order_id", o3, "pool_id", pool, "quote_id", q2, "variant_id", v, "confirmation_deadline", Instant.now().plusSeconds(3600).toString())),
+                new Ev("TierResolved", "order", UUID.randomUUID(), 1, m("pool_id", pool, "quote_id", q1, "outcome", "RESOLVED")),
+                new Ev("TierResolved", "order", UUID.randomUUID(), 1, m("pool_id", pool, "quote_id", q2, "outcome", "VOID")),
+                // refunds: 2 h and 4 h; one still open (not counted). Dispute: 3 days.
+                new Ev("RefundRequested", "payment", UUID.randomUUID(), 1, m("refund_id", rf1)).at(t0),
+                new Ev("RefundCompleted", "payment", UUID.randomUUID(), 2, m("refund_id", rf1)).at(t0.plusSeconds(7200)),
+                new Ev("RefundRequested", "payment", UUID.randomUUID(), 1, m("refund_id", rf2)).at(t0),
+                new Ev("RefundCompleted", "payment", UUID.randomUUID(), 2, m("refund_id", rf2)).at(t0.plusSeconds(14400)),
+                new Ev("RefundRequested", "payment", UUID.randomUUID(), 1, m("refund_id", UUID.randomUUID())).at(t0),
+                new Ev("DisputeOpened", "order", dp, 1, m("dispute_id", dp, "dealership_id", d1)).at(t0),
+                new Ev("DisputeResolved", "order", dp, 2, m("dispute_id", dp, "outcome", "NO_ACTION")).at(t0.plusSeconds(3 * 86400)),
+                // reliability: the latest score counts
+                new Ev("ReliabilityScoreChanged", "dealer", d1, 5, m("dealership_id", d1, "score", 100, "cause", "BOOKING_DELIVERED")).at(t0),
+                new Ev("ReliabilityScoreChanged", "dealer", d1, 6, m("dealership_id", d1, "score", 50, "cause", "BOOKING_DEALER_CANCELLED")).at(t0.plusSeconds(60))), corr);
         long end = System.currentTimeMillis() + 60_000;
-        while (count("select count(*) from audit_log where correlation_id = ?", corr) < 16 && System.currentTimeMillis() < end) Thread.sleep(200);
+        while (count("select count(*) from audit_log where correlation_id = ?", corr) < 30 && System.currentTimeMillis() < end) Thread.sleep(200);
 
         Resp r = get("/admin/analytics", TestTokens.admin("audit", UUID.randomUUID()));
         assertThat(r.status()).as(r.body()).isEqualTo(200);
@@ -242,6 +261,34 @@ class AuditIT extends ServiceTest {
         assertThat(s.at("/realised/median_paise").asLong()).isEqualTo(60);
         assertThat(s.at("/realised/items/0/snapshot_sha256/0").asText()).isEqualTo("e700");
         assertThat(s.at("/vs_best_other_quote/items/0/ruleset_version").asText()).isEqualTo("r1");
+        assertThat(a.at("/void_rate/accepted_quotes").asInt()).isEqualTo(2);
+        assertThat(a.at("/void_rate/void_quotes").asInt()).isEqualTo(1);
+        assertThat(a.at("/refund_latency_hours/n").asInt()).as("open refund not counted").isEqualTo(2);
+        assertThat(a.at("/refund_latency_hours/p50").asDouble()).isEqualTo(3.0);
+        assertThat(a.at("/refund_latency_hours/p95").asDouble()).isEqualTo(3.9);
+        assertThat(a.at("/dispute_resolution_days/n").asInt()).isEqualTo(1);
+        assertThat(a.at("/dispute_resolution_days/p50").asDouble()).isEqualTo(3.0);
+
+        // E058: a dealer admin sees only their own dealership, whatever the request says (AZ-T5, AZ-E058-A/D)
+        JsonNode mine = JSON.readTree(get("/dealer/analytics", TestTokens.user("audit", UUID.randomUUID(), List.of("dealer_admin"), d1)).body());
+        assertThat(mine.path("dealership_id").asText()).isEqualTo(d1.toString());
+        assertThat(mine.has("simulated")).isTrue();
+        assertThat(mine.at("/response/invited").asInt()).isEqualTo(1);
+        assertThat(mine.at("/response/responded").asInt()).isEqualTo(1);
+        assertThat(mine.at("/win/final_quotes").asInt()).isEqualTo(1);
+        assertThat(mine.at("/win/won").asInt()).isEqualTo(1);
+        assertThat(mine.path("reliability_score_percent").asInt()).isEqualTo(50);
+        JsonNode theirs = JSON.readTree(get("/dealer/analytics", TestTokens.user("audit", UUID.randomUUID(), List.of("dealer_admin"), d2)).body());
+        assertThat(theirs.at("/win/won").asInt()).isZero();
+        assertThat(theirs.path("reliability_score_percent").isNull()).isTrue();
+        Resp spoof = get("/dealer/analytics?dealership_id=" + d1, TestTokens.user("audit", UUID.randomUUID(), List.of("dealer_admin"), d2));
+        assertThat(JSON.readTree(spoof.body()).path("dealership_id").asText()).as("a parameter cannot name another dealership").isEqualTo(d2.toString());
+        assertThat(spoof.body()).doesNotContain(d1.toString());
+        assertThat(get("/dealer/analytics", TestTokens.dealer("audit", UUID.randomUUID(), d1)).status()).as("dealer_staff").isEqualTo(403);
+        assertThat(get("/dealer/analytics", TestTokens.buyer("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/dealer/analytics", TestTokens.admin("audit", UUID.randomUUID())).status()).isEqualTo(403);
+        assertThat(get("/dealer/analytics", null).status()).isEqualTo(401);
+
         // AZ-E169: platform admins only
         assertThat(get("/admin/analytics", TestTokens.buyer("audit", UUID.randomUUID())).status()).isEqualTo(403);
         assertThat(get("/admin/analytics", TestTokens.dealer("audit", UUID.randomUUID(), UUID.randomUUID())).status()).isEqualTo(403);

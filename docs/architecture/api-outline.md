@@ -81,7 +81,7 @@ Conventions (apply to every row, not repeated):
 | E055 | dealer | GET | /internal/eligibility | service:pool | no | no | - | P1 | AZ-E055-A, AZ-E055-D |
 | E056 | dealer | POST | /bookings/{bookingId}/review | buyer | yes | no | review-not-eligible | P4 | AZ-E056-A, AZ-E056-D, AZ-E056-X, AZ-INT-07 |
 | E057 | dealer | GET | /dealerships/{id}/reviews | anonymous | no | no | not-found | P4 | AZ-E057-A |
-| E058 | dealer | GET | /dealer/analytics | dealer_admin | no | no | - | P5 | AZ-E058-A, AZ-E058-D, AZ-T5 |
+| E058 | audit | GET | /dealer/analytics | dealer_admin | no | no | - | P5 | AZ-E058-A, AZ-E058-D, AZ-T5 |
 | E060 | quote | GET | /dealer/inbox | dealer_staff, dealer_admin | no | no | - | P1 | AZ-E060-A, AZ-E060-D, AZ-T1 |
 | E061 | quote | POST | /dealer/pools/{poolId}/quotes | dealer_staff, dealer_admin | yes | no | round-not-open, deadline-passed, not-found | P1 | AZ-E061-A, AZ-E061-D, AZ-E061-X |
 | E062 | quote | PUT | /dealer/quotes/{id}/draft | dealer_staff, dealer_admin | no | yes | invalid-transition, version-conflict | P1 | AZ-E062-A, AZ-E062-D, AZ-E062-X |

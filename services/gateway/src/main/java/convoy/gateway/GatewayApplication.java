@@ -77,6 +77,7 @@ public class GatewayApplication {
                 .route("pool-quotes", r -> r.path("/api/pools/*/quotes", "/api/pools/*/quotes/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "quote").uri(u.get("quote")))
                 .route("pool", r -> r.path("/api/pools", "/api/pools/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "pool").uri(u.get("pool")))
                 .route("dealer-bookings", r -> r.path("/api/dealer/bookings", "/api/dealer/bookings/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))
+                .route("dealer-analytics", r -> r.path("/api/dealer/analytics").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "audit").uri(u.get("audit")))
                 .route("dealer-quotes", r -> r.path("/api/dealer/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "quote").uri(u.get("quote")))
                 .route("dealerships", r -> r.path("/api/dealerships/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "dealer").uri(u.get("dealer")))
                 .route("orders", r -> r.path("/api/orders/**").filters(f -> f.stripPrefix(1)).metadata(AUDIENCE, "order").uri(u.get("order")))

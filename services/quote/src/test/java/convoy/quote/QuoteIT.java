@@ -400,6 +400,8 @@ class QuoteIT extends ServiceTest {
         Resp asked = post(asks, t1, ask("PRICE_ITEM", "Is the Rs 5,83,900 ex-showroom final, and delivery by 2026-11-09?"));
         assertThat(asked.status()).as(asked.body()).isEqualTo(201);
         String cid = JSON.readTree(asked.body()).path("id").asText();
+        assertThat(jdbc.queryForObject("select payload->>'dealer_user_id' from outbox where event_type = 'ClarificationAsked' and aggregate_id = ?::uuid", String.class, cid))
+                .isEqualTo(jdbc.queryForObject("select created_by::text from quotes where id = ?::uuid", String.class, id));
         // Open: the asker sees it, another member does not, the dealer does.
         assertThat(JSON.readTree(get("/pools/" + r.pool() + "/quotes/" + id, t1).body()).path("clarifications")).hasSize(1);
         assertThat(JSON.readTree(get("/pools/" + r.pool() + "/quotes/" + id, t2).body()).path("clarifications")).isEmpty();

@@ -253,6 +253,26 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
     await expect(page.getByText('Thank you. Your review is posted.')).toBeVisible();
     await axe(page, 'order (delivered)');
     step('review posted');
+
+    // P5.F: the right in-app messages arrived for this run (once each), and each has its email in Mailpit.
+    type Note = { kind: string; subject: string; link: string; created_at: string };
+    let mine: Note[] = [];
+    const want = ['DEPOSIT_RECEIVED', 'COMPARISON_READY', 'CONFIRMATION_NEEDED', 'TIER_RESOLVED', 'BOOKING_CONFIRMED', 'DELIVERY_SCHEDULED'];
+    await expect.poll(async () => {
+      const r = await (await page.request.get('/api/me/notifications?limit=200')).json();
+      mine = (r.notifications as Note[]).filter((n) => Date.parse(n.created_at) >= t0);
+      return want.filter((k) => !mine.some((n) => n.kind === k));
+    }, { timeout: 60_000, intervals: [2000], message: 'in-app notifications missing' }).toEqual([]);
+    for (const k of ['DEPOSIT_RECEIVED', 'CONFIRMATION_NEEDED', 'TIER_RESOLVED', 'BOOKING_CONFIRMED', 'DELIVERY_SCHEDULED']) {
+      expect(mine.filter((n) => n.kind === k), `exactly one ${k}`).toHaveLength(1);
+    }
+    expect(mine.find((n) => n.kind === 'CONFIRMATION_NEEDED')!.link).toBe(order);
+    await expect.poll(async () => {
+      const r = await (await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent('to:' + plan.buyer)}&limit=200`)).json();
+      const subjects = (r.messages ?? []).filter((m: { Created: string }) => Date.parse(m.Created) >= t0 - 2000).map((m: { Subject: string }) => m.Subject);
+      return mine.filter((n) => !subjects.includes(n.subject)).map((n) => n.kind);
+    }, { timeout: 90_000, intervals: [3000], message: 'emails missing in Mailpit' }).toEqual([]);
+    step(`notifications: ${mine.length} in-app since the start, each with its email (${[...new Set(mine.map((n) => n.kind))].sort().join(', ')})`);
   }
 
   if (CANCEL) {
@@ -315,4 +335,9 @@ test.afterAll(() => {
     { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
   console.log(`ledger check: ${out}`);
   expect(out).toBe('t|0');
+  // P5.F: the audit hash chain verifies after everything above (exit 1 = tampered; execFileSync throws on it).
+  const chain = execFileSync('docker', ['compose', 'run', '--rm', '-T', 'audit', 'verify-chain'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const verdict = chain.split(/\r?\n/).find((l) => l.startsWith('audit chain') || l.startsWith('AUDIT CHAIN')) ?? '';
+  console.log(verdict);
+  expect(verdict).toMatch(/^audit chain intact: [1-9]\d* rows$/);
 });

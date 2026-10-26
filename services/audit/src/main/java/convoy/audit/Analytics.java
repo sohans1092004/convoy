@@ -84,7 +84,53 @@ public class Analytics {
                 from audit_log where event_type = 'BookingCancelled' group by 1""", rs -> { byReason.put(rs.getString("g"), rs.getLong("n")); });
         cancel.put("by_reason", byReason);
         out.put("cancellation", cancel);
+        // Quotes VOID at tier resolution, of quotes with at least one acceptance (an order).
+        out.put("void_rate", jdbc.queryForMap("""
+                select (select count(distinct payload->>'quote_id') from audit_log where event_type = 'OrderCreated') as accepted_quotes,
+                       (select count(distinct payload->>'quote_id') from audit_log where event_type = 'TierResolved' and payload->>'outcome' = 'VOID') as void_quotes"""));
+        out.put("refund_latency_hours", durations("RefundRequested", "RefundCompleted", "refund_id", 3600.0));
+        out.put("dispute_resolution_days", durations("DisputeOpened", "DisputeResolved", "dispute_id", 86400.0));
         out.put("savings", savings());
+        return out;
+    }
+
+    /** n, p50 and p95 (continuous) of end - start per id, in the given unit; open ones are not counted. */
+    Map<String, Object> durations(String start, String end, String key, double unitSeconds) {
+        return jdbc.queryForMap("""
+                with s as (select payload->>'%2$s' id, min(occurred_at) t from audit_log where event_type = '%1$s' group by 1),
+                     e as (select payload->>'%2$s' id, min(occurred_at) t from audit_log where event_type = '%3$s' group by 1),
+                     d as (select extract(epoch from e.t - s.t) / ? x from s join e using (id))
+                select count(*) as n, round((percentile_cont(0.5) within group (order by x))::numeric, 2)::float8 as p50,
+                       round((percentile_cont(0.95) within group (order by x))::numeric, 2)::float8 as p95 from d""".formatted(start, key, end), unitSeconds);
+    }
+
+    /**
+     * E058 (dealer_admin): the caller's own dealership only, taken from the session, never from the request, so no input can
+     * name another dealership (AZ-T5). Response = invited sealed rounds answered before the deadline; win = FINAL quotes that got
+     * at least one booking; reliability = the latest ReliabilityScoreChanged score (AMENDMENT-009), null before any outcome.
+     */
+    @GetMapping("/dealer/analytics")
+    public Map<String, Object> dealerAnalytics() {
+        Caller c = Caller.current().require("dealer_admin");
+        if (c.dealershipId() == null) throw convoy.platform.problem.ApiProblem.of(convoy.platform.problem.ProblemType.FORBIDDEN, "Your account is not linked to a dealership.");
+        String d = c.dealershipId();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("dealership_id", d);
+        out.put("simulated", simulated);
+        out.put("response", jdbc.queryForMap("""
+                with inv as (select a.payload->>'pool_id' pool, a.occurred_at opened, (a.payload->>'deadline')::timestamptz deadline
+                             from audit_log a where a.event_type = 'QuoteRoundOpened' and a.payload->>'kind' = 'SEALED' and a.payload->'invited_dealership_ids' @> jsonb_build_array(?::text))
+                select count(*) as invited, count(*) filter (where exists (select 1 from audit_log s where s.event_type in ('QuoteSubmitted', 'QuoteRevised')
+                       and s.payload->>'pool_id' = i.pool and s.payload->>'dealership_id' = ? and (s.payload->>'committed_at')::timestamptz >= i.opened
+                       and (s.payload->>'committed_at')::timestamptz < i.deadline)) as responded from inv i""", d, d));
+        out.put("win", jdbc.queryForMap("""
+                select count(distinct f.payload->>'quote_id') as final_quotes,
+                       count(distinct f.payload->>'quote_id') filter (where exists (select 1 from audit_log o join audit_log b on b.event_type = 'BookingIssued'
+                           and b.payload->>'order_id' = o.payload->>'order_id' where o.event_type = 'OrderCreated' and o.payload->>'quote_id' = f.payload->>'quote_id')) as won
+                from audit_log f where f.event_type = 'QuoteFinalised' and f.payload->>'dealership_id' = ?""", d));
+        List<Long> score = jdbc.queryForList("select (payload->>'score')::bigint from audit_log where event_type = 'ReliabilityScoreChanged' and payload->>'dealership_id' = ? "
+                + "order by occurred_at desc, seq desc limit 1", Long.class, d);
+        out.put("reliability_score_percent", score.isEmpty() ? null : score.get(0));
         return out;
     }
 

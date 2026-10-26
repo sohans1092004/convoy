@@ -1,6 +1,7 @@
 package convoy.quote;
 
 import convoy.contracts.events.ClarificationAnswered;
+import convoy.contracts.events.ClarificationAsked;
 import convoy.platform.messaging.Outbox;
 import convoy.platform.messaging.Uuid7;
 import convoy.platform.problem.ApiProblem;
@@ -66,13 +67,15 @@ public class Clarifications {
     public Map<String, Object> ask(UUID poolId, UUID quoteId, String type, String question) {
         UUID buyer = Caller.current().require("buyer").userId();
         if (quotes.member(poolId, buyer).isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "Offers are shown to committed members of this pool.");
-        List<String> state = jdbc.queryForList("select state from quotes where id = ? and pool_id = ?", String.class, quoteId, poolId);
-        if (state.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such offer.");
-        if (!"FINAL".equals(state.get(0))) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Questions can be asked about final offers only.");
+        List<Map<String, Object>> q = jdbc.queryForList("select state, created_by from quotes where id = ? and pool_id = ?", quoteId, poolId);
+        if (q.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such offer.");
+        if (!"FINAL".equals(q.get(0).get("state"))) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Questions can be asked about final offers only.");
         if (type == null || !TYPES.contains(type)) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Choose a question type.").with("field", "question_type");
         UUID id = Uuid7.next();
         jdbc.update("insert into clarifications(id, pool_id, quote_id, buyer_id, question_type, question) values (?, ?, ?, ?, ?, ?)",
                 id, poolId, quoteId, buyer, type, text(question, 300));
+        // The quote's author is told (ponytail: one dealer user; fan out to all dealership staff via identity if dealers ask for it)
+        outbox.append(id, 1, new ClarificationAsked(quoteId.toString(), poolId.toString(), id.toString(), type, q.get(0).get("created_by").toString()));
         return view(jdbc.queryForMap("select * from clarifications where id = ?", id));
     }
 

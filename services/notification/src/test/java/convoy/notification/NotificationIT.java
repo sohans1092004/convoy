@@ -235,6 +235,41 @@ class NotificationIT extends ServiceTest {
     }
 
     @Test
+    void clarificationQuestionReachesTheDealerAndTheAnswerTheCommittedBuyersOnce() throws Exception {
+        UUID dealer = UUID.randomUUID(), asker = UUID.randomUUID(), other = UUID.randomUUID(), leaver = UUID.randomUUID();
+        UUID pool = UUID.randomUUID(), quote = UUID.randomUUID(), clar = UUID.randomUUID();
+        List<Ev> story = List.of(
+                new Ev("MemberCommitted", "pool", pool, 1, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", asker, "payment_id", UUID.randomUUID(),
+                        "interested_count", 1, "committed_count", 1, "kept_from_previous_round", false)),
+                new Ev("MemberCommitted", "pool", pool, 2, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", other, "payment_id", UUID.randomUUID(),
+                        "interested_count", 2, "committed_count", 2, "kept_from_previous_round", false)),
+                new Ev("MemberCommitted", "pool", pool, 3, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", leaver, "payment_id", UUID.randomUUID(),
+                        "interested_count", 3, "committed_count", 3, "kept_from_previous_round", false)),
+                new Ev("MemberLeft", "pool", pool, 4, m("pool_id", pool, "membership_id", UUID.randomUUID(), "buyer_id", leaver, "payment_id", null, "reason", "BUYER_LEFT",
+                        "interested_count", 2, "committed_count", 2)),
+                new Ev("ClarificationAsked", "quote", clar, 1, m("quote_id", quote, "pool_id", pool, "clarification_id", clar, "question_type", "DELIVERY_DATE", "dealer_user_id", dealer)),
+                // version 1 of the clarification stream: lower than every membership version, delivered anyway
+                new Ev("ClarificationAnswered", "quote", UUID.randomUUID(), 1, m("quote_id", quote, "pool_id", pool, "clarification_id", clar, "question_type", "DELIVERY_DATE")));
+        List<Ev> backlog = new ArrayList<>(story.reversed());
+        backlog.addAll(story);
+        inject(backlog);
+
+        for (UUID u : List.of(dealer, asker, other)) {
+            await("mailed " + u, () -> count("select count(*) from deliveries d join notifications n on n.id = d.notification_id where n.user_id = ? and d.status = 'SENT'", u) == 1);
+        }
+        assertThat(jdbc.queryForList("select kind from notifications where user_id = ?", String.class, dealer)).containsExactly("CLARIFICATION_ASKED");
+        assertThat(jdbc.queryForList("select kind from notifications where user_id = ?", String.class, asker)).containsExactly("CLARIFICATION_ANSWERED");
+        assertThat(jdbc.queryForList("select kind from notifications where user_id = ?", String.class, other)).containsExactly("CLARIFICATION_ANSWERED");
+        assertThat(count("select count(*) from notifications where user_id = ?", leaver)).isZero();
+        Thread.sleep(1500);
+        assertThat(mailsTo(dealer)).isEqualTo(1);
+        assertThat(mailsTo(asker)).isEqualTo(1);
+        JsonNode n = JSON.readTree(get("/me/notifications", TestTokens.buyer("notification", dealer)).body()).path("notifications").get(0);
+        assertThat(n.path("link").asText()).isEqualTo("/dealer/quotes/" + quote);
+        assertThat(n.path("body").asText()).contains("DELIVERY_DATE");
+    }
+
+    @Test
     void preferencesAreHonouredExceptForPaymentAndRefundAndFailedEmailsEndDead() throws Exception {
         UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID(), payment = UUID.randomUUID();
         String token = TestTokens.buyer("notification", buyer);

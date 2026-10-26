@@ -9,6 +9,7 @@ import { useSnapshot } from '@/lib/use-snapshot';
 
 type Dist = { n: number; p25_paise: number | null; median_paise: number | null; p75_paise: number | null;
   items: { pool_id: string; quote_id: string; variant_id: string; value_paise: number; ruleset_version: string; snapshot_sha256: string[] }[] };
+type Pct = { n: number; p50: number | null; p95: number | null };
 type Analytics = {
   simulated: boolean;
   fill: { week: string; created: number; filled: number; median_hours_to_fill: number | null }[];
@@ -17,6 +18,9 @@ type Analytics = {
   acceptance_to_confirmation: { orders: number; confirmed: number };
   confirmation_to_delivery: { closed_bookings: number; delivered: number };
   cancellation: { issued: number; cancelled: number; by_reason: Record<string, number> };
+  void_rate: { accepted_quotes: number; void_quotes: number };
+  refund_latency_hours: Pct;
+  dispute_resolution_days: Pct;
   savings: Record<'dealer_stated_discount' | 'vs_catalogue_estimate' | 'vs_best_other_quote' | 'realised', Dist>;
 };
 const LABELS = ['dealer_stated_discount', 'vs_catalogue_estimate', 'vs_best_other_quote', 'realised'] as const;
@@ -56,6 +60,18 @@ export function AnalyticsView() {
       {row(t('acceptToConfirm'), a.acceptance_to_confirmation.confirmed, a.acceptance_to_confirmation.orders)}
       {row(t('confirmToDeliver'), a.confirmation_to_delivery.delivered, a.confirmation_to_delivery.closed_bookings)}
       {row(t('cancellation'), a.cancellation.cancelled, a.cancellation.issued)}
+      {row(t('voidRate'), a.void_rate.void_quotes, a.void_rate.accepted_quotes)}
+      {[['refundLatency', a.refund_latency_hours], ['disputeTime', a.dispute_resolution_days]].map(([k, d]) => {
+        const p = d as Pct;
+        return (
+          <Card key={k as string} className="flex flex-wrap items-center gap-2">
+            <CardTitle as="h3" className="text-base">{t(k as string)}</CardTitle>
+            <span className="tabular">{t('pct', { p50: p.p50 ?? '—', p95: p.p95 ?? '—' })}</span>
+            <span className="text-sm text-muted">n = {p.n}</span>
+            {sim}
+          </Card>
+        );
+      })}
       <p className="text-sm text-muted">{Object.entries(a.cancellation.by_reason).map(([k, n]) => `${t(`reason.${k}`)} ${n}`).join(' · ')}</p>
       <h3 className="font-semibold">{t('savings')}</h3>
       <p className="text-sm text-muted">{t('savingsRule')}</p>

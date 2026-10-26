@@ -59,6 +59,7 @@ events:
   - {name: QuoteVoided, owner: quote, consumers: [dealer, realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, confirmed_count: int, min_fulfilment: int}}
   - {name: StockReserved, owner: quote, consumers: [order, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, booking_id: uuid, variant_id: uuid, colour: string}}
   - {name: StockUnavailable, owner: quote, consumers: [order, dealer, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, booking_id: uuid, variant_id: uuid, colour: string}}
+  - {name: ClarificationAsked, owner: quote, consumers: [notification, audit], aggregate: clarification, fifo: false, payload: {quote_id: uuid, pool_id: uuid, clarification_id: uuid, question_type: string, dealer_user_id: uuid}}
   - {name: ClarificationAnswered, owner: quote, consumers: [realtime, notification, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, clarification_id: uuid, question_type: string}}
   - {name: RankChanged, owner: quote, consumers: [realtime, audit], aggregate: quote, fifo: false, payload: {quote_id: uuid, pool_id: uuid, dealership_id: uuid, variant_id: uuid, rank: int, of_n: int, rule_version: string}}
   # ---------------- order (saga orchestrator)
@@ -146,6 +147,8 @@ subscriptions:
   - {consumer: audit, aggregate: quote, kind: EVENTS}
   - {consumer: dealer, aggregate: quote, kind: PARTIAL}
   - {consumer: notification, aggregate: quote, kind: EVENTS}
+  - {consumer: audit, aggregate: clarification, kind: EVENTS}
+  - {consumer: notification, aggregate: clarification, kind: EVENTS}
   - {consumer: order, aggregate: quote, kind: PARTIAL}
   - {consumer: pool, aggregate: quote, kind: PARTIAL}
   - {consumer: realtime, aggregate: quote, kind: PARTIAL}

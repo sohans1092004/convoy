@@ -48,6 +48,12 @@ public class NotificationApplication {
                     in.link("quote:" + p.quoteId(), "order:" + p.orderId());
                     in.event(e, "CONFIRMATION_NEEDED", "order:" + p.orderId());
                 })
+                // P5 gaps: the dealer hears of a question; the pool's committed buyers of the answer (any membership version)
+                .onUnordered(ClarificationAsked.class, (e, p) -> {
+                    in.link("clarification:" + p.clarificationId(), "user:" + p.dealerUserId());
+                    in.event(e, "CLARIFICATION_ASKED", "clarification:" + p.clarificationId());
+                })
+                .onUnordered(ClarificationAnswered.class, (e, p) -> in.event(e, "CLARIFICATION_ANSWERED", "pool:" + p.poolId(), Long.MAX_VALUE))
                 .on(TierResolved.class, (e, p) -> in.event(e, "TIER_RESOLVED", "quote:" + p.quoteId()))
                 .on(PaymentCaptured.class, (e, p) -> in.event(e, "DEPOSIT_RECEIVED", "user:" + p.buyerId()))
                 .on(RefundCompleted.class, (e, p) -> in.event(e, "REFUND_DONE", "user:" + p.buyerId()))

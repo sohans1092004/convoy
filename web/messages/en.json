@@ -11,7 +11,8 @@
     "saved": "My cars",
     "account": "Account",
     "admin": "Admin",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "dealerAnalytics": "Analytics"
   },
   "home": {
     "title": "Buy the same car together, with prices you can check",
@@ -470,7 +471,11 @@
       },
       "dist": "p25 {p25} · median {median} · p75 {p75}",
       "explain": "Where each figure comes from (ruleset, snapshot hashes)",
-      "quote": "offer"
+      "quote": "offer",
+      "voidRate": "VOID rate (quotes with at least one acceptance)",
+      "refundLatency": "Refund latency, requested to refunded (hours)",
+      "disputeTime": "Dispute resolution time (days)",
+      "pct": "median {p50} · p95 {p95}"
     }
   },
   "dispute": {
@@ -588,5 +593,15 @@
     "noContactDealer": "Phone numbers, email addresses and links are refused: contact details are released only after booking.",
     "send": "Send answer",
     "sent": "Answer sent."
+  },
+  "dealerAnalytics": {
+    "title": "Your dealership analytics",
+    "loading": "Loading analytics",
+    "simulated": "simulated",
+    "of": "{num} of {den}",
+    "response": "Response rate (sealed rounds answered in time)",
+    "win": "Win rate (final offers that got a booking)",
+    "reliability": "Reliability score",
+    "reliabilityNote": "FINAL commitments honoured, last 90 days"
   }
 }

@@ -19,6 +19,7 @@ public final class EventTypes {
         Map.entry("BookingsIssued", BookingsIssued.class),
         Map.entry("CatalogPriceUpdated", CatalogPriceUpdated.class),
         Map.entry("ClarificationAnswered", ClarificationAnswered.class),
+        Map.entry("ClarificationAsked", ClarificationAsked.class),
         Map.entry("ConfirmationDeclined", ConfirmationDeclined.class),
         Map.entry("ConfirmationRecorded", ConfirmationRecorded.class),
         Map.entry("DataExportDownloaded", DataExportDownloaded.class),

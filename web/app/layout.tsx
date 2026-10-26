@@ -41,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {signedIn ? <Link href="/account" className="text-sm font-medium">{t('account')}</Link> : null}
                 {dealer ? <Link href="/dealer" className="text-sm font-medium">{t('dealer')}</Link> : null}
                 {dealer ? <Link href="/dealer/bookings" className="text-sm font-medium">{t('bookings')}</Link> : null}
+                {roles.includes('dealer_admin') ? <Link href="/dealer/analytics" className="text-sm font-medium">{t('dealerAnalytics')}</Link> : null}
                 {roles.includes('platform_admin') ? <Link href="/admin" className="text-sm font-medium">{t('admin')}</Link> : null}
                 <span className="ml-auto flex items-center gap-4">
                   {signedIn ? (
