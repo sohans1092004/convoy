@@ -11,7 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "convoy.messaging.enabled=false", "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused"})
+        "convoy.messaging.enabled=false", "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused",
+        // The demo seed (P4.0), from the same file the local stack mounts: the migrations alone hold no dealership.
+        "dealer.demo=true", "dealer.demo-seed-file=../../deploy/local/seed/dealerships.sql"})
 @Import(ServiceTest.Config.class)
 class DealerIT extends ServiceTest {
     @Test
@@ -88,6 +90,14 @@ class DealerIT extends ServiceTest {
         assertThat(JSON.readTree(r.body()).path("rejection_reason").asText()).contains("legal name");
         assertThat(jdbc.queryForObject("select reason from dealership_audit where dealership_id = ?::uuid and action = 'REJECTED'", String.class, id)).contains("legal name");
         assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ?::uuid", Integer.class, id)).isZero();
+    }
+
+    @Test
+    void noMigrationCarriesDemoData() throws Exception {
+        // P4.0: a real environment must never receive fake dealers; demo dealerships come only from the DEMO seed.
+        try (var files = java.nio.file.Files.list(java.nio.file.Path.of("src/main/resources/db/migration"))) {
+            for (var f : files.toList()) assertThat(java.nio.file.Files.readString(f).toLowerCase()).as(f.toString()).doesNotContain("insert into dealerships");
+        }
     }
 
     @Test

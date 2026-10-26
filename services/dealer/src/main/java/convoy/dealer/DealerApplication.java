@@ -19,8 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class DealerApplication {
     private final JdbcTemplate jdbc;
+    private final Reputation reputation;
 
-    public DealerApplication(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public DealerApplication(JdbcTemplate jdbc, Reputation reputation) {
+        this.jdbc = jdbc;
+        this.reputation = reputation;
+    }
 
     public static void main(String[] args) { SpringApplication.run(DealerApplication.class, args); }
 
@@ -42,6 +46,26 @@ public class DealerApplication {
         if (rows.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such dealership.");
         Map<String, Object> r = new java.util.LinkedHashMap<>(rows.get(0));
         r.put("brands", List.of((String[]) ((java.sql.Array) r.get("brands")).getArray()));
+        r.put("reliability", reputation.reliability(id)); // AMENDMENT-009: always with its counts
         return convoy.platform.web.Dto.as(r, Api.Dealership.class);
+    }
+
+    public record ReviewBody(@jakarta.validation.constraints.NotNull Integer rating, @jakarta.validation.constraints.Size(max = 2000) String body) {}
+
+    /** E056: a buyer reviews the dealer of their delivered booking, once. */
+    @org.springframework.web.bind.annotation.PostMapping("/bookings/{bookingId}/review")
+    @convoy.platform.idempotency.Idempotent
+    @convoy.platform.security.RequiresRole({"buyer"})
+    public Api.Review review(@PathVariable UUID bookingId, @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody ReviewBody b) {
+        return convoy.platform.web.Dto.as(reputation.review(bookingId, b.rating(), b.body()), Api.Review.class);
+    }
+
+    /** E057: public reviews of a dealership. */
+    @GetMapping("/dealerships/{id}/reviews")
+    public Api.Reviews reviews(@PathVariable UUID id) {
+        if (jdbc.queryForObject("select count(*) from dealerships where id = ? and status in ('VERIFIED', 'SUSPENDED')", Integer.class, id) == 0) {
+            throw ApiProblem.of(ProblemType.NOT_FOUND, "No such dealership.");
+        }
+        return convoy.platform.web.Dto.as(reputation.reviews(id), Api.Reviews.class);
     }
 }

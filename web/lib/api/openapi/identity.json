@@ -406,6 +406,38 @@
         }
       }
     },
+    "/internal/users/{id}/contact": {
+      "get": {
+        "tags": [
+          "internal-controller"
+        ],
+        "operationId": "contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/.well-known/jwks.json": {
       "get": {
         "tags": [

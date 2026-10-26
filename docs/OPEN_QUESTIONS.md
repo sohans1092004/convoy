@@ -158,6 +158,7 @@ Format: question · options · **default chosen** · impact.
 - Impact: small information leak, accepted as context (ADR-008).
 
 ### Q-036 — What is the dealer reliability score formula?
+> **Closed by AMENDMENT-009 (P4).** Share of FINAL commitments honoured through to delivery over the last 90 days, always shown with its counts.
 - **Default:** deferred to P3. P0 defines only the triggering events.
 - Impact: none for P1.
 

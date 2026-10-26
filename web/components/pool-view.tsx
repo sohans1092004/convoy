@@ -1,5 +1,6 @@
 'use client';
 import { useTranslations } from 'next-intl';
+import { ReroundChoice } from '@/components/reround-choice';
 import Link from 'next/link';
 import * as React from 'react';
 import { CommandStatus } from '@/components/command-status';
@@ -58,7 +59,7 @@ export function LiveIndicator({ status }: { status: LiveStatus }) {
 /** The membership the buyer sees while their join is in flight (replaced by the server's, or rolled back). */
 function optimisticMembership(poolId: string): Membership {
   return { id: 'pending', pool_id: poolId, state: 'INTERESTED', current_payment_id: null, terms_version: null, accepted_quote_id: null, accepted_variant_id: null,
-    release_reason: null, version: 0 };
+    release_reason: null, choice_deadline: null, version: 0 };
 }
 
 function loadScript(src: string) {
@@ -203,6 +204,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
             <Card emphasis><CardTitle>{tp('offersTitle')}</CardTitle><CardText className="mb-3">{tp('offersBody')}</CardText>
               <Button asChild><Link href={`/pools/${pool.id}/compare`}>{tp('compare')}</Link></Button></Card>
           ) : null}
+          {me?.state === 'REROUND_CHOICE' ? <ReroundChoice poolId={pool.id} membership={me} onDone={snap.refresh} /> : null}
           {['CONFIRMATION', 'BOOKING'].includes(pool.state) && me?.state === 'HANDED_TO_ORDER' ? (
             <Card emphasis><CardTitle>{tp('orderTitle')}</CardTitle><CardText className="mb-3">{tp('orderBody')}</CardText>
               <Button asChild><Link href="/orders">{tp('orders')}</Link></Button></Card>

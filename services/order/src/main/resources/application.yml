@@ -31,5 +31,10 @@ convoy:
     region: ${AWS_REGION:ap-south-1}
 order:
   sweeper-interval: ${ORDER_SWEEPER_INTERVAL:5s}
+  identity-url: ${IDENTITY_URL:http://identity:8080}
+  evidence:
+    bucket: ${EVIDENCE_BUCKET:convoy-dispute-evidence}
+    # LocalStack: pre-signed URLs must name the address the browser reaches (the published port), not the in-network host.
+    public-endpoint: ${EVIDENCE_PUBLIC_ENDPOINT:}
   dealer-confirm-window: P2D
   saga-step-timeout: PT10M

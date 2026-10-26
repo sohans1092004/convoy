@@ -29,6 +29,9 @@ public class Ledger {
     /** J-FEE: the dealer owes the platform its success fee; never touches a deposit account (deposit-contract.md §5). */
     public UUID successFee(UUID paymentId, long amount) { return post("J-FEE", paymentId, FEES_RECEIVABLE, FEE_REVENUE, amount); }
 
+    /** J-REFUND-MANUAL (REF-T06, after a second admin approved): the source account is paid out from the platform bank. */
+    public UUID manualRefund(UUID paymentId, String sourceAccount, long amount) { return post("J-REFUND-MANUAL", paymentId, sourceAccount, BANK, amount); }
+
     /** J-REFUND (kind REFUND) or J-RELEASE (kind RELEASE): source account back to Razorpay clearing. */
     public UUID refund(UUID paymentId, String kind, String sourceAccount, long amount) {
         return post("RELEASE".equals(kind) ? "J-RELEASE" : "J-REFUND", paymentId, sourceAccount, CLEARING, amount);

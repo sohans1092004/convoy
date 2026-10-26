@@ -10,7 +10,7 @@ public final class Api {
     private Api() {}
 
     public record Membership(String id, String poolId, String state, @Nullable String currentPaymentId, @Nullable String termsVersion, @Nullable String acceptedQuoteId,
-                             @Nullable String acceptedVariantId, @Nullable String releaseReason, long version) {}
+                             @Nullable String acceptedVariantId, @Nullable String releaseReason, @Nullable String choiceDeadline, long version) {}
 
     public record Round(String id, int roundSet, int roundNo, String kind, String state, String deadline, @Nullable String closedAt) {}
 

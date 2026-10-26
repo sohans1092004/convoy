@@ -31,7 +31,7 @@ public class PoolApplication {
      */
     @ConfigurationProperties(prefix = "pool")
     public record PoolSettings(int minMembers, Duration sweeperInterval, Durations durations, String termsVersion, Map<String, String> services) {
-        public record Durations(Duration forming, Duration sealedRound, Duration finalRound, Duration decision, Duration confirmation, Duration dealerWait) {}
+        public record Durations(Duration forming, Duration sealedRound, Duration finalRound, Duration decision, Duration confirmation, Duration dealerWait, Duration reroundChoice) {}
     }
 
     /** Deposit amount from the ruleset (ruleset.yaml deposit_amount_paise). */
@@ -59,6 +59,7 @@ public class PoolApplication {
                 .on(PaymentCaptured.class, (e, p) -> pools.paymentCaptured(e, p))
                 .on(PaymentFailed.class, (e, p) -> pools.paymentFailed(p.paymentId()))
                 .on(convoy.contracts.events.PaymentVoided.class, (e, p) -> pools.paymentFailed(p.paymentId()))
-                .on(BookingsIssued.class, (e, p) -> pools.bookingsIssued(e, p));
+                .on(BookingsIssued.class, (e, p) -> pools.bookingsIssued(e, p))
+                .on(convoy.contracts.events.AllBookingsClosed.class, (e, p) -> pools.allBookingsClosed(java.util.UUID.fromString(p.poolId())));
     }
 }

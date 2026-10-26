@@ -18,6 +18,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.junit.jupiter.api.AfterEach;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
@@ -41,8 +45,12 @@ class PaymentIT extends ServiceTest {
     static final AtomicInteger ORDERS = new AtomicInteger();
     static final Map<String, String> REFUNDS = new ConcurrentHashMap<>();
     static volatile String REFUND_MODE = "ok";
+    /** Razorpay's view of each order's payments (reconciliation); captured() registers the captured one. */
+    static final Map<String, List<String>> REMOTE = new ConcurrentHashMap<>();
     static final StubServer RAZORPAY = new StubServer()
             .on("/v1/orders", r -> StubServer.Reply.json("{\"id\":\"order_" + ORDERS.incrementAndGet() + "\",\"entity\":\"order\",\"amount\":99900,\"currency\":\"INR\",\"status\":\"created\",\"receipt\":\"x\"}"))
+            .on("/v1/orders/[^/]+/payments", r -> StubServer.Reply.json("{\"entity\":\"collection\",\"items\":["
+                    + String.join(",", REMOTE.getOrDefault(r.path().split("/")[3], List.of())) + "]}"))
             .on("/v1/payments/.*/refunds", r -> StubServer.Reply.json("{\"entity\":\"collection\",\"count\":0,\"items\":[]}"))
             .on("/v1/payments/.*/refund", r -> {
                 // What the real test account did on 2026-10-24 with refunds disabled (reports/p2/razorpay-real-run.md).
@@ -84,6 +92,7 @@ class PaymentIT extends ServiceTest {
     }
 
     Resp captured(String orderId, String eventId) throws Exception {
+        REMOTE.putIfAbsent(orderId, List.of("{\"id\":\"pay_" + orderId + "\",\"order_id\":\"" + orderId + "\",\"amount\":99900,\"status\":\"captured\"}"));
         return webhook("payment.captured", "payment", Map.of("id", "pay_" + orderId, "order_id", orderId, "amount", 99900, "currency", "INR", "status", "captured"), eventId, "test_webhook_secret");
     }
 
@@ -202,10 +211,10 @@ class PaymentIT extends ServiceTest {
         Map<String, Object> d2 = deposit(unpaid, pool);
         String p1 = (String) d1.get("payment_id"), p2 = (String) d2.get("payment_id");
         captured((String) d1.get("razorpay_order_id"), "evt_c_" + p1);
-        inTx(() -> payments.poolClosed(pool, "MINIMUM_NOT_REACHED"));
-        inTx(() -> payments.poolClosed(pool, "MINIMUM_NOT_REACHED")); // redelivery: no second refund, no second void
+        inTx(() -> payments.poolClosed(pool, "EXPIRED", "MINIMUM_NOT_REACHED"));
+        inTx(() -> payments.poolClosed(pool, "EXPIRED", "MINIMUM_NOT_REACHED")); // redelivery: no second refund, no second void
         assertThat(state(p1)).isEqualTo("REFUND_PENDING");
-        assertThat(refund(p1)).containsEntry("reason_code", "POOL_MINIMUM_NOT_REACHED");
+        assertThat(refund(p1)).containsEntry("reason_code", "POOL_EXPIRED"); // deposit-contract.md §3, D03
         assertThat(state(p2)).isEqualTo("VOIDED_UNPAID");
         assertThat(jdbc.queryForObject("select count(*) from outbox where aggregate_id = ?::uuid and event_type = 'PaymentVoided'", Integer.class, p2)).isEqualTo(1);
         // The unpaid buyer's payment completes after the pool closed: PAY-T10, refunded in full with reason LATE_CAPTURE.
@@ -306,8 +315,176 @@ class PaymentIT extends ServiceTest {
         assertThat(retry.status()).as(retry.body()).isEqualTo(200);
         assertThat(JSON.readTree(retry.body()).path("state").asText()).isEqualTo("REFUND_INITIATED");
         assertThat(get("/admin/refunds", admin).body()).doesNotContain(pid);
-        // E116/E117 are honest 501s until second-admin approval is built.
-        assertThat(send("POST", "/admin/refunds/" + refundId + "/resolve-manually", admin, "{}", Map.of()).status()).isEqualTo(501);
+        // E116: a refund back in flight is not in the queue, so it cannot be resolved by hand.
+        Resp manual = send("POST", "/admin/refunds/" + refundId + "/resolve-manually", admin, "{\"evidence_ref\":\"x\",\"note\":\"y\"}",
+                Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+        assertThat(JSON.readTree(manual.body()).path("code").asText()).isEqualTo("INVALID_TRANSITION");
+    }
+
+
+    // ------------------------------------------------------------------ P4.C: ledger invariants after every money test
+
+    @Autowired Reconciliation reconciliation;
+
+    /** Money rule: every journal balances, posted entries are immutable, each terminal deposit has exactly one full outcome. */
+    @AfterEach
+    void ledgerInvariantsHold() {
+        assertThat(reconciliation.invariantViolations()).isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from (select payment_id from refunds group by payment_id having count(*) > 1) x", Integer.class)).isZero();
+        Long anyLine = jdbc.queryForList("select 1::bigint from journal_lines limit 1", Long.class).stream().findFirst().orElse(null);
+        if (anyLine != null) {
+            assertThatThrownBy(() -> jdbc.update("update journal_lines set dr = dr where line_no = 1 and entry_id = (select entry_id from journal_lines limit 1)"))
+                    .hasMessageContaining("immutable");
+        }
+    }
+
+    // ------------------------------------------------------------------ P4.C: every deposit-outcomes.json row against the payment service
+
+    static JsonNode depositVectors() throws Exception { return JSON.readTree(new java.io.File("../../spec-tools/vectors/deposit-outcomes.json")).get("cases"); }
+
+    static java.util.stream.Stream<String> depositIds() throws Exception {
+        return java.util.stream.StreamSupport.stream(depositVectors().spliterator(), false).map(c -> c.get("id").asText());
+    }
+
+    /** What payment consumes for each upstream step (deposit-contract.md §3 trigger column); steps owned by pool/order alone do nothing here. */
+    static final Map<String, String> REFUND_TRIGGERS = Map.ofEntries(
+            Map.entry("MemberLeft", "BUYER_LEFT"), Map.entry("AcceptancesFrozen(released)", "NO_ACCEPTANCE"),
+            Map.entry("BookingsIssued(bookings_count >= 1)", "QUOTE_VOID"), Map.entry("QuoteWithdrawn(after_final)", "DEALER_CANCELLED"),
+            Map.entry("StockUnavailable", "STOCK_UNAVAILABLE"), Map.entry("BookingCancelled(DEALER_CANCELLED)", "DEALER_CANCELLED"),
+            Map.entry("BookingCancelled(BUYER_CANCELLED)", "BUYER_CANCELLED"), Map.entry("dealer_confirm_deadline passes", "DEALER_NOT_HONOURED"),
+            Map.entry("confirmation_deadline passes", "MISSED_CONFIRMATION_DEADLINE"), Map.entry("decline", "BUYER_DECLINED"), Map.entry("cancel", "BUYER_CANCELLED"),
+            Map.entry("MemberReleased(REROUND_REFUND_REQUESTED)", "REROUND_REFUND_REQUESTED"), Map.entry("MemberReleased(REROUND_NO_RESPONSE)", "REROUND_NO_RESPONSE"));
+    static final java.util.Set<String> UPSTREAM_ONLY = java.util.Set.of("accept", "confirm", "TierResolved(VOID)", "TierResolved(RESOLVED)", "BookingsIssued(bookings_count = 0)",
+            "PoolReopened", "reround-choice KEEP", "reround-choice REFUND", "choice_deadline passes");
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.MethodSource("depositIds")
+    void depositOutcomeVector(String id) throws Exception {
+        JsonNode c = java.util.stream.StreamSupport.stream(depositVectors().spliterator(), false).filter(v -> v.get("id").asText().equals(id)).findFirst().orElseThrow();
+        UUID buyer = UUID.randomUUID(), pool = UUID.randomUUID(), booking = Uuid7.next();
+        UUID admin1 = UUID.randomUUID(), admin2 = UUID.randomUUID();
+        String pid = null, order = null, captureEvent = null, refundEvent = null;
+        for (JsonNode e : c.get("events")) {
+            String ev = e.asText();
+            switch (ev) {
+                case "commit", "commit (same key)" -> {
+                    Map<String, Object> d = deposit(buyer, pool);
+                    if (pid != null) assertThat(d.get("payment_id")).isEqualTo(pid); // same key, same deposit, same Razorpay order
+                    pid = (String) d.get("payment_id");
+                    order = (String) d.get("razorpay_order_id");
+                }
+                case "webhook payment.captured" -> captured(order, captureEvent = "evt_c_" + pid);
+                case "webhook payment.captured (same event id)" -> assertThat(captured(order, captureEvent).status()).isEqualTo(200);
+                case "webhook payment.failed" -> webhook("payment.failed", "payment", Map.of("id", "pay_f_" + order, "order_id", order, "amount", 99900, "currency", "INR",
+                        "status", "failed", "error_code", "BAD_REQUEST_ERROR"), "evt_f_" + pid, "test_webhook_secret");
+                case "PoolClosed(EXPIRED)" -> inTx(() -> payments.poolClosed(pool, "EXPIRED", "MINIMUM_NOT_REACHED"));
+                case "PoolClosed(NO_QUOTES)" -> inTx(() -> payments.poolClosed(pool, "NO_QUOTES", "NO_VALID_QUOTES"));
+                case "PoolClosed(CANCELLED)" -> inTx(() -> payments.poolClosed(pool, "CANCELLED", "ADMIN_CANCELLED"));
+                case "PoolClosed(EXPIRED, ALL_QUOTES_VOID)" -> inTx(() -> payments.poolClosed(pool, "EXPIRED", "ALL_QUOTES_VOID"));
+                case "DepositHoldRequested" -> inTx(() -> payments.hold(buyer, pool, booking));
+                case "BookingDelivered" -> inTx(() -> payments.bookingDelivered(booking));
+                case "24 h pass" -> {
+                    jdbc.update("update payments set created_at = clock_timestamp() - interval '25 hours' where id = ?::uuid", pid);
+                    payments.voidStaleUnpaid();
+                }
+                case "webhook refund.processed" -> {
+                    payments.attempt(UUID.fromString((String) refund(pid).get("id"))); // this refund, not whichever 10 the worker picks first
+                    processed(refund(pid), refundEvent = "evt_r_" + pid);
+                }
+                case "webhook refund.processed (same event id)" -> processed(refund(pid), refundEvent);
+                case "webhook refund.failed x5" -> {
+                    for (int i = 1; i <= 5; i++) {
+                        payments.attempt(UUID.fromString((String) refund(pid).get("id")));
+                        Map<String, Object> rf = refund(pid);
+                        assertThat(rf.get("state")).isEqualTo("REFUND_INITIATED");
+                        webhook("refund.failed", "refund", Map.of("id", rf.get("razorpay_refund_id"), "receipt", rf.get("id"), "status", "failed"), "evt_rf_" + i + "_" + pid, "test_webhook_secret");
+                    }
+                    assertThat(refund(pid)).containsEntry("state", "REFUND_FAILED").containsEntry("attempts", 5);
+                    assertThat(get("/admin/refunds", TestTokens.admin("payment", admin1)).body()).contains(pid); // REFUND_STUCK -> admin queue
+                }
+                case "admin resolve-manually" -> {
+                    String rid = (String) refund(pid).get("id");
+                    Map<String, String> key = Map.of("Idempotency-Key", UUID.randomUUID().toString());
+                    Resp ask = send("POST", "/admin/refunds/" + rid + "/resolve-manually", TestTokens.admin("payment", admin1), "{\"evidence_ref\":\"bank-statement-1\",\"note\":\"paid by NEFT\"}", key);
+                    assertThat(ask.status()).as(ask.body()).isEqualTo(200);
+                    assertThat(state(pid)).isEqualTo("REFUND_PENDING"); // nothing moves on one admin's word
+                    Resp self = send("POST", "/admin/refunds/" + rid + "/approve", TestTokens.admin("payment", admin1), null, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+                    assertThat(JSON.readTree(self.body()).path("code").asText()).isEqualTo("SECOND_APPROVAL_REQUIRED"); // AMENDMENT-001
+                    assertThat(send("POST", "/admin/refunds/" + rid + "/approve", TestTokens.buyer("payment", buyer), null, Map.of("Idempotency-Key", UUID.randomUUID().toString())).status()).isEqualTo(403);
+                    Resp ok = send("POST", "/admin/refunds/" + rid + "/approve", TestTokens.admin("payment", admin2), null, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+                    assertThat(ok.status()).as(ok.body()).isEqualTo(200);
+                    assertThat(jdbc.queryForList("select action from admin_audit where target = ?::uuid order by id", String.class, rid))
+                            .containsExactly("REFUND_MANUAL_REQUESTED", "REFUND_MANUAL_SELF_APPROVAL_REFUSED", "REFUND_MANUAL_APPROVED");
+                }
+                default -> {
+                    if (REFUND_TRIGGERS.containsKey(ev)) inTx(() -> payments.requestRefund(buyer, pool, REFUND_TRIGGERS.get(ev)));
+                    else assertThat(UPSTREAM_ONLY).as("unmapped vector step '" + ev + "' in " + id).contains(ev);
+                }
+            }
+        }
+        JsonNode ex = c.get("expected");
+        assertThat(state(pid)).as(id + " payment state").isEqualTo(ex.get("payment_state").asText());
+        List<Map<String, Object>> refunds = jdbc.queryForList("select kind, reason_code, state, manual from refunds where payment_id = ?::uuid", pid);
+        if (ex.get("refund").isNull()) assertThat(refunds).as(id + " refund").isEmpty();
+        else {
+            assertThat(refunds).as(id + " one refund").hasSize(1);
+            ex.get("refund").fields().forEachRemaining(f -> assertThat(String.valueOf(refunds.get(0).get(f.getKey()))).as(id + " refund " + f.getKey()).isEqualTo(f.getValue().asText()));
+        }
+        List<Map<String, Object>> expectedLedger = new ArrayList<>();
+        for (JsonNode en : ex.get("ledger")) {
+            List<Map<String, Object>> lines = new ArrayList<>();
+            for (JsonNode l : en.get("lines")) lines.add(Map.of("account", l.get("account").asText(), "dr", l.get("dr").asLong(), "cr", l.get("cr").asLong()));
+            expectedLedger.add(Map.of("entry", en.get("entry").asText(), "lines", lines));
+        }
+        List<Map<String, Object>> actualLedger = new ArrayList<>();
+        for (Map<String, Object> en : jdbc.queryForList("select id, kind from journal_entries where payment_id = ?::uuid and kind <> 'J-FEE' order by created_at, id", pid)) {
+            actualLedger.add(Map.of("entry", en.get("kind"), "lines", jdbc.queryForList("select account, dr, cr from journal_lines where entry_id = ? order by line_no", en.get("id"))));
+        }
+        assertThat(actualLedger).as(id + " ledger").isEqualTo(expectedLedger);
+        int fees = jdbc.queryForObject("select count(*) from journal_entries where payment_id = ?::uuid and kind = 'J-FEE'", Integer.class, pid);
+        assertThat(fees).as(id + " J-FEE only on delivery (AMENDMENT-007)").isEqualTo(id.equals("D20") ? 1 : 0);
+    }
+
+    // ------------------------------------------------------------------ P4.C: reconciliation
+
+    @Test
+    void reconciliationFindsAMissingWebhookAnExtraPaymentAndAStuckWebhookWithoutTouchingMoney() throws Exception {
+        // 1) Razorpay captured, but the webhook never arrived (deliberately not sent).
+        Map<String, Object> missed = deposit(UUID.randomUUID(), UUID.randomUUID());
+        REMOTE.put((String) missed.get("razorpay_order_id"), List.of(remote(missed, "pay_m1", 99900)));
+        // 2) A deliberately extra payment: two captured payments on one deposit's order.
+        Map<String, Object> extra = deposit(UUID.randomUUID(), UUID.randomUUID());
+        captured((String) extra.get("razorpay_order_id"), "evt_c_extra_" + extra.get("payment_id"));
+        REMOTE.put((String) extra.get("razorpay_order_id"), List.of(remote(extra, "pay_" + extra.get("razorpay_order_id"), 99900), remote(extra, "pay_x2", 99900)));
+        // 3) Checkout returned (PENDING) 20 minutes ago and nothing since.
+        Map<String, Object> stuck = deposit(UUID.randomUUID(), UUID.randomUUID());
+        jdbc.update("update payments set state = 'PENDING', created_at = clock_timestamp() - interval '20 minutes' where id = ?::uuid", stuck.get("payment_id"));
+        // 4) A healthy captured deposit stays out of the report.
+        Map<String, Object> healthy = deposit(UUID.randomUUID(), UUID.randomUUID());
+        captured((String) healthy.get("razorpay_order_id"), "evt_c_ok_" + healthy.get("payment_id"));
+        String before = state(missed.get("payment_id")) + state(extra.get("payment_id")) + state(stuck.get("payment_id"));
+
+        UUID run = reconciliation.run();
+        Map<String, List<String>> found = new HashMap<>();
+        jdbc.queryForList("select payment_id::text as p, mismatch_class as c from reconciliation_mismatches where run_id = ? and payment_id is not null", run)
+                .forEach(r -> found.computeIfAbsent((String) r.get("p"), k -> new ArrayList<>()).add((String) r.get("c")));
+        assertThat(found.get((String) missed.get("payment_id"))).containsExactly("CAPTURED_REMOTE_NOT_LOCAL");
+        assertThat(found.get((String) extra.get("payment_id"))).containsExactly("AMOUNT_MISMATCH");
+        assertThat(found.get((String) stuck.get("payment_id"))).containsExactly("STUCK_WEBHOOK");
+        assertThat(found).doesNotContainKey((String) healthy.get("payment_id"));
+        // an alarm event per mismatch; nothing auto-corrected
+        assertThat(jdbc.queryForObject("select count(*) from outbox where event_type = 'ReconciliationMismatchFound' and aggregate_id = ?", Integer.class, run))
+                .isEqualTo(jdbc.queryForObject("select mismatch_count from reconciliation_runs where id = ?", Integer.class, run));
+        assertThat(state(missed.get("payment_id")) + state(extra.get("payment_id")) + state(stuck.get("payment_id"))).isEqualTo(before);
+        // E118: admins read the runs
+        Resp runs = get("/admin/reconciliation/runs", TestTokens.admin("payment", UUID.randomUUID()));
+        assertThat(runs.status()).as(runs.body()).isEqualTo(200);
+        assertThat(runs.body()).contains(run.toString()).contains("CAPTURED_REMOTE_NOT_LOCAL");
+        assertThat(get("/admin/reconciliation/runs", TestTokens.buyer("payment", UUID.randomUUID())).status()).isEqualTo(403);
+    }
+
+    static String remote(Map<String, Object> deposit, String paymentId, long amount) {
+        return "{\"id\":\"" + paymentId + "\",\"order_id\":\"" + deposit.get("razorpay_order_id") + "\",\"amount\":" + amount + ",\"status\":\"captured\"}";
     }
 
     @Test

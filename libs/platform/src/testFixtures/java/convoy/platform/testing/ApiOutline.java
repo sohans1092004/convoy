@@ -21,7 +21,10 @@ public final class ApiOutline {
     /** Phases whose endpoints are built (and so must deny as specified). */
     static final java.util.Set<String> BUILT = java.util.Set.of("P1", "P2");
     /** Later-phase endpoints already built (P3 grows this list as each subtask lands; then P3 joins BUILT). */
-    static final java.util.Set<String> BUILT_IDS = java.util.Set.of("E010", "E011", "E050", "E052", "E053", "E153", "E064", "E065", "E066", "E068", "E121", "E122");
+    static final java.util.Set<String> BUILT_IDS = java.util.Set.of("E010", "E011", "E050", "E052", "E053", "E153", "E064", "E065", "E066", "E068", "E121", "E122",
+            // P4
+            "E056", "E057", "E083", "E084", "E086", "E089", "E090", "E091", "E092", "E093", "E094", "E095", "E096", "E097", "E098", "E099", "E100",
+            "E116", "E117", "E118", "E154", "E155", "E156", "E157");
 
     public static List<Endpoint> p1(String service) {
         Path doc = Path.of(System.getProperty("convoy.repoRoot", "../.."), "docs", "architecture", "api-outline.md");

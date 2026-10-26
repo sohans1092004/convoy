@@ -40,7 +40,8 @@ public class PaymentApplication {
     /** Razorpay TEST mode settings (env only) and the configured deposit (ruleset default 99900 paise). */
     @ConfigurationProperties(prefix = "payment")
     public record PaymentSettings(String razorpayBaseUrl, String razorpayKeyId, String razorpayKeySecret, String razorpayWebhookSecret, long depositAmountPaise,
-                                  long successFeePaise, java.util.List<java.time.Duration> refundRetrySchedule, java.time.Duration voidUnpaidAfter) {}
+                                  long successFeePaise, java.util.List<java.time.Duration> refundRetrySchedule, java.time.Duration voidUnpaidAfter,
+                                  java.time.Duration stuckWebhookAfter) {}
 
     @Bean
     static RazorpayClient razorpayClient(PaymentSettings s) {
@@ -55,7 +56,7 @@ public class PaymentApplication {
                         payments.hold(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), UUID.fromString(p.bookingId())))
                 .on(DepositRefundRequested.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
-                .on(convoy.contracts.events.PoolClosed.class, (e, p) -> payments.poolClosed(UUID.fromString(p.poolId()), p.endReason()))
+                .on(convoy.contracts.events.PoolClosed.class, (e, p) -> payments.poolClosed(UUID.fromString(p.poolId()), p.endState(), p.endReason()))
                 .on(convoy.contracts.events.MemberReleased.class, (e, p) ->
                         payments.requestRefund(UUID.fromString(p.buyerId()), UUID.fromString(p.poolId()), p.reason()))
                 .on(MemberLeft.class, (e, p) ->
@@ -70,7 +71,10 @@ public class PaymentApplication {
     private final PaymentSettings settings;
     private final ObjectMapper json;
 
-    public PaymentApplication(Payments payments, RazorpayClient razorpay, PaymentSettings settings, ObjectMapper json) {
+    private final Reconciliation reconciliation;
+
+    public PaymentApplication(Payments payments, RazorpayClient razorpay, PaymentSettings settings, ObjectMapper json, Reconciliation reconciliation) {
+        this.reconciliation = reconciliation;
         this.payments = payments;
         this.razorpay = razorpay;
         this.settings = settings;
@@ -144,10 +148,34 @@ public class PaymentApplication {
         return convoy.platform.web.Dto.as(payments.adminRetry(id), Api.RefundAttempt.class);
     }
 
-    /** E116/E117: manual resolution needs evidence and a second, different admin (AMENDMENT-001); not built yet. */
-    @PostMapping({"/admin/refunds/{id}/resolve-manually", "/admin/refunds/{id}/approve"})
-    public void manualResolution(@PathVariable UUID id) {
-        Caller.current().require("platform_admin");
-        throw ApiProblem.of(ProblemType.NOT_IMPLEMENTED_IN_P1, "Manual refund resolution with second-admin approval (E116/E117, AMENDMENT-001) is specified but not built yet.");
+    public record ManualBody(@NotBlank String evidenceRef, @NotBlank String note) {}
+
+    /** E116: an admin asks for a manual refund of a queued refund (evidence and note); nothing moves until a second admin approves. */
+    @PostMapping("/admin/refunds/{id}/resolve-manually")
+    @Idempotent
+    @convoy.platform.security.RequiresRole({"platform_admin"})
+    public Api.ManualRefund resolveManually(@PathVariable UUID id, @Valid @RequestBody ManualBody b) {
+        Caller c = Caller.current().require("platform_admin");
+        return convoy.platform.web.Dto.as(payments.requestManual(id, c.userId(), b.evidenceRef(), b.note()), Api.ManualRefund.class);
     }
+
+    /** E117: a second, different admin approves (AMENDMENT-001): REF-T06, J-REFUND-MANUAL. */
+    @PostMapping("/admin/refunds/{id}/approve")
+    @Idempotent
+    @convoy.platform.security.RequiresRole({"platform_admin"})
+    public Api.ManualRefund approveManual(@PathVariable UUID id) {
+        Caller c = Caller.current().require("platform_admin");
+        return convoy.platform.web.Dto.as(payments.approveManual(id, c.userId()), Api.ManualRefund.class);
+    }
+
+    /** E118: recent reconciliation runs with their mismatches. */
+    @GetMapping("/admin/reconciliation/runs")
+    @convoy.platform.security.RequiresRole({"platform_admin"})
+    public Api.ReconciliationRuns reconciliationRuns() {
+        Caller.current().require("platform_admin");
+        return convoy.platform.web.Dto.as(Map.of("runs", reconciliation.runs()), Api.ReconciliationRuns.class);
+    }
+
+    @Scheduled(cron = "${payment.reconciliation-cron}")
+    void nightlyReconciliation() { reconciliation.run(); }
 }

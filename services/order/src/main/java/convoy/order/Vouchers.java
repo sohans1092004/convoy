@@ -32,6 +32,17 @@ public class Vouchers {
         this.key = ECKey.parse(rows.get(0));
     }
 
+    /** BKG-T05 guard: our signature, not expired, and issued for this booking. */
+    public boolean valid(String token, UUID bookingId) {
+        try {
+            SignedJWT jwt = SignedJWT.parse(token);
+            return jwt.verify(new com.nimbusds.jose.crypto.ECDSAVerifier(key.toECPublicKey())) && bookingId.toString().equals(jwt.getJWTClaimsSet().getSubject())
+                    && jwt.getJWTClaimsSet().getExpirationTime().after(new Date());
+        } catch (ParseException | JOSEException | RuntimeException e) {
+            return false;
+        }
+    }
+
     public String sign(UUID bookingId, String voucherCode, Instant expires) {
         try {
             SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.ES256).keyID(key.getKeyID()).build(), new JWTClaimsSet.Builder()

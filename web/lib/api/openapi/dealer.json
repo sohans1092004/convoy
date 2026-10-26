@@ -35,6 +35,47 @@
         }
       }
     },
+    "/bookings/{bookingId}/review": {
+      "post": {
+        "tags": [
+          "dealer-application"
+        ],
+        "operationId": "review",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/dealerships/{id}/verify": {
       "post": {
         "tags": [
@@ -146,6 +187,37 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/Dealership"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dealerships/{id}/reviews": {
+      "get": {
+        "tags": [
+          "dealer-application"
+        ],
+        "operationId": "reviews",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reviews"
                 }
               }
             }
@@ -282,6 +354,50 @@
           "version"
         ]
       },
+      "ReviewBody": {
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "body",
+          "rating"
+        ]
+      },
+      "Review": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "booking_id": {
+            "type": "string"
+          },
+          "dealership_id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "booking_id",
+          "dealership_id",
+          "id",
+          "rating"
+        ]
+      },
       "Decision": {
         "properties": {
           "decision": {
@@ -359,17 +475,103 @@
               "string",
               "null"
             ]
+          },
+          "reliability": {
+            "$ref": "#/components/schemas/Reliability"
           }
         },
         "required": [
           "brands",
           "city",
           "id",
+          "reliability",
           "state_code",
           "status",
           "synthetic",
           "trade_name",
           "verified_at"
+        ]
+      },
+      "Reliability": {
+        "properties": {
+          "honoured": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "score_percent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "window_days": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "honoured",
+          "score_percent",
+          "total",
+          "window_days"
+        ]
+      },
+      "PublicReview": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "created_at",
+          "id",
+          "rating"
+        ]
+      },
+      "Reviews": {
+        "properties": {
+          "dealership_id": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "average_rating": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicReview"
+            }
+          }
+        },
+        "required": [
+          "average_rating",
+          "count",
+          "dealership_id",
+          "reviews"
         ]
       },
       "Queue": {

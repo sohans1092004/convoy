@@ -40,6 +40,7 @@ pool:
     decision: ${DEMO_DECISION_SECONDS:172800}s
     confirmation: ${DEMO_CONFIRMATION_SECONDS:172800}s
     dealer-wait: P3D
+    reround-choice: ${DEMO_REROUND_CHOICE_SECONDS:172800}s # 48 h (AMENDMENT-002)
   terms-version: "2026-10-24-p0"
   services:
     payment: ${PAYMENT_URL:http://payment:8080}

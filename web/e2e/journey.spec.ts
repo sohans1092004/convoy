@@ -7,6 +7,25 @@ type SimResult = { dealer: string; error?: unknown; log: { step: string; status:
 
 // THREE_DEALERS=1 (nightly): two simulated dealers (aggressive, mispriced add-on) quote next to the Playwright-driven one.
 const THREE = process.env.THREE_DEALERS === '1';
+// P4.F (nightly): LIFECYCLE=1 carries the booking through to delivery and a review; CANCEL=1 has the dealer cancel after FINAL.
+const LIFECYCLE = process.env.LIFECYCLE === '1';
+const CANCEL = process.env.CANCEL === '1';
+
+/** A query as the payment service's database role (the ledger is checked where it lives). */
+function paymentSql(sql: string): string {
+  return execFileSync('docker', ['compose', 'exec', '-T', 'postgres', 'sh', '-c', `PGPASSWORD="$DB_PASSWORD_PAYMENT" psql -U payment -d convoy -At -F '|' -c "${sql}"`],
+    { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
+}
+
+async function dealerSession(browser: Browser, project: string, email: string, act: (page: Page) => Promise<void>) {
+  const ctx = await browser.newContext({ viewport: project === 'mobile-360' ? { width: 360, height: 780 } : { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  watch(page);
+  await signIn(page, email);
+  await act(page);
+  await ctx.close();
+}
+
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // The P1 journey through real services and events:
@@ -189,12 +208,65 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   const ceiling = rupeesOf(await page.getByText(/Your ceiling was ₹/).innerText());
   expect(finalPrice).toBeLessThanOrEqual(ceiling);
   step('booked; voucher with QR shown');
-  // Honest UI (P2 step 0.7): cancellation is a stated rule whose path still answers 501.
-  await page.getByRole('button', { name: 'Cancel my booking' }).click();
-  await expect(page.getByText('Not available in this test build yet')).toBeVisible();
-  await expect(page.getByText('Nothing was changed: your order, booking and deposit are exactly as they were.')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Final price', exact: true })).toBeVisible();
-  step('cancel attempt explained honestly (501), nothing changed');
+  const short = (await page.getByText(/^Booking [0-9A-F]{8}/).first().innerText()).match(/Booking ([0-9A-F]{8})/)![1];
+  const deposit = () => paymentSql(`select state from payments where pool_id = '${poolId}' order by created_at desc limit 1`);
+  const ledger = () => paymentSql(`select string_agg(e.kind, ',' order by e.kind) from journal_entries e join payments p on p.id = e.payment_id where p.pool_id = '${poolId}'`);
+  // Ledger invariants for this deposit: every entry balances, nothing left in 2100/2200, exactly one terminal entry for the full amount.
+  const invariants = () => paymentSql(`select (select bool_and(b) from (select sum(l.dr) = sum(l.cr) as b from journal_lines l join journal_entries e on e.id = l.entry_id `
+    + `join payments p on p.id = e.payment_id where p.pool_id = '${poolId}' group by l.entry_id) x), (select coalesce(sum(l.cr - l.dr), 0) from journal_lines l join journal_entries e on e.id = l.entry_id `
+    + `join payments p on p.id = e.payment_id where p.pool_id = '${poolId}' and l.account in ('2100', '2200')), (select count(*) from journal_entries e join journal_lines l on l.entry_id = e.id and l.line_no = 1 `
+    + `join payments p on p.id = e.payment_id where p.pool_id = '${poolId}' and e.kind in ('J-REFUND', 'J-RELEASE', 'J-REFUND-MANUAL') and l.dr = p.amount_paise)`);
+
+  if (LIFECYCLE) {
+    await dealerSession(browser, info.project.name, PLAN[info.project.name].dealer, async (d) => {
+      await d.goto('/dealer/bookings');
+      const card = d.locator(`[aria-label="Booking ${short}"]`);
+      await card.getByRole('button', { name: 'Confirm booking' }).click();
+      await card.getByRole('button', { name: 'Set delivery date' }).click(); // today (IST) by default
+      await expect(card.getByText(/^Delivery \d{4}-\d{2}-\d{2}/)).toBeVisible();
+      await axe(d, 'dealer bookings');
+      await card.getByRole('button', { name: 'Show buyer contact' }).click(); // released to this dealer only, with the buyer's consent
+      await expect(card.getByRole('link', { name: PLAN[info.project.name].buyer })).toBeVisible();
+    });
+    step('dealer confirmed the booking, set delivery for today, saw the released contact');
+    await page.getByRole('button', { name: 'I have my car: confirm delivery' }).click({ timeout: 30_000 });
+    await expect(page.getByText('Delivery confirmed. Your deposit is being returned.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Delivered', exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect.poll(deposit, { timeout: 60_000, intervals: [2000] }).toBe('RELEASED'); // AMENDMENT-003
+    expect(ledger()).toBe('J-CAPTURE,J-FEE,J-HOLD,J-RELEASE'); // J-FEE: the dealer's Rs 2,500 receivable (AMENDMENT-007), never the deposit
+    expect(paymentSql(`select l.account || ':' || l.dr || ':' || l.cr from journal_lines l join journal_entries e on e.id = l.entry_id join payments p on p.id = e.payment_id `
+      + `where p.pool_id = '${poolId}' and e.kind = 'J-FEE' order by l.line_no`).split('\n')).toEqual(['1300:250000:0', '4100:0:250000']);
+    expect(invariants()).toBe('t|0|1');
+    step('delivered; deposit RELEASED in full; fee receivable posted; ledger invariants hold');
+    await page.getByLabel('Your review (optional)').fill('Delivered on the day they set.');
+    await page.getByRole('button', { name: 'Post review' }).click();
+    await expect(page.getByText('Thank you. Your review is posted.')).toBeVisible();
+    await axe(page, 'order (delivered)');
+    step('review posted');
+  }
+
+  if (CANCEL) {
+    await dealerSession(browser, info.project.name, 'dealeradmin1@convoy.test', async (d) => {
+      await d.goto('/dealer/bookings');
+      const card = d.locator(`[aria-label="Booking ${short}"]`);
+      await card.getByText('Cancel this booking').click();
+      await card.getByRole('button', { name: 'Cancel booking' }).click();
+      await expect(card.getByText(/^Cancelled \(DEALER_CANCELLED\)/)).toBeVisible();
+    });
+    step('the dealer admin cancelled the booking after FINAL');
+    await expect(page.getByRole('heading', { name: 'Order ended' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('The dealer cancelled. Your ₹999 test deposit is refunded in full.')).toBeVisible();
+    await expect(page.getByText('We opened a support case for you automatically; an admin reviews it.')).toBeVisible();
+    await expect.poll(deposit, { timeout: 60_000, intervals: [2000] }).toBe('REFUNDED');
+    expect(ledger()).toBe('J-CAPTURE,J-HOLD,J-REFUND');
+    expect(invariants()).toBe('t|0|1');
+    await axe(page, 'order (cancelled by dealer)');
+    await page.getByRole('link', { name: 'Dealer cancelled' }).click();
+    await expect(page.getByRole('heading', { name: 'Case: Dealer cancelled' })).toBeVisible();
+    await expect(page.getByText('Opened automatically', { exact: false }).first()).toBeVisible(); // also in the description and history
+    await axe(page, 'dispute');
+    step('buyer refunded in full; dispute opened automatically; ledger invariants hold');
+  }
 
   // One trace spans web -> gateway -> pool -> SNS/SQS -> order (the accept call; order builds its acceptance read model).
   await expect.poll(async () => {

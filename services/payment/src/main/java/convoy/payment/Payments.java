@@ -34,7 +34,7 @@ public class Payments {
     private static final Logger log = LoggerFactory.getLogger(Payments.class);
     public static final TransitionTable PAYMENT = TransitionTable.load("payment",
             Set.of("PAY-T01", "PAY-T02", "PAY-T03", "PAY-T04", "PAY-T05", "PAY-T06", "PAY-T07", "PAY-T08", "PAY-T09", "PAY-T10", "PAY-T11"));
-    public static final TransitionTable REFUND = TransitionTable.load("refund", Set.of("REF-T01", "REF-T02", "REF-T03", "REF-T04", "REF-T05"));
+    public static final TransitionTable REFUND = TransitionTable.load("refund", Set.of("REF-T01", "REF-T02", "REF-T03", "REF-T04", "REF-T05", "REF-T06"));
 
     public record Payment(UUID id, String depositKey, UUID buyerId, UUID poolId, int roundSet, long amountPaise, String state,
                           String razorpayOrderId, String razorpayPaymentId, UUID bookingId, long version) {}
@@ -220,15 +220,28 @@ public class Payments {
     }
 
     /** PoolClosed: every deposit of the pool is settled with the pool's end reason (refund if captured, void if unpaid). */
-    public void poolClosed(UUID pool, String endReason) {
-        for (UUID buyer : jdbc.queryForList("select distinct buyer_id from payments where pool_id = ?", UUID.class, pool)) requestRefund(buyer, pool, "POOL_" + endReason);
+    public void poolClosed(UUID pool, String endState, String endReason) {
+        // deposit-contract.md §3: POOL_EXPIRED / POOL_NO_QUOTES / POOL_CANCELLED by end state; every quote VOID without a re-round is QUOTE_VOID (D27).
+        String reason = "ALL_QUOTES_VOID".equals(endReason) ? "QUOTE_VOID" : "POOL_" + endState;
+        for (UUID buyer : jdbc.queryForList("select distinct buyer_id from payments where pool_id = ?", UUID.class, pool)) requestRefund(buyer, pool, reason);
     }
 
     // ------------------------------------------------------------------ PAY-T06 hold for booking
 
     public void hold(UUID buyer, UUID pool, UUID bookingId) {
-        Payment p = one("buyer_id = ? and pool_id = ? and state in ('CAPTURED', 'HELD_FOR_BOOKING', 'REFUND_PENDING') order by created_at desc limit 1 for update", buyer, pool)
-                .orElseThrow(() -> ApiProblem.of(ProblemType.DEPOSIT_NOT_CAPTURED, "No captured deposit for buyer " + buyer + " in pool " + pool + "."));
+        Optional<Payment> found = one("buyer_id = ? and pool_id = ? and state in ('CAPTURED', 'HELD_FOR_BOOKING') order by created_at desc limit 1 for update", buyer, pool);
+        if (found.isEmpty()) {
+            // The order saga compensates (cancels the booking) on DepositHoldRejected.
+            Optional<Payment> latest = one("buyer_id = ? and pool_id = ? order by created_at desc limit 1 for update", buyer, pool);
+            if (latest.isEmpty()) {
+                log.error("ALARM hold for booking {}: buyer {} has no deposit in pool {}", bookingId, buyer, pool);
+                return;
+            }
+            outbox.append(latest.get().id(), bump(latest.get().id()), new convoy.contracts.events.DepositHoldRejected(latest.get().id().toString(), bookingId.toString(),
+                    "NO_CAPTURED_DEPOSIT (" + latest.get().state() + ")"));
+            return;
+        }
+        Payment p = found.get();
         if (p.state().equals("HELD_FOR_BOOKING")) return;
         long v = move(p, "HELD_FOR_BOOKING", "booking_id = ?", bookingId);
         ledger.hold(p.id(), p.amountPaise());
@@ -284,7 +297,7 @@ public class Payments {
 
     /** Calls Razorpay for due refunds; lookup by receipt before create so a crash never refunds twice. */
     public void refundWorker() {
-        List<UUID> due = jdbc.queryForList("select id from refunds where state in ('REFUND_REQUESTED', 'REFUND_FAILED') and next_attempt_at <= clock_timestamp() "
+        List<UUID> due = jdbc.queryForList("select id from refunds where state in ('REFUND_REQUESTED', 'REFUND_FAILED') and next_attempt_at <= clock_timestamp() and requested_by is null "
                 + "and attempts < ? limit 10", UUID.class, settings.refundRetrySchedule().size());
         for (UUID refundId : due) attempt(refundId);
     }
@@ -343,7 +356,7 @@ public class Payments {
     /** Refunds that need a person: failed at Razorpay, or out of automatic attempts. */
     public List<Map<String, Object>> adminQueue() {
         return jdbc.queryForList("select r.id::text as id, r.payment_id::text as payment_id, p.buyer_id::text as buyer_id, p.pool_id::text as pool_id, r.kind, r.reason_code, "
-                + "r.amount_paise, r.state, r.attempts, r.failure_reason, r.next_attempt_at, r.created_at from refunds r join payments p on p.id = r.payment_id "
+                + "r.amount_paise, r.state, r.attempts, r.failure_reason, r.next_attempt_at, r.created_at, r.requested_by::text as requested_by from refunds r join payments p on p.id = r.payment_id "
                 + "where r.state in ('REFUND_REQUESTED', 'REFUND_FAILED') and (r.state = 'REFUND_FAILED' or r.attempts >= ?) order by r.created_at",
                 settings.refundRetrySchedule().size());
     }
@@ -355,6 +368,60 @@ public class Payments {
         REFUND.check(state, "REFUND_INITIATED");
         attempt(refundId);
         return jdbc.queryForMap("select id::text as id, state, attempts, failure_reason, razorpay_refund_id from refunds where id = ?", refundId);
+    }
+
+    // ------------------------------------------------------------------ REF-T06 manual refund, second admin (E116, E117; AMENDMENT-001)
+
+    /** Only a refund the automation gave up on (failed at Razorpay or out of attempts) can be resolved by hand. */
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, Object> requestManual(UUID refundId, UUID admin, String evidenceRef, String note) {
+        Map<String, Object> r = lockRefund(refundId);
+        boolean queued = "REFUND_FAILED".equals(r.get("state")) || ("REFUND_REQUESTED".equals(r.get("state")) && (int) r.get("attempts") >= settings.refundRetrySchedule().size());
+        if (!queued) throw ApiProblem.of(ProblemType.INVALID_TRANSITION, "Only a refund in the admin queue (failed, or out of automatic attempts) can be resolved manually.");
+        if (r.get("requested_by") != null && !admin.equals(r.get("requested_by"))) {
+            throw ApiProblem.of(ProblemType.SECOND_APPROVAL_REQUIRED, "Another admin already asked for this manual refund; approve it instead.");
+        }
+        jdbc.update("update refunds set requested_by = ?, requested_at = coalesce(requested_at, clock_timestamp()), evidence_ref = ?, manual_note = ?, version = version + 1 where id = ?",
+                admin, evidenceRef, note, refundId);
+        audit(admin, "REFUND_MANUAL_REQUESTED", refundId, evidenceRef + ": " + note);
+        return manualView(refundId);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, Object> approveManual(UUID refundId, UUID admin) {
+        Map<String, Object> r = lockRefund(refundId);
+        if ("REFUNDED".equals(r.get("state")) && admin.equals(r.get("approved_by"))) return manualView(refundId); // repeat
+        if (r.get("requested_by") == null) throw ApiProblem.of(ProblemType.SECOND_APPROVAL_REQUIRED, "Nobody has asked for a manual refund of this refund yet.");
+        if (admin.equals(r.get("requested_by"))) {
+            // the refusal is audited even though this transaction rolls back
+            org.springframework.transaction.support.TransactionTemplate own = new org.springframework.transaction.support.TransactionTemplate(tx.getTransactionManager());
+            own.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            own.executeWithoutResult(st -> audit(admin, "REFUND_MANUAL_SELF_APPROVAL_REFUSED", refundId, null));
+            throw ApiProblem.of(ProblemType.SECOND_APPROVAL_REQUIRED, "A second, different admin must approve a manual refund (AMENDMENT-001).");
+        }
+        REFUND.check("REFUND_FAILED", "REFUNDED"); // REF-T06; a refund out of attempts is failed for this purpose
+        UUID paymentId = (UUID) r.get("payment_id");
+        jdbc.update("update refunds set state = 'REFUNDED', manual = true, approved_by = ?, processed_at = clock_timestamp(), version = version + 1 where id = ?", admin, refundId);
+        Payment p = find(paymentId).orElseThrow();
+        long v = move(p, "RELEASE".equals(r.get("kind")) ? "RELEASED" : "REFUNDED", "");
+        ledger.manualRefund(paymentId, (String) r.get("source_account"), ((Number) r.get("amount_paise")).longValue());
+        outbox.append(paymentId, v, new RefundCompleted(refundId.toString(), paymentId.toString(), p.buyerId().toString(), true));
+        audit(admin, "REFUND_MANUAL_APPROVED", refundId, "requested by " + r.get("requested_by"));
+        return manualView(refundId);
+    }
+
+    private Map<String, Object> lockRefund(UUID refundId) {
+        List<Map<String, Object>> rs = jdbc.queryForList("select * from refunds where id = ? for update", refundId);
+        if (rs.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such refund.");
+        return rs.get(0);
+    }
+
+    private Map<String, Object> manualView(UUID refundId) {
+        return jdbc.queryForMap("select id::text as id, state, manual, requested_by::text as requested_by, approved_by::text as approved_by, evidence_ref from refunds where id = ?", refundId);
+    }
+
+    void audit(UUID actor, String action, UUID target, String detail) {
+        jdbc.update("insert into admin_audit(actor, action, target, detail) values (?, ?, ?, ?)", actor, action, target, detail);
     }
 
     private void initiate(UUID refundId) {
