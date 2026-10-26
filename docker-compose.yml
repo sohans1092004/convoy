@@ -68,7 +68,10 @@ services:
     ports: ["127.0.0.1:8025:8025"]
     mem_limit: 64m
 
+  # Profiles (P5.0): the default stack is lean. `--profile tracing` adds Jaeger (the journey's trace assertion needs it, with
+  # TRACING=1); `--profile ha` adds realtime-2 (set REALTIME_2_URL=http://realtime-2:8080 so the gateway balances to it).
   jaeger:
+    profiles: [tracing]
     image: jaegertracing/jaeger:2.22.0
     command: ["--config", "/etc/jaeger/config.yaml"] # default all-in-one config with max_traces capped
     volumes: ["./deploy/local/jaeger/config.yaml:/etc/jaeger/config.yaml:ro"]
@@ -79,7 +82,8 @@ services:
     image: otel/opentelemetry-collector-contrib:0.163.2
     command: ["--config=/etc/otelcol/collector.yaml"]
     volumes: ["./deploy/local/otel/collector.yaml:/etc/otelcol/collector.yaml:ro"]
-    depends_on: [jaeger]
+    depends_on:
+      jaeger: { condition: service_started, required: false } # without the tracing profile spans are dropped at the collector
     mem_limit: 160m
 
   razorpay-fake:
@@ -107,6 +111,7 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SEED_USERS_FILE: /seed/users.json
+      DEMO: ${DEMO:-true} # test users load only in a demo environment (P5.0)
     volumes: ["./deploy/local/seed:/seed:ro"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -125,6 +130,8 @@ services:
       REDIS_HOST: redis
       CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
       GATEWAY_KEY_DIR: /keys
+      # lean stack: both balancer entries point at realtime-1; with the ha profile set REALTIME_2_URL=http://realtime-2:8080
+      REALTIME_2_URL: ${REALTIME_2_URL:-http://realtime-1:8080}
     volumes: ["gateway-keys:/keys"]
     ports: ["127.0.0.1:8080:8080"]
     depends_on:
@@ -185,6 +192,7 @@ services:
 
   realtime-2:
     <<: *realtime
+    profiles: [ha]
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: realtime

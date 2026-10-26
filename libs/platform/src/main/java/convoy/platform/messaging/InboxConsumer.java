@@ -43,7 +43,7 @@ public class InboxConsumer implements SmartLifecycle {
     private final Map<String, Subscriptions.Subscription<?>> byType;
     private final List<Thread> threads = new ArrayList<>();
     private volatile boolean running;
-    public final AtomicLong duplicates = new AtomicLong(), stale = new AtomicLong(), parked = new AtomicLong(), applied = new AtomicLong(),
+    public final AtomicLong duplicates = new AtomicLong(), stale = new AtomicLong(), staleDistinct = new AtomicLong(), parked = new AtomicLong(), applied = new AtomicLong(),
             snapshots = new AtomicLong();
 
     public InboxConsumer(String consumer, SqsClient sqs, Topology topology, JdbcTemplate jdbc, TransactionTemplate tx,
@@ -208,8 +208,9 @@ public class InboxConsumer implements SmartLifecycle {
         // Placeholder (0 = nothing applied yet) so concurrent pollers always find a row to lock and serialise on it.
         jdbc.update("insert into aggregate_versions(consumer, producer, aggregate_id, last_version) values (?, ?, ?, 0) on conflict do nothing",
                 consumer, env.producer(), env.aggregateId());
-        long prev = jdbc.queryForObject("select last_version from aggregate_versions where consumer = ? and producer = ? and aggregate_id = ? for update",
-                Long.class, consumer, env.producer(), env.aggregateId());
+        Map<String, Object> row = jdbc.queryForMap("select last_version, last_event_id from aggregate_versions where consumer = ? and producer = ? and aggregate_id = ? for update",
+                consumer, env.producer(), env.aggregateId());
+        long prev = ((Number) row.get("last_version")).longValue();
         List<Long> last = prev == 0 ? List.of() : List.of(prev);
         if (kind == Subscriptions.Kind.FULL && !last.isEmpty() && env.aggregateVersion() > prev + 1) {
             Subscriptions.SnapshotLoader loader = subscriptions.snapshotLoader(aggregate);
@@ -234,10 +235,19 @@ public class InboxConsumer implements SmartLifecycle {
         }
         if (env.aggregateVersion() <= prev) {
             stale.incrementAndGet();
+            if (env.aggregateVersion() == prev && row.get("last_event_id") != null && !env.eventId().equals(row.get("last_event_id"))) {
+                // A different event at a version already applied: the producer reused a version and this event is lost (P5.0 guard).
+                staleDistinct.incrementAndGet();
+                log.warn("STALE_DISTINCT {} {} v{} for {}: v{} was already applied as event {}; this event is dropped",
+                        env.eventType(), env.eventId(), env.aggregateVersion(), env.aggregateId(), prev, row.get("last_event_id"));
+                return false;
+            }
             log.info("stale {} v{} <= v{} for {}", env.eventType(), env.aggregateVersion(), prev, env.aggregateId());
             return false;
         }
         setLast(env, env.aggregateVersion());
+        jdbc.update("update aggregate_versions set last_event_id = ? where consumer = ? and producer = ? and aggregate_id = ? and last_version = ?",
+                env.eventId(), consumer, env.producer(), env.aggregateId(), env.aggregateVersion());
         jdbc.update("delete from parked_events where consumer = ? and event_id = ?", consumer, env.eventId());
         return true;
     }

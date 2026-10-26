@@ -269,7 +269,8 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
   }
 
   // One trace spans web -> gateway -> pool -> SNS/SQS -> order (the accept call; order builds its acceptance read model).
-  await expect.poll(async () => {
+  // Needs the tracing profile (Jaeger): CI and nightly set TRACING=1; the lean local stack skips it.
+  if (process.env.TRACING === '1') await expect.poll(async () => {
     const q = new URLSearchParams({ 'query.service_name': 'order', 'query.operation_name': 'consume AcceptanceChanged',
       'query.start_time_min': new Date(t0).toISOString(), 'query.start_time_max': new Date(Date.now() + 60_000).toISOString(), 'query.num_traces': '20' });
     const r = await (await fetch(`${JAEGER}/api/v3/traces?${q}`)).json();
@@ -280,11 +281,21 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
     }
     return [...byTrace.values()].some((s) => ['web', 'gateway', 'pool', 'order'].every((x) => s.has(x)));
   }, { timeout: 60_000, intervals: [3000] }).toBe(true);
-  step('trace web -> gateway -> pool -> SNS/SQS -> order found in Jaeger');
+  if (process.env.TRACING === '1') step('trace web -> gateway -> pool -> SNS/SQS -> order found in Jaeger');
   console.log(JSON.stringify({ project: info.project.name, journey_seconds: (Date.now() - t0) / 1000, axe: axeFindings }));
 });
 
 test.afterAll(() => {
+  // P5.0 version guard: no service dropped an event as stale at a version another event already used.
+  let distinct = 0;
+  for (const svc of ['identity', 'pool', 'quote', 'order', 'payment', 'dealer', 'realtime-1']) {
+    try {
+      const text = execFileSync('docker', ['compose', 'exec', '-T', svc, 'wget', '-qO-', 'localhost:8080/actuator/prometheus'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' });
+      for (const line of text.split('\n')) if (line.startsWith('messaging_stale_distinct')) distinct += Number(line.split(' ').pop());
+    } catch { /* a service without a consumer or not running has nothing to count */ }
+  }
+  console.log(`messaging.stale_distinct across services: ${distinct}`);
+  expect(distinct).toBe(0);
   // Ledger balances and every deposit is in a valid AMENDMENT-003 state after the journeys.
   const sql = "select (select coalesce(sum(dr),0) = coalesce(sum(cr),0) from journal_lines) as balanced, "
     + "(select count(*) from payments where state not in ('INITIATED','PENDING','CAPTURED','FAILED','VOIDED_UNPAID','HELD_FOR_BOOKING','REFUND_PENDING','REFUNDED','RELEASED')) as invalid";

@@ -203,7 +203,7 @@ public class Orders {
             jdbc.update("update orders set state = 'DECLINED', decline_reason = 'MISSED_CONFIRMATION_DEADLINE', version = version + 1 where id = ?", o.get("id"));
             long v = ((Number) o.get("version")).longValue() + 1;
             outbox.append((UUID) o.get("id"), v, new ConfirmationDeclined(o.get("id").toString(), pool.toString(), "MISSED_CONFIRMATION_DEADLINE"));
-            outbox.append((UUID) o.get("id"), v, new DepositRefundRequested(o.get("id").toString(), pool.toString(), o.get("buyer_id").toString(), "MISSED_CONFIRMATION_DEADLINE"));
+            outbox.append((UUID) o.get("id"), bump((UUID) o.get("id")), new DepositRefundRequested(o.get("id").toString(), pool.toString(), o.get("buyer_id").toString(), "MISSED_CONFIRMATION_DEADLINE"));
         }
 
         int bookings = 0, voidQuotes = 0;
@@ -278,7 +278,7 @@ public class Orders {
                 outbox.append(bookingId, 1, new BookingIssued(bookingId.toString(), orderId.toString(), pool.toString(), q.get("dealership_id").toString(),
                         variant.toString(), fin.cashPayable(), promised, confirmBy.toInstant()));
                 outbox.append(orderId, v, new DepositHoldRequested(orderId.toString(), pool.toString(), c.get("buyer_id").toString(), bookingId.toString()));
-                outbox.append(orderId, v, new StockReservationRequested(orderId.toString(), bookingId.toString(), quote.toString(), variant.toString(), colour(q, variant)));
+                outbox.append(orderId, bump(orderId), new StockReservationRequested(orderId.toString(), bookingId.toString(), quote.toString(), variant.toString(), colour(q, variant)));
                 bookings++;
             }
         }
@@ -452,6 +452,9 @@ public class Orders {
     }
 
     JdbcTemplate jdbc() { return jdbc; }
+
+    /** Every order event has its own version (P5.0 guard: the outbox refuses a reused one): a second event moves the row on. */
+    long bump(UUID orderId) { return jdbc.queryForObject("update orders set version = version + 1 where id = ? returning version", Long.class, orderId); }
 
     static Instant now() { return Instant.now(); }
 }

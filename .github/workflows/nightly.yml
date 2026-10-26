@@ -69,12 +69,12 @@ jobs:
       - name: Build the images once and start the stack
         run: |
           bash scripts/dev-env.sh
-          docker compose up -d --build
+          REALTIME_2_URL=http://realtime-2:8080 docker compose --profile tracing --profile ha up -d --build
           bash scripts/wait-stack.sh
       - name: All Playwright suites, 360 px + desktop (journey, page states, Hindi, passkeys)
         run: |
           pnpm install --frozen-lockfile
-          cd web && pnpm exec playwright install --with-deps chromium && pnpm exec playwright test
+          cd web && pnpm exec playwright install --with-deps chromium && TRACING=1 pnpm exec playwright test
       - name: 'Full lifecycle journey (3 dealers: 1 Playwright + 2 simulated) through delivery, deposit release, fee, review and the ledger'
         working-directory: web
         run: THREE_DEALERS=1 LIFECYCLE=1 pnpm exec playwright test e2e/journey.spec.ts --project=mobile-360

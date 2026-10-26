@@ -23,6 +23,14 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 public abstract class ServiceTest {
     @Value("${local.server.port}") protected int port;
+    @org.springframework.beans.factory.annotation.Autowired protected org.springframework.beans.factory.ObjectProvider<convoy.platform.messaging.InboxConsumer> inboxConsumers;
+
+    /** P5.0 version guard: no event may be dropped as stale at a version another event already used. */
+    @org.junit.jupiter.api.AfterEach
+    void noStaleDistinctEvents() {
+        inboxConsumers.ifAvailable(c -> org.assertj.core.api.Assertions.assertThat(c.staleDistinct.get())
+                .as("messaging.stale_distinct for %s: a producer reused an aggregate version", c.consumer()).isZero());
+    }
     protected final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
     @TestConfiguration(proxyBeanMethods = false)

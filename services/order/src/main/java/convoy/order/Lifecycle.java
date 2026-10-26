@@ -149,7 +149,7 @@ public class Lifecycle {
         long v = ver(jdbc.queryForList("update orders set state = 'DECLINED', decline_reason = 'BUYER_DECLINED', version = version + 1 "
                 + "where id = ? and clock_timestamp() < confirmation_deadline returning version", orderId), o);
         outbox.append(orderId, v, new ConfirmationDeclined(orderId.toString(), o.get("pool_id").toString(), "BUYER_DECLINED"));
-        outbox.append(orderId, v, new DepositRefundRequested(orderId.toString(), o.get("pool_id").toString(), buyer.toString(), "BUYER_DECLINED"));
+        outbox.append(orderId, orders.bump(orderId), new DepositRefundRequested(orderId.toString(), o.get("pool_id").toString(), buyer.toString(), "BUYER_DECLINED"));
         return orders.view(orderId, buyer);
     }
 
@@ -165,7 +165,7 @@ public class Lifecycle {
                 Long.class, orderId);
         jdbc.update("update quote_capacity set confirmed_count = confirmed_count - 1 where quote_id = ? and confirmed_count > 0", o.get("quote_id"));
         outbox.append(orderId, v, new OrderCancelled(orderId.toString(), o.get("pool_id").toString(), "BUYER_CANCELLED"));
-        outbox.append(orderId, v, new DepositRefundRequested(orderId.toString(), o.get("pool_id").toString(), buyer.toString(), "BUYER_CANCELLED"));
+        outbox.append(orderId, orders.bump(orderId), new DepositRefundRequested(orderId.toString(), o.get("pool_id").toString(), buyer.toString(), "BUYER_CANCELLED"));
         return orders.view(orderId, buyer);
     }
 
@@ -255,7 +255,7 @@ public class Lifecycle {
             long v = jdbc.queryForObject("update orders set state = 'CANCELLED', cancelled_at = clock_timestamp(), cancel_reason = 'DEALER_CANCELLED', version = version + 1 where id = ? returning version",
                     Long.class, orderId);
             outbox.append(orderId, v, new OrderCancelled(orderId.toString(), o.get("pool_id").toString(), "DEALER_CANCELLED"));
-            outbox.append(orderId, v, new DepositRefundRequested(orderId.toString(), o.get("pool_id").toString(), o.get("buyer_id").toString(), "DEALER_CANCELLED"));
+            outbox.append(orderId, orders.bump(orderId), new DepositRefundRequested(orderId.toString(), o.get("pool_id").toString(), o.get("buyer_id").toString(), "DEALER_CANCELLED"));
             disputes.openBySystem(orderId, null, (UUID) o.get("dealership_id"), (UUID) o.get("buyer_id"), "DEALER_CANCELLED", "The dealer withdrew its final offer.");
         }
         for (UUID booking : jdbc.queryForList("select b.id from bookings b join orders o on o.id = b.order_id where o.quote_id = ? and b.state in ('ISSUED', 'DEALER_CONFIRMED', 'DELIVERY_SCHEDULED')",
@@ -318,7 +318,7 @@ public class Lifecycle {
                 Long.class, refundReason, orderId);
         outbox.append(bookingId, (long) b.get("version") + 1, new BookingCancelled(bookingId.toString(), orderId.toString(), b.get("dealership_id").toString(), bookingReason));
         outbox.append(orderId, ov, new OrderCancelled(orderId.toString(), pool.toString(), refundReason));
-        outbox.append(orderId, ov, new DepositRefundRequested(orderId.toString(), pool.toString(), b.get("buyer_id").toString(), refundReason));
+        outbox.append(orderId, orders.bump(orderId), new DepositRefundRequested(orderId.toString(), pool.toString(), b.get("buyer_id").toString(), refundReason));
         String category = DEALER_FAILURE_CATEGORY.get(bookingReason);
         if (category != null) {
             disputes.openBySystem(orderId, bookingId, (UUID) b.get("dealership_id"), (UUID) b.get("buyer_id"), category, "Opened automatically: booking cancelled (" + bookingReason + ").");
