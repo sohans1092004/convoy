@@ -58,8 +58,7 @@ services:
   localstack:
     image: localstack/localstack:4.14.0
     environment:
-      SERVICES: sns,sqs,s3,ses
-      SMTP_HOST: mailpit:1025 # SES SendEmail is relayed to Mailpit (P5.A)
+      SERVICES: sns,sqs,s3
       AWS_DEFAULT_REGION: ap-south-1
     ports: ["127.0.0.1:4566:4566"]
     healthcheck: { test: ["CMD-SHELL", "curl -sf localhost:4566/_localstack/health | grep -q '\"sqs\": \"\\(running\\|available\\)\"'"], interval: 3s, retries: 40 }
@@ -234,16 +233,22 @@ services:
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
 
-  # Notification (wave 2, P5.A): in-app inbox + email via SES (LocalStack relays to Mailpit). Nothing upstream waits for it.
+  # Notification (wave 2, P5.A): in-app inbox + email over SMTP to Mailpit (AMENDMENT-011). Nothing upstream waits for it.
   notification:
     <<: *service
     build: { context: ., dockerfile: deploy/docker/service.Dockerfile, args: { SERVICE: notification } }
     mem_limit: 360m
+    depends_on:
+      postgres: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+      mailpit: { condition: service_started }
     environment:
       <<: *service-env
       OTEL_SERVICE_NAME: notification
       DB_PASSWORD: ${DB_PASSWORD_NOTIFICATION}
       CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
 
   web:
     build: { context: ., dockerfile: web/Dockerfile }

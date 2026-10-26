@@ -2,7 +2,7 @@ plugins { alias(libs.plugins.spring.boot) }
 
 dependencies {
     implementation(project(":libs:platform"))
-    implementation("software.amazon.awssdk:ses") // email (LocalStack SES -> Mailpit locally)
+    implementation("org.springframework.boot:spring-boot-starter-mail") // AMENDMENT-011: SMTP everywhere (Mailpit locally, SES SMTP on AWS)
     testImplementation(testFixtures(project(":libs:platform")))
     testImplementation("org.testcontainers:localstack")
 }

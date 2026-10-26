@@ -49,7 +49,10 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 class NotificationIT extends ServiceTest {
     static final ObjectMapper JSON = new ObjectMapper();
     static final LocalStackContainer LS = new LocalStackContainer(DockerImageName.parse("localstack/localstack:4.14.0"))
-            .withServices(LocalStackContainer.Service.SNS, LocalStackContainer.Service.SQS, LocalStackContainer.Service.SES);
+            .withServices(LocalStackContainer.Service.SNS, LocalStackContainer.Service.SQS);
+    /** AMENDMENT-011: email over SMTP; Mailpit is the sink and its API counts what arrived. */
+    static final org.testcontainers.containers.GenericContainer<?> MAILPIT = new org.testcontainers.containers.GenericContainer<>("axllent/mailpit:v1.32.0")
+            .withExposedPorts(1025, 8025);
     static final StubServer IDENTITY = new StubServer().on("/internal/users/.*/contact", r -> {
         String id = r.path().split("/")[3];
         return StubServer.Reply.json("{\"user_id\":\"" + id + "\",\"email\":\"" + id + "@convoy.test\"}");
@@ -57,12 +60,15 @@ class NotificationIT extends ServiceTest {
 
     static {
         LS.start();
+        MAILPIT.start();
     }
 
     @DynamicPropertySource
     static void aws(DynamicPropertyRegistry r) {
         r.add("convoy.aws.endpoint", () -> LS.getEndpoint().toString());
         r.add("convoy.aws.region", LS::getRegion);
+        r.add("spring.mail.host", MAILPIT::getHost);
+        r.add("spring.mail.port", () -> MAILPIT.getMappedPort(1025));
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -76,6 +82,7 @@ class NotificationIT extends ServiceTest {
     static void stop() {
         IDENTITY.close();
         LS.stop();
+        MAILPIT.stop();
     }
 
     @Autowired InboxConsumer consumer;
@@ -115,11 +122,9 @@ class NotificationIT extends ServiceTest {
 
     long count(String sql, Object... args) { return jdbc.queryForObject(sql, Long.class, args); }
 
-    int sesSentTo(UUID user) throws Exception {
-        String body = http.send(HttpRequest.newBuilder(URI.create(LS.getEndpoint() + "/_aws/ses")).GET().build(), HttpResponse.BodyHandlers.ofString()).body();
-        int n = 0;
-        for (JsonNode m : JSON.readTree(body).path("messages")) if (m.path("Destination").path("ToAddresses").toString().contains(user.toString())) n++;
-        return n;
+    int mailsTo(UUID user) throws Exception {
+        URI search = URI.create("http://" + MAILPIT.getHost() + ":" + MAILPIT.getMappedPort(8025) + "/api/v1/search?query=to:" + user + "@convoy.test&limit=1");
+        return JSON.readTree(http.send(HttpRequest.newBuilder(search).GET().build(), HttpResponse.BodyHandlers.ofString()).body()).path("messages_count").asInt();
     }
 
     static Map<String, Object> m(Object... kv) {
@@ -171,7 +176,7 @@ class NotificationIT extends ServiceTest {
         assertThat(jdbc.queryForList("select kind from notifications where user_id = ?", String.class, late)).containsExactly("COMPARISON_READY");
         assertThat(count("select count(*) from notifications where user_id = ?", leaver)).isZero();
         Thread.sleep(1500); // a late duplicate would show up here
-        assertThat(sesSentTo(buyer)).isEqualTo(messages);
+        assertThat(mailsTo(buyer)).isEqualTo(messages);
 
         String token = TestTokens.buyer("notification", buyer);
         JsonNode inbox = JSON.readTree(get("/me/notifications", token).body());
@@ -209,7 +214,7 @@ class NotificationIT extends ServiceTest {
         assertThat(inbox.path("notifications")).hasSize(1);
         assertThat(inbox.path("notifications").get(0).path("kind").asText()).isEqualTo("REFUND_DONE");
 
-        // SES failing: 3 attempts with backoff, then DEAD (the email channel's dead letter)
+        // SMTP failing: 3 attempts with backoff, then DEAD (the email channel's dead letter)
         Faults.armUntilDisarmed("notification.send");
         try {
             UUID other = UUID.randomUUID();

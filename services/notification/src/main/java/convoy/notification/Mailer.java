@@ -11,13 +11,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-import software.amazon.awssdk.services.ses.SesClient;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 
 /**
- * Sends due email deliveries through SES (LocalStack locally, which relays to Mailpit). One delivery per transaction under
+ * Sends due email deliveries over SMTP (AMENDMENT-011: Mailpit locally, the SES SMTP interface on AWS), with the same
+ * JavaMailSender and spring.mail settings as identity's OTP mail. One delivery per transaction under
  * its row lock (skip locked, so instances never send the same row). Failures back off by the DB clock; the last failure
  * leaves the delivery DEAD with an ALARM log line. English only while the Hindi templates are drafts.
- * ponytail: a crash after SES accepts and before commit sends that email twice; SES has no idempotency key.
+ * ponytail: a crash after the SMTP server accepts and before commit sends that email twice; SMTP has no idempotency key.
  */
 @Component
 public class Mailer {
@@ -25,26 +27,18 @@ public class Mailer {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
     private final Inbox inbox;
-    private final SesClient ses;
+    private final JavaMailSender mail;
     private final RestClient identity;
     private final NotificationApplication.Settings s;
 
-    public Mailer(JdbcTemplate jdbc, TransactionTemplate tx, Inbox inbox, SesClient ses, RestClient identityClient, NotificationApplication.Settings s,
-                  TaskScheduler scheduler, convoy.platform.ConvoyProperties p) {
+    public Mailer(JdbcTemplate jdbc, TransactionTemplate tx, Inbox inbox, JavaMailSender mail, RestClient identityClient, NotificationApplication.Settings s,
+                  TaskScheduler scheduler) {
         this.jdbc = jdbc;
         this.tx = tx;
         this.inbox = inbox;
-        this.ses = ses;
+        this.mail = mail;
         this.identity = identityClient;
         this.s = s;
-        if (p.aws().endpoint() != null && !p.aws().endpoint().isBlank()) {
-            // LocalStack only: SES refuses an unverified sender. In AWS the identity is verified once in the account (P6).
-            try {
-                ses.verifyEmailIdentity(b -> b.emailAddress(s.mailFrom()));
-            } catch (RuntimeException e) {
-                log.warn("could not verify {} with SES: {}", s.mailFrom(), e.toString());
-            }
-        }
         scheduler.scheduleWithFixedDelay(this::drain, s.pollEvery());
     }
 
@@ -73,9 +67,12 @@ public class Mailer {
             convoy.platform.Faults.hit("notification.send");
             String to = (String) identity.get().uri("/internal/users/{id}/contact", d.get("user_id")).retrieve().body(Map.class).get("email");
             Inbox.Rendered r = inbox.render((String) d.get("kind"), inbox.read((String) d.get("payload")), "en");
-            ses.sendEmail(b -> b.source(s.mailFrom()).destination(x -> x.toAddresses(to)).message(m -> m
-                    .subject(c -> c.data(r.subject()).charset("UTF-8"))
-                    .body(bd -> bd.text(c -> c.data(r.body() + "\n\nhttps://convoy.test" + r.link()).charset("UTF-8")))));
+            SimpleMailMessage m = new SimpleMailMessage();
+            m.setFrom(s.mailFrom());
+            m.setTo(to);
+            m.setSubject(r.subject());
+            m.setText(r.body() + "\n\nhttps://convoy.test" + r.link());
+            mail.send(m);
             jdbc.update("update deliveries set status = 'SENT', attempts = ?, sent_at = clock_timestamp(), last_error = null where notification_id = ? and channel = 'EMAIL'",
                     attempts, id);
         } catch (HttpClientErrorException.NotFound e) {

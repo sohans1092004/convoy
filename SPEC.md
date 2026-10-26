@@ -133,6 +133,11 @@ All six were applied at the start of P1 (2026-10-24), before any application cod
 - Reason: with standard queues and several pollers, a backlog replay applies v11 before v2..v10 and the stale rule drops them (P5.A isolation requirement: backlog delivered exactly once).
 - Source: the owner's answer in P5.A (2026-10-26). Files: event-catalogue.yaml (header, subscriptions), validate_spec.py, Subscriptions.java, InboxConsumer.java, gen_contracts.py. Vectors: none. Phase: P5.
 
+**AMENDMENT-011 — Email over SMTP in every environment (replaces the SES API for email).**
+- Rule: notification and identity send email over SMTP with the same `spring.mail` settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH`, `SMTP_STARTTLS`) through Spring's JavaMailSender. Locally the server is Mailpit; on AWS it is the SES SMTP interface, with credentials from Secrets Manager (P6). The LocalStack SES path is removed. Retries, backoff, the DEAD state and dedupe are unchanged.
+- Reason: LocalStack community SES accepts and stores mail but does not relay it to SMTP (observed in P5.A: `SMTP_HOST` set, SendEmail 200, nothing in Mailpit), so the local sink could not be verified.
+- Source: the owner's decision (2026-10-26). Files: services.md, notification Mailer + application.yml, identity application.yml, docker-compose.yml, NotificationIT. Vectors: none. Phase: P5 (P6 adds the SES SMTP credentials).
+
 ### Contract additions in P5 (owner's P5.A instructions, 2026-10-26)
 - notification consumes `MemberLeft` (a buyer who left stops getting pool messages).
 - E158 `POST /me/notifications/read-all`, E159 `GET /me/notification-preferences` next to E130–E132; preferences are per user and channel (IN_APP, EMAIL), not per kind; payment and refund messages are always sent.

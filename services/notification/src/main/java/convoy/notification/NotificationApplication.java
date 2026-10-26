@@ -3,7 +3,6 @@ package convoy.notification;
 import convoy.contracts.events.*;
 import convoy.platform.messaging.Subscriptions;
 import convoy.platform.security.ServiceTokens;
-import java.net.URI;
 import java.time.Duration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,11 +10,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestClient;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.ses.SesClient;
 
 /**
  * Notification (wave 2, P5.A): turns user-facing events into one in-app message and one email per user per event.
@@ -67,16 +61,5 @@ public class NotificationApplication {
     @Bean
     RestClient identityClient(ServiceTokens tokens, RestClient.Builder builder, convoy.platform.ConvoyProperties p) {
         return tokens.client(builder, "identity", p.identityUrl());
-    }
-
-    @Bean
-    SesClient sesClient(convoy.platform.ConvoyProperties p) {
-        var b = SesClient.builder().region(Region.of(p.aws().region()));
-        if (p.aws().endpoint() != null && !p.aws().endpoint().isBlank()) {
-            b.endpointOverride(URI.create(p.aws().endpoint())).credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
-        } else {
-            b.credentialsProvider(DefaultCredentialsProvider.builder().build());
-        }
-        return b.build();
     }
 }

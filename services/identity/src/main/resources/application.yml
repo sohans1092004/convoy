@@ -13,9 +13,17 @@ spring:
     schemas: identity
     default-schema: identity
     locations: classpath:db/platform,classpath:db/migration
-  mail:
+  mail: # same keys as identity (AMENDMENT-011): Mailpit locally; the SES SMTP interface on AWS (credentials from Secrets Manager, P6)
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
   threads.virtual.enabled: true
 logging.structured.format.console: ecs
 management:
