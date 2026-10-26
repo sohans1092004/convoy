@@ -287,7 +287,7 @@ public class Lifecycle {
                 outbox.append((UUID) r.get("id"), (long) r.get("version") + 1, new BookingOverdue(r.get("id").toString(), ((java.sql.Date) r.get("promised_delivery_date")).toLocalDate()));
             }));
         }
-        guarded(disputes::sweep);
+        guarded(() -> tx.executeWithoutResult(s -> disputes.sweep())); // its row locks need a transaction
     }
 
     private static void guarded(Runnable r) {

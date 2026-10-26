@@ -208,9 +208,10 @@ export function OrderView({ orderId }: { orderId: string }) {
           <CardTitle>{tl('deliveryOn', { date: b.scheduled_date ?? '', slot: b.delivery_slot ?? '' })}</CardTitle>
           <CardText>{tl('deliveryBody')}</CardText>
           <Button className="self-start" loading={delivered.state.kind === 'loading'} onClick={() => delivered.execute()}>{tl('confirmDelivery')}</Button>
-          <CommandStatus state={delivered.state} successText={tl('deliveredDone')} />
         </Card>
       ) : null}
+      {/* Outside the card: it disappears once the booking is delivered; the outcome must stay visible. */}
+      <CommandStatus state={delivered.state} successText={tl('deliveredDone')} />
       {b?.overdue_flag && b.state !== 'DELIVERED' && b.state !== 'CANCELLED' ? (
         <p role="alert" className="rounded-lg bg-warning-bg p-3 text-sm">{tl('overdue', { date: b.promised_delivery_date ?? '' })}</p>
       ) : null}

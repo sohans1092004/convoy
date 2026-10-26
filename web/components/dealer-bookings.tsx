@@ -32,7 +32,7 @@ function BookingRow({ b, admin, refresh }: { b: Booking; admin: boolean; refresh
   const contact = useCommand(async () => setEmail((await call(api.GET('/dealer/bookings/{id}/contact', { params: { path: { id: b.id } } }))).data.email));
   const open = !['DELIVERED', 'CANCELLED'].includes(b.state);
   return (
-    <Card className="flex flex-col gap-3" aria-label={t('booking', { id: b.id.slice(-8).toUpperCase() })}>
+    <Card role="group" className="flex flex-col gap-3" aria-label={t('booking', { id: b.id.slice(-8).toUpperCase() })}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-mono font-semibold">{b.id.slice(-8).toUpperCase()}</span>
         <Badge tone={b.state === 'ISSUED' ? 'warning' : b.state === 'CANCELLED' ? 'neutral' : 'success'}>{b.state.replace(/_/g, ' ').toLowerCase()}</Badge>

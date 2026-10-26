@@ -148,7 +148,8 @@ public class Quotes {
         long units = readList(inputs.get("variant_inputs")).stream().filter(v -> e.variantId().equals(v.get("variant_id")))
                 .mapToLong(v -> QuotePricing.lng(QuotePricing.m(v.get("stock")).get("units"))).findFirst().orElse(0);
         int reserved = jdbc.queryForObject("select count(*) from stock_reservations where quote_id = ? and variant_id = ?", Integer.class, quote, UUID.fromString(e.variantId()));
-        long v = ((Number) q.get("version")).longValue();
+        // Each reply is a new event of the quote aggregate: a new version, or order discards it as stale (seen on QuoteFinalised).
+        long v = jdbc.queryForObject("update quotes set version = version + 1 where id = ? returning version", Long.class, quote);
         if (reserved < units) {
             jdbc.update("insert into stock_reservations(booking_id, quote_id, variant_id, colour) values (?, ?, ?, ?)", booking, quote, UUID.fromString(e.variantId()), e.colour());
             outbox.append(quote, v, new StockReserved(e.quoteId(), e.bookingId(), e.variantId(), e.colour()));

@@ -274,7 +274,7 @@ public class Orders {
                     jdbc.update("insert into saga_steps(order_id, step, status, next_attempt_at) values (?, ?, 'PENDING', clock_timestamp() + ?::interval)",
                             orderId, step, settings.sagaStepTimeout().toMillis() + " milliseconds");
                 }
-                long v = ((Number) c.get("version")).longValue() + 2;
+                long v = ((Number) c.get("version")).longValue() + 1; // the order row moved once (CONFIRMED -> BOOKED); a later event must outrank this one
                 outbox.append(bookingId, 1, new BookingIssued(bookingId.toString(), orderId.toString(), pool.toString(), q.get("dealership_id").toString(),
                         variant.toString(), fin.cashPayable(), promised, confirmBy.toInstant()));
                 outbox.append(orderId, v, new DepositHoldRequested(orderId.toString(), pool.toString(), c.get("buyer_id").toString(), bookingId.toString()));

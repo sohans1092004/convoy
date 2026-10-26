@@ -294,6 +294,11 @@ class LifecycleIT extends ServiceTest {
         assertThat(send("POST", "/bookings/" + booking + "/cancel", TestTokens.buyer("order", leaver), null, idem(v)).status()).isEqualTo(200); // BKG-T06
         assertThat(s("select b.state as b, o.state as o from bookings b join orders o on o.id = b.order_id where b.id = ?", booking)).containsEntry("b", "CANCELLED").containsEntry("o", "CANCELLED");
         assertThat(refundReason(p.order(jdbc, leaver))).isEqualTo("BUYER_CANCELLED");
+        // payment applies order events by aggregate version: the refund must outrank the hold, or it is dropped as stale
+        assertThat(jdbc.queryForObject("select max(aggregate_version) filter (where event_type = 'DepositRefundRequested') > max(aggregate_version) filter (where event_type = 'DepositHoldRequested') "
+                + "from outbox where aggregate_id = ?", Boolean.class, p.order(jdbc, leaver))).isTrue();
+        assertThat(jdbc.queryForObject("select max(aggregate_version) from outbox where aggregate_id = ?", Long.class, p.order(jdbc, leaver)))
+                .isEqualTo(jdbc.queryForObject("select version from orders where id = ?", Long.class, p.order(jdbc, leaver)));
         assertThat(count("select count(*) from disputes where booking_id = ?", booking)).isZero(); // a buyer cancellation opens no dispute
         assertThat(jdbc.queryForObject("select (s.output->>'cash_payable_paise')::bigint from bookings b join price_snapshots s on s.id = b.final_snapshot_id where b.id = ?",
                 Long.class, p.booking(jdbc, other))).isEqualTo(otherFinal);

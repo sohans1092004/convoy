@@ -388,15 +388,13 @@ class PaymentIT extends ServiceTest {
                     payments.voidStaleUnpaid();
                 }
                 case "webhook refund.processed" -> {
-                    dueNow(pid);
-                    payments.refundWorker();
+                    payments.attempt(UUID.fromString((String) refund(pid).get("id"))); // this refund, not whichever 10 the worker picks first
                     processed(refund(pid), refundEvent = "evt_r_" + pid);
                 }
                 case "webhook refund.processed (same event id)" -> processed(refund(pid), refundEvent);
                 case "webhook refund.failed x5" -> {
                     for (int i = 1; i <= 5; i++) {
-                        dueNow(pid);
-                        payments.refundWorker();
+                        payments.attempt(UUID.fromString((String) refund(pid).get("id")));
                         Map<String, Object> rf = refund(pid);
                         assertThat(rf.get("state")).isEqualTo("REFUND_INITIATED");
                         webhook("refund.failed", "refund", Map.of("id", rf.get("razorpay_refund_id"), "receipt", rf.get("id"), "status", "failed"), "evt_rf_" + i + "_" + pid, "test_webhook_secret");
