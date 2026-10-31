@@ -129,7 +129,31 @@ services at 0 tasks, no RDS or ElastiCache (72 resources). Nothing on the laptop
      failure). Next fix, not applied: grant `elasticloadbalancing:SetWebACL` on `loadbalancer/app/convoy-full-*` by ARN
      instead of by tag, then re-run the canary.
 - **Canary verdict: FAIL.** The reaper cannot yet destroy a full run that has the WAF attached. Cleaned up with the
-  manual fallback (`full.sh down canary1` from the laptop): remaining 34 resources destroyed by 19:58 UTC; direct checks at 19:58: no canary1 VPC, ALB, NAT gateway, Elastic IP, WAF, ECS cluster or reaper schedule left; reap.sh: verification step still running at commit time.
+  manual fallback (`full.sh down canary1` from the laptop): remaining 34 resources destroyed by 19:58 UTC; direct checks at 19:58: no canary1 VPC, ALB, NAT gateway, Elastic IP, WAF, ECS cluster or reaper schedule left; explicit re-run of `reap.sh infra/aws/full canary1`: 0 destroyed, **TEARDOWN VERIFIED 20:06:26 UTC**.
+  (Its first verification looped: the tag index still listed the 16 deleted ECS services and `alive()` had no case for
+  services; INACTIVE services now count as gone.)
+- Fixes after canary1 (your OK): the reaper may run `elasticloadbalancing:SetWebACL`, `wafv2:DisassociateWebACL` and
+  `wafv2:DeleteWebACL` on `convoy-full-*` ALBs and web ACLs by name; `enable_waf` (default false) keeps the WAF in the
+  code for a dedicated check, off for the canary, the smoke run and P7 load runs (the per-IP rule blocks one k6
+  generator). Commit d226b83. One canary re-run allowed, no further fixes.
+
+**Canary `canary2` (enable_waf=false, reaper pinned d226b83):** **FAIL; stopped, no further fix (your rule).**
+- 20:06 applied 70 resources (no WAF); reaper moved forward to 20:15:45 at your request; scope check and 2.5 vCPU headroom ok.
+- The reaper (pinned d226b83) destroyed 38, then stalled: CloudTrail `AccessDenied ... ecs:DeregisterTaskDefinition
+  on resource: *`. That action has no resource-level or tag scoping, so the tag-conditioned grant never matches. The
+  18 task definitions stay "destroying"; the ALB depends on them (its DNS name is in their environment), so the ALB
+  stays and the internet gateway cannot detach (`DependencyViolation: mapped public addresses`). The secret version
+  was also still destroying. The same stall was very likely behind canary1 runs 3 and 5, masked by the WAF denial.
+- Fix **applied, unproven** (your decision: no more canaries): `ecs:DeregisterTaskDefinition` on `*` without the tag
+  condition (it cannot be scoped; deregistering only stops new launches); `secretsmanager:GetSecretValue` on
+  `convoy-full-*` secrets tagged project=convoy, profile=full (CloudTrail: the provider's secret-version destroy waits
+  on GetSecretValue). Trade-off: the reaper can now read a full run's app secrets while the run exists.
+
+> **The reaper is a best-effort backstop.** Its last end-to-end test (canary2) failed; the fix above is applied but not
+> proven by a canary. The primary destroy for every full run is `full-down` from the laptop, with the reaper
+> scheduled only as a backup. If both fail: `make full-down RUN=<id>` from any machine with the convoy-aws profile.
+- Cleanup: reaper task stopped, manual `full.sh down canary2` from the laptop: 32 destroyed, **TEARDOWN VERIFIED 20:35:16 UTC** (nothing tagged run=canary2 remains).
+- Smoke run: not started.
 - Carriage returns: a Windows-side edit gave `infra/aws/reaper/main.tf` CRLF endings, and the plan would have replaced
   the reaper task definition with a start script ending every line in `
 `. Caught at plan, never applied.
@@ -164,7 +188,7 @@ Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, ro
 - PowerUser on the GitHub `full` role is broad (ponytail note in `github.tf`).
 
 ## 9. Needs from me
-- OK to apply the SetWebACL-by-ARN reaper fix and re-run the canary; then "apply" on the smoke-run plan.
+- Decide on the DeregisterTaskDefinition fix (unscoped grant) and one more canary; then "apply" on the smoke-run plan.
 - OCI A1 capacity: keep the retry loop running (`cd infra/oci && bash retry-apply.sh`), or upgrade the tenancy to Pay As
   You Go (Always Free limits still apply) to improve capacity odds. Then the lite deploy and §4, §6, §7 follow.
 - AWS Support: CloudFront account verification only if a CloudFront edge is wanted later.

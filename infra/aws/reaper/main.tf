@@ -143,7 +143,7 @@ resource "aws_iam_role_policy" "reaper" {
         Effect = "Allow"
         Action = [
           "ec2:Delete*", "ec2:Disassociate*", "ec2:Detach*", "ec2:ReleaseAddress", "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
-          "ecs:DeleteService", "ecs:UpdateService", "ecs:DeleteCluster", "ecs:DeregisterTaskDefinition", "ecs:DeleteTaskDefinitions", "ecs:StopTask",
+          "ecs:DeleteService", "ecs:UpdateService", "ecs:DeleteCluster", "ecs:DeleteTaskDefinitions", "ecs:StopTask",
           "elasticloadbalancing:Delete*", "elasticloadbalancing:DeregisterTargets", "elasticloadbalancing:SetWebAcl",
           "rds:DeleteDBInstance", "rds:DeleteDBSubnetGroup", "elasticache:DeleteCacheCluster", "elasticache:DeleteCacheSubnetGroup",
           "secretsmanager:DeleteSecret", "cloudfront:UpdateDistribution", "cloudfront:DeleteDistribution",
@@ -166,6 +166,22 @@ resource "aws_iam_role_policy" "reaper" {
           "arn:aws:elasticloadbalancing:${var.region}:${local.account}:loadbalancer/app/convoy-full-*",
           "arn:aws:wafv2:${var.region}:${local.account}:regional/webacl/convoy-full-*",
         ]
+      },
+      {
+        # canary2: DeregisterTaskDefinition has no resource or tag scoping (AccessDenied on "*" under the tag condition),
+        # and the ALB cannot go before the task definitions that carry its DNS name. Deregistering only stops new launches.
+        Sid      = "DeregisterTaskDefinitionsUnscoped"
+        Effect   = "Allow"
+        Action   = "ecs:DeregisterTaskDefinition"
+        Resource = "*"
+      },
+      {
+        # canary2: destroying a secret version waits until GetSecretValue reports it gone. Only full-profile run secrets.
+        Sid       = "ConfirmRunSecretVersionGone"
+        Effect    = "Allow"
+        Action    = "secretsmanager:GetSecretValue"
+        Resource  = "arn:aws:secretsmanager:${var.region}:${local.account}:secret:convoy-full-*"
+        Condition = local.tagged
       },
       {
         Sid    = "ReadForRefreshAndVerification" # AWS does not scope these by tag
