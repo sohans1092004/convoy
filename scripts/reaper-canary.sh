@@ -9,14 +9,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export AWS_REGION=${AWS_REGION:-ap-southeast-2}
+export MSYS2_ENV_CONV_EXCL="*" # Git Bash on Windows: never rewrite env values (a secret starting with "/") for native programs
 account=$(aws sts get-caller-identity --query Account --output text)
 run="canary$(date -u +%Y%m%d%H%M)"
 role="arn:aws:iam::$account:role/convoy-reaper"
 # terraform from PATH, else the official image with this session's (short-lived) credentials, refreshed on every call
 if command -v terraform >/dev/null; then tf() { terraform "$@"; }; else
+  py=$(command -v python3 || command -v python)
   tf() {
-    eval "$(aws configure export-credentials --format env)"
-    MSYS_NO_PATHCONV=1 docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_REGION       -v "$(cygpath -w "$PWD" 2>/dev/null || pwd):/w" -w /w hashicorp/terraform:1.10.5 "$@"
+    # JSON -> quoted exports: a secret is never split by the shell or printed; MSYS2_ENV_CONV_EXCL stops Git Bash on
+    # Windows rewriting a value that starts with "/" into a Windows path on its way to docker
+    eval "export $(aws configure export-credentials --format process | "$py" -c 'import json,shlex,sys; c=json.load(sys.stdin); print(" ".join(k + "=" + shlex.quote(c[j]) for k, j in [("AWS_ACCESS_KEY_ID", "AccessKeyId"), ("AWS_SECRET_ACCESS_KEY", "SecretAccessKey"), ("AWS_SESSION_TOKEN", "SessionToken")]))')"
+    MSYS2_ENV_CONV_EXCL='*' MSYS_NO_PATHCONV=1 docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_REGION       -v "$(cygpath -w "$PWD" 2>/dev/null || pwd):/w" -w /w hashicorp/terraform:1.10.5 "$@"
   }
 fi
 q="arn:aws:sqs:$AWS_REGION:$account:convoy-reaper-canary-$run"
