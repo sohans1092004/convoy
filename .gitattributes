@@ -3,3 +3,12 @@
 *.cmd text eol=crlf
 *.jar binary
 *.png binary
+
+# P6: shell scripts, Terraform, Dockerfiles and YAML are always LF, whatever the checkout platform (a CRLF line in a
+# script embedded into a task definition breaks it: the reaper start script once got one)
+*.sh text eol=lf
+*.tf text eol=lf
+Dockerfile* text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+scripts/** text eol=lf
