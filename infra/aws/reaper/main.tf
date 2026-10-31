@@ -157,6 +157,17 @@ resource "aws_iam_role_policy" "reaper" {
         Condition = local.tagged
       },
       {
+        # Detaching a WAF: elasticloadbalancing:SetWebACL ignores aws:ResourceTag (canary1: AccessDenied under the
+        # tag condition above), so these are scoped by name instead: only convoy-full-* ALBs and web ACLs.
+        Sid    = "DetachWafFromFullProfileAlbByName"
+        Effect = "Allow"
+        Action = ["elasticloadbalancing:SetWebACL", "wafv2:DisassociateWebACL", "wafv2:DeleteWebACL"]
+        Resource = [
+          "arn:aws:elasticloadbalancing:${var.region}:${local.account}:loadbalancer/app/convoy-full-*",
+          "arn:aws:wafv2:${var.region}:${local.account}:regional/webacl/convoy-full-*",
+        ]
+      },
+      {
         Sid    = "ReadForRefreshAndVerification" # AWS does not scope these by tag
         Effect = "Allow"
         Action = [

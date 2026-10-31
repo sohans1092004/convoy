@@ -3,7 +3,8 @@
 > **Edge without CloudFront:** this account must be verified by AWS Support before it may create CloudFront resources,
 > so the full profile is reached at the ALB itself, over HTTPS with a **self-signed certificate** (made by Terraform,
 > imported into ACM; no domain, so no publicly trusted certificate). The regional WAF (AWS managed common rules +
-> per-IP rate) sits on the ALB. Browsers warn and **passkeys are not expected to work** here; the journey
+> per-IP rate) is `enable_waf`, **off by default**: the canary, the smoke run and P7 load runs leave it off because the
+> per-IP rule would block a single k6 generator; it is turned on only for a dedicated WAF check. Browsers warn and **passkeys are not expected to work** here; the journey
 > (`FULL_SELF_SIGNED=1`) and k6 (`insecureSkipTLSVerify`) skip TLS verification **for this profile only**. The public
 > demo is the OCI host (lite), with a real Let's Encrypt certificate.
 
@@ -22,7 +23,7 @@ Scheduler schedule (`scripts/schedule-reap.sh`, default 60 minutes) that runs th
 `terraform destroy`, teardown verification (no resource tagged with the run), and a report to `convoy-alerts` (email).
 Its role may change or delete only resources tagged `project=convoy` and `profile=full`, plus the full-profile state
 objects; it is itself tagged `profile=lite`, so it cannot delete itself. `make full-down` runs the same `reap.sh` and
-removes the schedule. Tested end to end by `scripts/full.sh canary` before a run relies on it: a **real slice** of this config with the real variables (VPC, NAT, ALB + WAF + certificate, ECS cluster and services at 0 tasks, IAM, secret; no RDS/ElastiCache) that only the scheduled reaper destroys. (The first canary, one SQS queue, missed two bugs in destroying the real config.)
+removes the schedule. Tested end to end by `scripts/full.sh canary` before a run relies on it: a **real slice** of this config with the real variables (VPC, NAT, ALB + certificate, WAF off, ECS cluster and services at 0 tasks, IAM, secret; no RDS/ElastiCache) that only the scheduled reaper destroys. (The first canary, one SQS queue, missed two bugs in destroying the real config.)
 (Fargate, not CodeBuild: this account's CodeBuild concurrency quota is 0.)
 
 **Headroom for the reaper:** `full.sh up` refuses to start unless the Fargate on-demand vCPU quota, minus Fargate tasks

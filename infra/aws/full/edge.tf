@@ -72,6 +72,7 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_wafv2_web_acl" "edge" {
+  count = var.enable_waf ? 1 : 0
   name  = "${local.name}-${var.run_id}"
   scope = "REGIONAL"
   default_action {
@@ -121,8 +122,9 @@ resource "aws_wafv2_web_acl" "edge" {
 }
 
 resource "aws_wafv2_web_acl_association" "alb" {
+  count        = var.enable_waf ? 1 : 0
   resource_arn = aws_lb.alb.arn
-  web_acl_arn  = aws_wafv2_web_acl.edge.arn
+  web_acl_arn  = aws_wafv2_web_acl.edge[0].arn
 }
 
 # ADOT collector: OTLP from the services -> X-Ray traces (sampled at the SDK, var.trace_sample_ratio) and only the

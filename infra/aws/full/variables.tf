@@ -69,6 +69,12 @@ variable "secrets" {
   sensitive   = true
 }
 
+variable "enable_waf" {
+  description = "Regional WAF (managed rules + per-IP rate) on the ALB. Off for the canary, the smoke run and P7 load runs: the per-IP rule would block a single k6 generator. On only for a dedicated WAF check."
+  type        = bool
+  default     = false
+}
+
 variable "canary" {
   description = "Reaper canary: the real config with real variables but no RDS or ElastiCache, services at 0 tasks (scripts/full.sh canary)."
   type        = bool

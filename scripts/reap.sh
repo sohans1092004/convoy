@@ -37,12 +37,13 @@ if grep -q "Error acquiring the state lock" "$out"; then
 fi
 
 # The tagging API also lists things that are already gone: deregistered task definitions (until deleted), and NAT
-# gateways, VPC endpoints and clusters in a deleted/INACTIVE state for up to an hour. Only a live resource counts.
+# gateways, VPC endpoints, ECS services and clusters in a deleted/INACTIVE state for up to an hour. Only a live resource counts.
 alive() { # arn -> exit 0 if the resource still exists
   case "$1" in
     *:task-definition/*) aws ecs delete-task-definitions --region "$region" --task-definitions "$1" >/dev/null 2>&1; return 1 ;;
     *:natgateway/*) st=$(aws ec2 describe-nat-gateways --region "$region" --nat-gateway-ids "${1##*/}" --query 'NatGateways[0].State' --output text 2>/dev/null); [ -n "$st" ] && [ "$st" != None ] && [ "$st" != deleted ] ;;
     *:vpc-endpoint/*) st=$(aws ec2 describe-vpc-endpoints --region "$region" --vpc-endpoint-ids "${1##*/}" --query 'VpcEndpoints[0].State' --output text 2>/dev/null); [ -n "$st" ] && [ "$st" != None ] && [ "${st,,}" != deleted ] ;;
+    *:service/*) st=$(aws ecs describe-services --region "$region" --cluster "$(echo "$1" | cut -d/ -f2)" --services "${1##*/}" --query 'services[0].status' --output text 2>/dev/null); [ "$st" = ACTIVE ] || [ "$st" = DRAINING ] ;;
     *:cluster/*) st=$(aws ecs describe-clusters --region "$region" --clusters "$1" --query 'clusters[0].status' --output text 2>/dev/null); [ "$st" = ACTIVE ] || [ "$st" = PROVISIONING ] || [ "$st" = DEPROVISIONING ] ;;
     *) return 0 ;;
   esac
