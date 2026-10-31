@@ -64,8 +64,7 @@ headroom() { # the reaper must always be able to launch: quota - Fargate vCPU ru
       if [ -n "$t" ]; then aws ecs describe-tasks --cluster "$c" --tasks $t --query 'tasks[?launchType==`FARGATE`].cpu' --output text; fi
     done | tr '	' '
 ' | awk '{s+=$1} END {print s/1024+0}')
-  worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"
-' | grep -E '^[0-9.]+$' | tail -1)
+  worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"\r' | grep -E '^[0-9.]+$' | tail -1)
   [ -n "$worst" ] || { echo "refused: could not compute this run's worst-case vCPU"; exit 2; }
   left=$(awk "BEGIN {print $quota - $running - $worst}")
   echo "Fargate on-demand vCPU: quota $quota, running $running, this run at most $worst -> $left left for the reaper"
