@@ -112,6 +112,9 @@ Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, ro
 ## 8. Gaps for P7
 - **Fargate on-demand vCPU quota is 8**: 2 tasks per service with autoscaling needs a quota increase before P7 (requested).
 - The reaper runs on Fargate (CodeBuild's concurrency quota is 0 here).
+- Reaper canary 2026-10-31 (`scripts/reaper-canary.sh`): **PASSED**. Scope: the role may delete a convoy/full-tagged
+  queue, not convoy/lite or Concord's. The schedule fired at 14:53:45 UTC, the Fargate task checked out exactly
+  78ca8f4db9e1…, destroyed the canary queue, logged TEARDOWN VERIFIED (exit 0), and the schedule deleted itself.
 - No load test has touched the full stack; autoscaling thresholds (2,000 SSE per task, backlog 200) are first guesses.
 - The WAF per-IP rate rule would block load generators at the edge; P7 drives load at the ALB origin (cost estimate §2).
 - VPC interface endpoints are not built (NAT carries SQS/SNS traffic); add them if NAT data dominates a run's cost.
