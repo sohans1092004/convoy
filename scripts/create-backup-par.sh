@@ -12,11 +12,23 @@ cleanup=0; [ "${1:-}" = --cleanup ] && { cleanup=1; shift; }
 env_file=${1:-deploy/lite/convoy.env} days=${2:-90}
 git check-ignore -q "$env_file" || { echo "refused: $env_file is not git-ignored"; exit 2; }
 py=$(command -v python3 || command -v python)
-"$py" -I - "$env_file" "$days" "$cleanup" <<'PY'
+"$py" -P - "$env_file" "$days" "$cleanup" <<'PY'
 import datetime, re, sys
 import oci
+def oci_config():
+    # ~/.oci/config as written by the console sample (quoted key_file, "# TODO" comments), read without echoing values
+    import configparser, os, re
+    p = configparser.ConfigParser()
+    p.read(os.path.expanduser("~/.oci/config"))
+    c = {k: re.sub(r"\s+#.*$", "", v).strip().strip("\"'") for k, v in p["DEFAULT"].items()}
+    c["key_file"] = os.path.expanduser(c["key_file"])
+    try:
+        oci.config.validate_config(c)
+    except Exception as e:
+        sys.exit(f"~/.oci/config not usable ({type(e).__name__}); values not shown")
+    return c
 path, days, cleanup = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "1"
-cfg = oci.config.from_file()  # ~/.oci/config, profile DEFAULT
+cfg = oci_config()
 client = oci.object_storage.ObjectStorageClient(cfg)
 ns, bucket = client.get_namespace().data, "convoy-backups"
 mine = sorted([p for p in oci.pagination.list_call_get_all_results(client.list_preauthenticated_requests, ns, bucket).data

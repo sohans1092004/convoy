@@ -14,10 +14,22 @@ work=$(mktemp -d)
 trap 'docker rm -f convoy-restore-check >/dev/null 2>&1; rm -rf "$work"' EXIT
 win() { cygpath -w "$1" 2>/dev/null || echo "$1"; }
 
-obj=$("$py" -I - "$obj" "$(win "$work/b.age")" <<'PY'
+obj=$("$py" -P - "$obj" "$(win "$work/b.age")" <<'PY'
 import sys, oci
+def oci_config():
+    # ~/.oci/config as written by the console sample (quoted key_file, "# TODO" comments), read without echoing values
+    import configparser, os, re
+    p = configparser.ConfigParser()
+    p.read(os.path.expanduser("~/.oci/config"))
+    c = {k: re.sub(r"\s+#.*$", "", v).strip().strip("\"'") for k, v in p["DEFAULT"].items()}
+    c["key_file"] = os.path.expanduser(c["key_file"])
+    try:
+        oci.config.validate_config(c)
+    except Exception as e:
+        sys.exit(f"~/.oci/config not usable ({type(e).__name__}); values not shown")
+    return c
 want, dest = sys.argv[1], sys.argv[2]
-cfg = oci.config.from_file()
+cfg = oci_config()
 client = oci.object_storage.ObjectStorageClient(cfg)
 ns = client.get_namespace().data
 if not want:
