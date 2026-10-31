@@ -1,10 +1,27 @@
-# Browser -> CloudFront (HTTPS on *.cloudfront.net: no domain needed, so no ACM certificate) -> ALB (HTTP, CloudFront's
-# origin-facing prefix list only, and a secret header) with a regional WAF -> web. Nothing is cached (SSE included).
-# CloudFront-scoped WAF is not available in this account (it lives in us-east-1, which an SCP denies), so the WAF is
-# REGIONAL on the ALB: every request still passes it, because the ALB accepts only CloudFront.
-resource "random_password" "origin" {
-  length  = 32
-  special = false
+# Browser -> ALB (HTTPS, 2 AZs) with a regional WAF -> web. No CloudFront: this account must be verified by AWS
+# Support before it may create CloudFront resources. Without a domain there is no publicly trusted certificate, so the
+# ALB serves a SELF-SIGNED certificate (made here, imported into ACM). Consequences, by design for this profile only:
+# browsers warn, passkeys do not work, and the journey and k6 skip TLS verification (FULL_SELF_SIGNED=1). The public
+# demo is the OCI host, with a real Let's Encrypt certificate (docs/runbooks/full-profile.md).
+resource "tls_private_key" "alb" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_self_signed_cert" "alb" {
+  private_key_pem       = tls_private_key.alb.private_key_pem
+  validity_period_hours = 48
+  allowed_uses          = ["key_encipherment", "digital_signature", "server_auth"]
+  dns_names             = [aws_lb.alb.dns_name]
+  subject {
+    common_name  = aws_lb.alb.dns_name
+    organization = "Convoy full profile (self-signed, test only)"
+  }
+}
+
+resource "aws_acm_certificate" "alb" {
+  private_key      = tls_private_key.alb.private_key_pem
+  certificate_body = tls_self_signed_cert.alb.cert_pem
 }
 
 resource "aws_lb" "alb" {
@@ -28,32 +45,29 @@ resource "aws_lb_target_group" "web" {
   deregistration_delay = 30
 }
 
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = aws_acm_certificate.alb.arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 80
   protocol          = "HTTP"
   default_action {
-    type = "fixed-response"
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "forbidden"
-      status_code  = "403"
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
     }
-  }
-}
-
-resource "aws_lb_listener_rule" "from_cloudfront" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 1
-  condition {
-    http_header {
-      http_header_name = "X-Origin-Verify"
-      values           = [random_password.origin.result]
-    }
-  }
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.web.arn
   }
 }
 
@@ -90,13 +104,7 @@ resource "aws_wafv2_web_acl" "edge" {
     statement {
       rate_based_statement {
         limit              = 2000 # per 5 min per viewer IP; P7 load generators hit the ALB origin directly (cost estimate §2)
-        aggregate_key_type = "FORWARDED_IP"
-        # Behind CloudFront the ALB sees edge addresses; CloudFront adds the viewer's address to X-Forwarded-For.
-        # ponytail: WAF reads the first address, which a client can pre-set; key on CloudFront-Viewer-Address if abused.
-        forwarded_ip_config {
-          header_name       = "X-Forwarded-For"
-          fallback_behavior = "MATCH"
-        }
+        aggregate_key_type = "IP" # the ALB is reached directly: the connecting address is the client
       }
     }
     visibility_config {
@@ -115,49 +123,6 @@ resource "aws_wafv2_web_acl" "edge" {
 resource "aws_wafv2_web_acl_association" "alb" {
   resource_arn = aws_lb.alb.arn
   web_acl_arn  = aws_wafv2_web_acl.edge.arn
-}
-
-resource "aws_cloudfront_distribution" "cdn" {
-  enabled     = true
-  price_class = "PriceClass_200" # includes India
-  comment     = "convoy full ${var.run_id}"
-
-  origin {
-    domain_name = aws_lb.alb.dns_name
-    origin_id   = "alb"
-    custom_header {
-      name  = "X-Origin-Verify"
-      value = random_password.origin.result
-    }
-    custom_origin_config {
-      http_port                = 80
-      https_port               = 443
-      origin_protocol_policy   = "http-only"
-      origin_ssl_protocols     = ["TLSv1.2"]
-      origin_read_timeout      = 60
-      origin_keepalive_timeout = 60
-    }
-  }
-
-  default_cache_behavior {
-    target_origin_id         = "alb"
-    viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods           = ["GET", "HEAD"]
-    compress                 = false                                  # SSE must not be buffered for compression
-    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
-    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader
-  }
-
-  restrictions {
-    geo_restriction {
-      restriction_type = "none"
-    }
-  }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
 }
 
 # ADOT collector: OTLP from the services -> X-Ray traces (sampled at the SDK, var.trace_sample_ratio) and only the

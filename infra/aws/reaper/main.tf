@@ -151,7 +151,7 @@ resource "aws_iam_role_policy" "reaper" {
           "application-autoscaling:DeregisterScalableTarget", "application-autoscaling:DeleteScalingPolicy",
           "cloudwatch:DeleteAlarms", "logs:DeleteLogGroup",
           "iam:DeleteRole", "iam:DeleteRolePolicy", "iam:DetachRolePolicy",
-          "sqs:DeleteQueue",
+          "sqs:DeleteQueue", "acm:DeleteCertificate",
         ]
         Resource  = "*"
         Condition = local.tagged
@@ -169,6 +169,7 @@ resource "aws_iam_role_policy" "reaper" {
           "logs:DescribeLogGroups", "logs:ListTagsForResource", "logs:ListTagsLogGroup",
           "iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole",
           "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:ListQueueTags",
+          "acm:DescribeCertificate", "acm:GetCertificate", "acm:ListTagsForCertificate",
         ]
         Resource = "*"
       },

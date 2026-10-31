@@ -1,10 +1,12 @@
 # RDS PostgreSQL (single-AZ by default; var.multi_az only for the failover drill), ElastiCache Redis, one secret.
 resource "aws_db_subnet_group" "db" {
+  count      = var.canary ? 0 : 1 # the reaper canary is a real slice without the data tier
   name       = local.name
   subnet_ids = aws_subnet.private[*].id
 }
 
 resource "aws_db_instance" "pg" {
+  count                        = var.canary ? 0 : 1 # the reaper canary is a real slice without the data tier
   identifier                   = local.name
   engine                       = "postgres"
   engine_version               = "16"
@@ -16,7 +18,7 @@ resource "aws_db_instance" "pg" {
   username                     = "convoy_admin"
   password                     = var.secrets["POSTGRES_PASSWORD"]
   multi_az                     = var.multi_az
-  db_subnet_group_name         = aws_db_subnet_group.db.name
+  db_subnet_group_name         = aws_db_subnet_group.db[0].name
   vpc_security_group_ids       = [aws_security_group.data.id]
   backup_retention_period      = 0 # a run's data is disposable; no snapshot on destroy either
   skip_final_snapshot          = true
@@ -26,17 +28,19 @@ resource "aws_db_instance" "pg" {
 }
 
 resource "aws_elasticache_subnet_group" "redis" {
+  count      = var.canary ? 0 : 1 # the reaper canary is a real slice without the data tier
   name       = local.name
   subnet_ids = aws_subnet.private[*].id
 }
 
 resource "aws_elasticache_cluster" "redis" {
+  count              = var.canary ? 0 : 1 # the reaper canary is a real slice without the data tier
   cluster_id         = local.name
   engine             = "redis"
   node_type          = "cache.t4g.small"
   num_cache_nodes    = 1
   port               = 6379
-  subnet_group_name  = aws_elasticache_subnet_group.redis.name
+  subnet_group_name  = aws_elasticache_subnet_group.redis[0].name
   security_group_ids = [aws_security_group.data.id]
 }
 

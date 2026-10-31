@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+// The full AWS profile serves a self-signed certificate (no CloudFront, no domain: infra/aws/full/edge.tf). Only there,
+// FULL_SELF_SIGNED=1 skips TLS verification; the lite host (the public demo) has a real certificate and keeps it on.
+test.use({ ignoreHTTPSErrors: process.env.FULL_SELF_SIGNED === '1' });
+
 // P6.B/P6.D: the public demo as a stranger meets it, against any deployment (WEB_URL), no email and no test accounts:
 // Try the demo -> own pool -> join + simulated deposit -> the simulated dealers quote -> compare -> accept -> confirm ->
 // booking voucher; then the dealer view of the visitor's own demo dealership and the read-only admin view.

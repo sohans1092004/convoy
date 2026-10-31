@@ -2,8 +2,9 @@
 # Same images and the same prod profile as lite: the topology is checked, never created, and config is validated at start.
 locals {
   # A destroy (scripts/reap.sh) passes no images; the placeholder is never deployed (image values are validated on apply).
-  log_group = "/convoy-full/${var.run_id}"
-  db_host   = aws_db_instance.pg.address
+  log_group  = "/convoy-full/${var.run_id}"
+  db_host    = var.canary ? "canary-no-database" : aws_db_instance.pg[0].address
+  redis_host = var.canary ? "canary-no-redis" : aws_elasticache_cluster.redis[0].cache_nodes[0].address
 
   common_env = {
     SPRING_PROFILES_ACTIVE                  = "prod"
@@ -32,16 +33,16 @@ locals {
     SMTP_HOST     = var.shared["smtp_host"], SMTP_PORT = "587", SMTP_USERNAME = var.shared["smtp_username"], SMTP_AUTH = "true"
     SMTP_STARTTLS = "true", MAIL_FROM = var.shared["mail_from"]
   }
-  public_url = "https://${aws_cloudfront_distribution.cdn.domain_name}"
+  public_url = "https://${aws_lb.alb.dns_name}"
 
   # name => image key, port, cpu, memory, scaling (cpu | connections | queue), env, secret keys (from the run's secret)
   services = {
     identity = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = merge(local.mail_env, {
-      EXPORT_BUCKET = var.shared["export_bucket"], WEB_URL = local.public_url, PASSKEY_RP_ID = aws_cloudfront_distribution.cdn.domain_name,
+      EXPORT_BUCKET = var.shared["export_bucket"], WEB_URL = local.public_url, PASSKEY_RP_ID = aws_lb.alb.dns_name,
       PASSKEY_ORIGINS = local.public_url, DEMO_SCENARIOS = "true", EMAIL_SIGN_IN = "false" }),
       secrets = ["DB_PASSWORD_IDENTITY:DB_PASSWORD", "IDENTITY_DATA_KEY", "SMTP_PASSWORD", "CLIENT_SECRET_GATEWAY", "CLIENT_SECRET_REALTIME", "CLIENT_SECRET_POOL",
     "CLIENT_SECRET_ORDER", "CLIENT_SECRET_NOTIFICATION", "CLIENT_SECRET_CATALOG", "CLIENT_SECRET_DEALER", "CLIENT_SECRET_QUOTE", "CLIENT_SECRET_PAYMENT", "CLIENT_SECRET_DEMO_BOTS"] }
-    gateway = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = { REDIS_HOST = aws_elasticache_cluster.redis.cache_nodes[0].address,
+    gateway = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = { REDIS_HOST = local.redis_host,
     GATEWAY_KEY_DIR = "/tmp/keys", REALTIME_1_URL = "http://realtime:8080", REALTIME_2_URL = "http://realtime:8080" }, secrets = ["CLIENT_SECRET_GATEWAY"] }
     catalog       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_CATALOG:DB_PASSWORD", "CLIENT_SECRET_CATALOG"] }
     dealer        = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { DEMO_SCENARIOS = "true" }, secrets = ["DB_PASSWORD_DEALER:DB_PASSWORD", "CLIENT_SECRET_DEALER"] }
@@ -49,7 +50,7 @@ locals {
     quote         = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_QUOTE:DB_PASSWORD", "CLIENT_SECRET_QUOTE"] }
     order         = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { EVIDENCE_BUCKET = var.shared["evidence_bucket"] }, secrets = ["DB_PASSWORD_ORDER:DB_PASSWORD", "CLIENT_SECRET_ORDER"] }
     payment       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { RAZORPAY_BASE_URL = "http://razorpay-fake:9090" }, secrets = ["DB_PASSWORD_PAYMENT:DB_PASSWORD", "CLIENT_SECRET_PAYMENT", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] }
-    realtime      = { port = 8080, cpu = 512, mem = 1024, scale = "connections", env = { REDIS_HOST = aws_elasticache_cluster.redis.cache_nodes[0].address, REALTIME_INSTANCE = "ecs" }, secrets = ["DB_PASSWORD_REALTIME:DB_PASSWORD", "CLIENT_SECRET_REALTIME"] }
+    realtime      = { port = 8080, cpu = 512, mem = 1024, scale = "connections", env = { REDIS_HOST = local.redis_host, REALTIME_INSTANCE = "ecs" }, secrets = ["DB_PASSWORD_REALTIME:DB_PASSWORD", "CLIENT_SECRET_REALTIME"] }
     notification  = { port = 8080, cpu = 256, mem = 1024, scale = "queue", env = merge(local.mail_env, { WEB_URL = local.public_url }), secrets = ["DB_PASSWORD_NOTIFICATION:DB_PASSWORD", "CLIENT_SECRET_NOTIFICATION", "SMTP_PASSWORD"] }
     audit         = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_AUDIT:DB_PASSWORD", "DB_PASSWORD_AUDIT_OWNER:DB_OWNER_PASSWORD"] }
     web           = { port = 3000, cpu = 256, mem = 512, scale = "cpu", env = { GATEWAY_URL = "http://gateway:8080", RAZORPAY_CHECKOUT_URL = "${local.public_url}/pay/checkout.js", DEMO_PUBLIC = "true", EMAIL_SIGN_IN = "false" }, secrets = ["RAZORPAY_KEY_ID"] }

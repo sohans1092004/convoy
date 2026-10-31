@@ -1,6 +1,13 @@
 # Full profile runbook (P6.E)
 
-The multi-AZ stack (`infra/aws/full`): CloudFront + WAF, ALB over 2 AZs, ECS Fargate (ARM) with Service Connect and
+> **Edge without CloudFront:** this account must be verified by AWS Support before it may create CloudFront resources,
+> so the full profile is reached at the ALB itself, over HTTPS with a **self-signed certificate** (made by Terraform,
+> imported into ACM; no domain, so no publicly trusted certificate). The regional WAF (AWS managed common rules +
+> per-IP rate) sits on the ALB. Browsers warn and **passkeys are not expected to work** here; the journey
+> (`FULL_SELF_SIGNED=1`) and k6 (`insecureSkipTLSVerify`) skip TLS verification **for this profile only**. The public
+> demo is the OCI host (lite), with a real Let's Encrypt certificate.
+
+The multi-AZ stack (`infra/aws/full`): ALB over 2 AZs with a regional WAF (self-signed HTTPS), ECS Fargate (ARM) with Service Connect and
 >= 2 tasks per service, autoscaling (realtime on SSE connections, notification on queue backlog, others on CPU),
 RDS PostgreSQL (single-AZ; `multi_az = true` only for the failover drill) behind PgBouncer, ElastiCache Redis,
 ADOT -> X-Ray (5 % sampling), one Secrets Manager secret per run. SNS/SQS/S3 come from `infra/aws/shared`.
@@ -15,7 +22,7 @@ Scheduler schedule (`scripts/schedule-reap.sh`, default 60 minutes) that runs th
 `terraform destroy`, teardown verification (no resource tagged with the run), and a report to `convoy-alerts` (email).
 Its role may change or delete only resources tagged `project=convoy` and `profile=full`, plus the full-profile state
 objects; it is itself tagged `profile=lite`, so it cannot delete itself. `make full-down` runs the same `reap.sh` and
-removes the schedule. Tested end to end by `scripts/reaper-canary.sh` (one empty SQS queue) before a run relies on it.
+removes the schedule. Tested end to end by `scripts/full.sh canary` before a run relies on it: a **real slice** of this config with the real variables (VPC, NAT, ALB + WAF + certificate, ECS cluster and services at 0 tasks, IAM, secret; no RDS/ElastiCache) that only the scheduled reaper destroys. (The first canary, one SQS queue, missed two bugs in destroying the real config.)
 (Fargate, not CodeBuild: this account's CodeBuild concurrency quota is 0.)
 
 **Headroom for the reaper:** `full.sh up` refuses to start unless the Fargate on-demand vCPU quota, minus Fargate tasks
@@ -38,7 +45,7 @@ any resource of the run (`aws resourcegroupstaggingapi get-resources --tag-filte
 `SHARED_JSON` and `SECRETS_JSON` exported (see `scripts/full.sh`). One task per service makes **no availability claim**;
 the failover and HA drills need 2 tasks per service (P7, after a quota increase).
 1. applies with every service at 0 tasks, runs `db-init` (schemas and roles, the same scripts as local), applies again
-   with 2 tasks each, waits for services to be stable, seeds the synthetic dealerships, prints the CloudFront URL;
+   with 2 tasks each, waits for services to be stable, seeds the synthetic dealerships, prints the ALB URL (self-signed HTTPS);
 2. `cd web && WEB_URL=<url> REMOTE=1 pnpm exec playwright test e2e/demo.spec.ts --project=mobile-360` (smoke);
 3. `make full-down RUN=r1`: destroy, teardown verification (no resource tagged with the run, retried 15 min), then
    `scripts/full.sh cost r1 <hours>`.

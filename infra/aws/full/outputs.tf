@@ -1,4 +1,4 @@
-output "url" { value = "https://${aws_cloudfront_distribution.cdn.domain_name}" }
+output "url" { value = "https://${aws_lb.alb.dns_name}" } # self-signed certificate
 output "cluster" { value = aws_ecs_cluster.c.name }
 output "db_init_task" { value = aws_ecs_task_definition.db_init.arn }
 output "seed_task" { value = aws_ecs_task_definition.seed.arn }

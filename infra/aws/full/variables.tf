@@ -68,3 +68,9 @@ variable "secrets" {
   type        = map(string)
   sensitive   = true
 }
+
+variable "canary" {
+  description = "Reaper canary: the real config with real variables but no RDS or ElastiCache, services at 0 tasks (scripts/full.sh canary)."
+  type        = bool
+  default     = false
+}

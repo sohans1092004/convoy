@@ -5,6 +5,8 @@
 #   full.sh up      <run-id> <images.env>   schedule the destroy, check Fargate headroom, apply (DB init first), wait for
 #                                           services, seed demo dealerships, print the URL. TASKS_PER_SERVICE (default 2),
 #                                           MAX_TASKS_PER_SERVICE (default 6); the P6 smoke run uses 1 and 1
+#   full.sh canary-plan / canary <run-id> <images.env>   the reaper canary: a real slice (no RDS/ElastiCache, 0 tasks)
+#                                           applied here and destroyed only by the scheduled reaper (CANARY_MINUTES, 20)
 #   full.sh plan    <run-id> <images.env>   the same inputs and headroom check as up, then terraform plan only
 #   full.sh down    <run-id>                scripts/reap.sh: destroy, verify the teardown, report (the same path as the reaper)
 #   full.sh verify  <run-id>                tag inventory of the run must be empty
@@ -77,6 +79,51 @@ case $cmd in
     tfvars "$3"
     headroom
     terraform plan -input=false -no-color -var services_running=true | tee plan.txt | grep -E "^Plan:|Error|will be|must be"
+    ;;
+  canary-plan)
+    tf_init
+    tfvars "$3"
+    headroom
+    terraform plan -input=false -no-color -var canary=true -var services_running=false | tee plan.txt | grep -E "^Plan:|Error|will be|must be"
+    ;;
+  canary)
+    started=$(date +%s)
+    # Reaper canary (P6.E): a real slice of this config with the real variables (VPC, NAT, ALB + WAF + certificate,
+    # ECS cluster, services at 0 tasks, IAM, secret; no RDS/ElastiCache), destroyed ONLY by the scheduled reaper.
+    # PASS = the reaper task exits 0, logs TEARDOWN VERIFIED, and nothing of the run is live afterwards.
+    [ -z "$(git -C "$root" status --porcelain -- infra scripts)" ] || { echo "refused: commit infra/ and scripts/ first (the reaper runs that exact commit)"; exit 2; }
+    sha=$(git -C "$root" rev-parse HEAD)
+    account=$(account) role="arn:aws:iam::$account:role/convoy-reaper"
+    sim() { aws iam simulate-principal-policy --policy-source-arn "$role" --action-names elasticloadbalancing:DeleteLoadBalancer \
+      --resource-arns "arn:aws:elasticloadbalancing:$REGION:$account:loadbalancer/app/x/y" \
+      --context-entries ContextKeyName=aws:RequestedRegion,ContextKeyValues="$REGION",ContextKeyType=string "$@" --query 'EvaluationResults[0].EvalDecision' --output text; }
+    full=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=convoy,ContextKeyType=string ContextKeyName=aws:ResourceTag/profile,ContextKeyValues=full,ContextKeyType=string)
+    lite=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=convoy,ContextKeyType=string ContextKeyName=aws:ResourceTag/profile,ContextKeyValues=lite,ContextKeyType=string)
+    echo "scope: delete convoy/full load balancer: $full; convoy/lite: $lite"
+    [ "$full" = allowed ] && [ "$lite" != allowed ] || { echo "CANARY FAILED: reaper scope"; exit 1; }
+    (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${CANARY_MINUTES:-20}" "$sha")
+    tf_init
+    tfvars "$3"
+    headroom
+    terraform apply -input=false -auto-approve -no-color -var canary=true -var services_running=false | grep -E "Apply complete|Error" || true
+    rm -f run.auto.tfvars.json
+    echo "applied (state: $(terraform state list 2>/dev/null | wc -l) resources); waiting for the reaper, which alone destroys it"
+    until task=$(aws ecs list-tasks --cluster convoy-reaper --started-by "$run" --desired-status STOPPED --query 'taskArns[0]' --output text) && [ "$task" != None ]; do
+      [ $(( $(date +%s) - started )) -gt $(( (${CANARY_MINUTES:-20} + 45) * 60 )) ] && { echo "CANARY FAILED: no finished reaper task"; exit 1; }
+      sleep 30
+    done
+    code=$(aws ecs describe-tasks --cluster convoy-reaper --tasks "$task" --query 'tasks[0].containers[0].exitCode' --output text)
+    verdict=$(MSYS_NO_PATHCONV=1 aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "reaper/reaper/${task##*/}" \
+      --filter-pattern '"TEARDOWN"' --query 'events[-1].message' --output text)
+    pinned=$(MSYS_NO_PATHCONV=1 aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "reaper/reaper/${task##*/}" \
+      --filter-pattern '"pinned at"' --query 'events[0].message' --output text)
+    live="vpc=$(aws ec2 describe-vpcs --filters Name=tag:run,Values="$run" --query 'length(Vpcs)' --output text)"
+    live="$live alb=$(aws elbv2 describe-load-balancers --query "length(LoadBalancers[?contains(LoadBalancerName,'$run')])" --output text)"
+    live="$live nat=$(aws ec2 describe-nat-gateways --filter Name=tag:run,Values="$run" Name=state,Values=pending,available,deleting --query 'length(NatGateways)' --output text)"
+    live="$live cluster=$(aws ecs describe-clusters --clusters "convoy-full-$run" --query "length(clusters[?status=='ACTIVE'])" --output text)"
+    echo "reaper task exit $code; $pinned (expected $sha); $verdict; live: $live"
+    [ "$code" = 0 ] && echo "$verdict" | grep -q "TEARDOWN VERIFIED" && echo "$pinned" | grep -q "$sha" && [ "$live" = "vpc=0 alb=0 nat=0 cluster=0" ] \
+      && echo "CANARY PASSED" || { echo "CANARY FAILED"; exit 1; }
     ;;
   up)
     started=$(date +%s)

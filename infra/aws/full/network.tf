@@ -77,12 +77,15 @@ resource "aws_vpc_endpoint" "s3" {
 resource "aws_security_group" "alb" {
   name   = "${local.name}-alb"
   vpc_id = aws_vpc.v.id
-  ingress {
-    description     = "CloudFront origin-facing only"
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  dynamic "ingress" {
+    for_each = [80, 443]
+    content {
+      description = "public (the regional WAF filters)"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
   egress {
     from_port   = 0
@@ -90,10 +93,6 @@ resource "aws_security_group" "alb" {
     protocol    = "-1"
     cidr_blocks = [aws_vpc.v.cidr_block]
   }
-}
-
-data "aws_ec2_managed_prefix_list" "cloudfront" {
-  name = "com.amazonaws.global.cloudfront.origin-facing"
 }
 
 resource "aws_security_group" "tasks" {
