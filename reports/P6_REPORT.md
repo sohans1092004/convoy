@@ -92,10 +92,18 @@ for all lite containers, JVMs 175–234 MiB each against 384 MiB limits; journey
 little free memory), to be measured on the VM.
 
 ## 5. The full-profile smoke run, with its cost
-Pending. The run uses **1 task per service** (`TASKS_PER_SERVICE=1 MAX_TASKS_PER_SERVICE=1`, 5.50 vCPU worst case,
-inside the account's 8 vCPU Fargate quota with headroom for the reaper). **This run makes no high-availability claim**:
-it shows the stack deploys and serves the journey; failover and availability need 2 tasks per service, measured in P7.
-At most 1 hour, destroyed by the reaper at the deadline if not before.
+**Attempt `smoke1` (2026-10-31 18:12–18:29 UTC): stopped before the journey, torn down, TEARDOWN VERIFIED.**
+- 1 task per service (no HA claim), reaper scheduled for 19:12:55 (pinned 7fa2b0d), headroom 8 − 0 − 5.5 = 2.5 vCPU.
+- 42 resources created (network, ALB, WAF, RDS, ElastiCache, IAM, Secrets Manager; services still at 0 tasks), then
+  CloudFront was refused: `AccessDenied: Your account must be verified before you can add new CloudFront resources`.
+- Found and fixed by this run: the abort path called `full-down` by a relative path (exit 127); the destroy needed
+  image inputs the reaper does not have (`Invalid index`, which would also have broken the reaper's destroy of a real
+  run); teardown verification counted already-deleted resources that the tagging API still lists.
+- Destroy: 42 destroyed by 18:27; `reap.sh` re-run on the empty state: 0 destroyed, TEARDOWN VERIFIED 18:29. Direct
+  checks: no Convoy VPC, RDS, ElastiCache, load balancer, Elastic IP, ECS cluster or schedule left.
+- Cost (estimate; Cost Explorer lags up to 24 h): about $0.18, mostly partial-hour charges (NAT, ALB, ElastiCache, IPv4),
+  RDS for ~10 min, no Fargate tasks ran.
+- Next run needs HTTPS without CloudFront (self-signed certificate on the ALB) or AWS Support's CloudFront verification.
 
 ## 6. Security checks
 Built and tested so far:
