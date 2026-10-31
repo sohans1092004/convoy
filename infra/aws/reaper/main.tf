@@ -144,7 +144,7 @@ resource "aws_iam_role_policy" "reaper" {
         Action = [
           "ec2:Delete*", "ec2:Disassociate*", "ec2:Detach*", "ec2:ReleaseAddress", "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
           "ecs:DeleteService", "ecs:UpdateService", "ecs:DeleteCluster", "ecs:DeregisterTaskDefinition", "ecs:DeleteTaskDefinitions", "ecs:StopTask",
-          "elasticloadbalancing:Delete*", "elasticloadbalancing:DeregisterTargets",
+          "elasticloadbalancing:Delete*", "elasticloadbalancing:DeregisterTargets", "elasticloadbalancing:SetWebAcl",
           "rds:DeleteDBInstance", "rds:DeleteDBSubnetGroup", "elasticache:DeleteCacheCluster", "elasticache:DeleteCacheSubnetGroup",
           "secretsmanager:DeleteSecret", "cloudfront:UpdateDistribution", "cloudfront:DeleteDistribution",
           "wafv2:DeleteWebACL", "wafv2:DisassociateWebACL", "servicediscovery:DeleteNamespace",
