@@ -1,8 +1,9 @@
 # P6 report: deployment
 
-> **Status (2026-10-31 19:50 UTC): AWS `shared` and the reaper are applied; OCI network and bucket are applied, the VM
-> waits for Always Free A1 capacity in ap-hyderabad-1 (retry loop). The full-profile smoke run waits for the real-slice
-> reaper canary (§5). Sections 4, 7 and the live half of 6 wait for the VM.**
+> **Status (2026-10-31 21:25 UTC): P6 closed except the OCI lite deploy.** AWS `shared` and the reaper are applied; OCI
+> network and backup bucket are applied, the VM waits for Always Free A1 capacity (§4, §7 and the live half of §6 wait
+> for it). The full-profile smoke run did **not** pass: smoke2 came up to the services, which all exited at startup;
+> torn down, TEARDOWN VERIFIED. Every AWS run of this phase was destroyed and verified.
 
 ## 1. Summary
 - **Live demo URL:** pending (`https://convoy-demo.duckdns.org` once the VM, DuckDNS name and first deploy exist).
@@ -161,7 +162,29 @@ services at 0 tasks, no RDS or ElastiCache (72 resources). Nothing on the laptop
   fails on a carriage return in any shell script (22 files clean).
 - Canary cost (estimate): ≈ $0.15 (NAT, ALB and IPv4 for ~1.2 h, WAF prorated, five reaper tasks).
 
-**Smoke run (ALB edge):** not started. It needs a passing canary, which needs the SetWebACL fix above.
+**Smoke run `smoke2` (ALB edge, enable_waf=false, 1 task per service, no HA claim): FAILED, torn down, TEARDOWN VERIFIED.**
+- Plan 105 to add, 0 change, 0 destroy; RDS db.t4g.medium single-AZ, cache.t4g.small; headroom 2.5 vCPU. Your "apply" 20:39.
+- 20:40 reaper backup scheduled (21:40, c178f56); phase 1 applied 74 resources.
+- **Failure 1:** one-off `db-init` exited 3 on RDS: `must be able to SET ROLE "identity"` (the RDS admin is not a
+  superuser; PostgreSQL 16 requires membership to make a role a schema owner). **Also found:** `full.sh`'s one-off helper
+  called `exit` instead of `return`, so the abort (`|| abort`) never ran and the stack stayed up (the reaper backup still
+  covered it).
+- One fix (7ba94c0): init scripts grant each owner role to the admin and are idempotent (tested twice on PostgreSQL 16
+  with a non-superuser admin); the helper returns. Resumed 20:53 (reaper backup 21:53, 7ba94c0): db-init passed,
+  services scaled (31 added).
+- **Failure 2 (stopped here, no further fix):** every Java service (identity, catalog, pool, dealer, quote, order,
+  payment, realtime, notification, audit) exited 1 at startup and restarted; web then failed ALB health checks.
+  `services-stable` gave up after 10 min; the abort ran at 21:10 (schedule deleted, destroy). **Root cause unknown:**
+  the destroy deleted the run's log group before it was read. Candidates: the prod startup guard or topology check
+  refusing something in this environment, or the database path through PgBouncer.
+- Teardown: 105 destroyed, **TEARDOWN VERIFIED 21:22:03 UTC**; direct checks: no VPC, RDS, ElastiCache, ALB or schedule.
+- No journey ran. Cost (estimate; Cost Explorer lags up to 24 h): ≈ $0.35 (42 min: NAT, ALB, RDS, ElastiCache, IPv4,
+  restarting Fargate tasks).
+- Next attempt needs: keep the run's log group on abort (so a failed run leaves its evidence), then one more run to read
+  the startup error.
+
+**AWS spend for full-profile runs in P6 (estimates):** smoke1 ≈ $0.18, canary1 ≈ $0.17, canary2 ≈ $0.10, smoke2 ≈ $0.35;
+total ≈ **$0.80**. Plus `shared` ≈ $4.66/month always on.
 
 ## 6. Security checks
 Built and tested so far:
@@ -188,7 +211,7 @@ Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, ro
 - PowerUser on the GitHub `full` role is broad (ponytail note in `github.tf`).
 
 ## 9. Needs from me
-- Decide on the DeregisterTaskDefinition fix (unscoped grant) and one more canary; then "apply" on the smoke-run plan.
+- Decide on the next smoke attempt (retain logs on abort, one more run). P7 waits for a passed smoke run and for the Fargate quota (still 8 vCPU).
 - OCI A1 capacity: keep the retry loop running (`cd infra/oci && bash retry-apply.sh`), or upgrade the tenancy to Pay As
   You Go (Always Free limits still apply) to improve capacity odds. Then the lite deploy and §4, §6, §7 follow.
 - AWS Support: CloudFront account verification only if a CloudFront edge is wanted later.
