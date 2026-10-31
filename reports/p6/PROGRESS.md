@@ -39,3 +39,7 @@ failure on `main` (40244851654, `price-breakdown` snapshot) was pre-P5 code; the
   Passkey sign-in still works for real admins.
 - Tests: DemoIT 4/4, IdentityIT 11/11, DealerIT 7/7 (demo dealership eligibility + expiry), PoolIT 20/20 (demo pool
   isolation), GatewayIT 5/5, FailFastTest 2/2, NotificationIT 5/5, web unit 26/26, tsc + eslint clean, validate_spec 14/14.
+
+## P6.C-E: infrastructure (validated with terraform validate, nothing applied)
+- `infra/aws/shared`, `infra/oci`, `infra/aws/full`, host scripts, `deploy-lite` / `full` / `infra` workflows. Details and
+  deviations: reports/P6_REPORT.md. Waiting on the applies listed there (section 9).
