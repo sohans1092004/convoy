@@ -7,5 +7,5 @@ read -r verb sha extra <<< "${SSH_ORIGINAL_COMMAND:-}"
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 head -c 8192 > "$tmp"
-grep -vqE '^IMAGE_[A-Z_]+=ghcr\.io/sohans1092004/convoy-[a-z-]+@sha256:[0-9a-f]{64}$' "$tmp" && { echo "refused: images.env must be digests from ghcr.io/sohans1092004" >&2; exit 2; }
+grep -vqE '^IMAGE_[A-Z_]+=ghcr\.io/sohans1092004/convoy/convoy-[a-z-]+@sha256:[0-9a-f]{64}$' "$tmp" && { echo "refused: images.env must be digests from ghcr.io/sohans1092004" >&2; exit 2; }
 exec /opt/convoy/src/deploy/lite/deploy.sh "$sha" "$tmp"

@@ -5,30 +5,39 @@
 #   full.sh up      <run-id> <images.env>   schedule the destroy, check Fargate headroom, apply (DB init first), wait for
 #                                           services, seed demo dealerships, print the URL. TASKS_PER_SERVICE (default 2),
 #                                           MAX_TASKS_PER_SERVICE (default 6); the P6 smoke run uses 1 and 1
+#   full.sh plan    <run-id> <images.env>   the same inputs and headroom check as up, then terraform plan only
 #   full.sh down    <run-id>                scripts/reap.sh: destroy, verify the teardown, report (the same path as the reaper)
 #   full.sh verify  <run-id>                tag inventory of the run must be empty
 #   full.sh cost    <run-id> <hours>        Cost Explorer by the run tag if available, else the estimate
-# Needs: AWS credentials (AWS_PROFILE=convoy-aws), terraform >= 1.10, jq; SHARED_JSON (infra/aws/shared outputs, + mail_from)
+# Needs: AWS credentials (AWS_PROFILE=convoy-aws), terraform >= 1.10, python, docker; SHARED_JSON (infra/aws/shared outputs, + mail_from)
 # and SECRETS_JSON (service secrets) in the environment.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root/infra/aws/full"
 cmd=$1 run=$2
 REGION=${AWS_REGION:-ap-southeast-2}
+py=$(command -v python3 || command -v python)
 account() { aws sts get-caller-identity --query Account --output text; }
 tf_init() { terraform init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$(account)" >/dev/null; }
 
 tfvars() { # images.env (+ third-party images resolved to digests) and the shared outputs -> run.auto.tfvars.json
   local images=$1
-  python3 - "$images" "$run" <<'PY'
+  "$py" - "$images" "$run" <<'PY'
 import json, os, re, subprocess, sys
 images = {}
 for line in open(sys.argv[1]):
     m = re.match(r'IMAGE_([A-Z_]+)=(\S+)', line.strip())
     if m: images[m.group(1).lower().replace('_', '-')] = m.group(2)
-def digest(ref):  # third-party images are pinned by the digest their tag has today
-    out = subprocess.run(['docker', 'buildx', 'imagetools', 'inspect', ref, '--format', '{{json .Manifest}}'], check=True, capture_output=True, text=True).stdout
-    return ref.split(':')[0] + '@' + json.loads(out)['digest']
+def digest(ref):  # third-party images are pinned by the digest their tag has today (3 tries: registry CDNs flake)
+    import time
+    for attempt in range(3):
+        # --raw: only the manifest index (no blob downloads); its digest is the sha256 of exactly these bytes
+        r = subprocess.run(['docker', 'buildx', 'imagetools', 'inspect', ref, '--raw'], capture_output=True)
+        if r.returncode == 0:
+            import hashlib
+            return ref.split(':')[0] + '@sha256:' + hashlib.sha256(r.stdout).hexdigest()
+        time.sleep(5)
+    sys.exit(f'cannot resolve {ref}: {r.stderr.decode(errors="replace").strip()[:200]}')
 images['pgbouncer'] = digest('alpine:3.22.2')
 images['postgres'] = digest('postgres:16.15-alpine')
 images['adot'] = digest('public.ecr.aws/aws-observability/aws-otel-collector:v0.43.3')
@@ -48,7 +57,27 @@ one_off() { # task definition arn -> runs it in the private subnets, fails on a 
   [ "$code" = 0 ] || { echo "one-off task $1 exited $code"; exit 1; }
 }
 
+headroom() { # the reaper must always be able to launch: quota - Fargate vCPU running - this run's worst case >= 0.5
+  quota=$(aws service-quotas get-service-quota --service-code fargate --quota-code L-3032A538 --query Quota.Value --output text)
+  running=$(for c in $(aws ecs list-clusters --query 'clusterArns[]' --output text); do
+      t=$(aws ecs list-tasks --cluster "$c" --desired-status RUNNING --query 'taskArns[]' --output text)
+      if [ -n "$t" ]; then aws ecs describe-tasks --cluster "$c" --tasks $t --query 'tasks[?launchType==`FARGATE`].cpu' --output text; fi
+    done | tr '	' '
+' | awk '{s+=$1} END {print s/1024+0}')
+  worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"' | grep -E '^[0-9.]+$' | tail -1)
+  [ -n "$worst" ] || { echo "refused: could not compute this run's worst-case vCPU"; exit 2; }
+  left=$(awk "BEGIN {print $quota - $running - $worst}")
+  echo "Fargate on-demand vCPU: quota $quota, running $running, this run at most $worst -> $left left for the reaper"
+  awk "BEGIN {exit !($left >= 0.5)}" || { echo "refused: less than 0.5 vCPU would be left for the reaper (lower TASKS_PER_SERVICE / MAX_TASKS_PER_SERVICE or raise the quota)"; exit 2; }
+}
+
 case $cmd in
+  plan)
+    tf_init
+    tfvars "$3"
+    headroom
+    terraform plan -input=false -no-color -var services_running=true | tee plan.txt | grep -E "^Plan:|Error|will be|must be"
+    ;;
   up)
     # The destroy code is pinned to the commit this run is applied from: no uncommitted infra or script changes allowed.
     [ -z "$(git -C "$root" status --porcelain -- infra scripts)" ] || { echo "refused: commit infra/ and scripts/ first (the reaper runs that exact commit)"; exit 2; }
@@ -56,21 +85,11 @@ case $cmd in
     (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") # first: the deadline holds whatever happens next
     tf_init
     tfvars "$3"
-    # Headroom for the reaper: quota - Fargate vCPU already running in the account - this run's worst case >= 0.5
-    quota=$(aws service-quotas get-service-quota --service-code fargate --quota-code L-3032A538 --query Quota.Value --output text)
-    running=$(for c in $(aws ecs list-clusters --query 'clusterArns[]' --output text); do
-        t=$(aws ecs list-tasks --cluster "$c" --desired-status RUNNING --query 'taskArns[]' --output text)
-        [ -n "$t" ] && aws ecs describe-tasks --cluster "$c" --tasks $t --query 'tasks[?launchType==`FARGATE`].cpu' --output text
-      done | tr '	' '
-' | awk '{s+=$1} END {print s/1024+0}')
-    worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"')
-    left=$(awk "BEGIN {print $quota - $running - $worst}")
-    echo "Fargate on-demand vCPU: quota $quota, running $running, this run at most $worst -> $left left for the reaper"
-    awk "BEGIN {exit !($left >= 0.5)}" || { echo "refused: less than 0.5 vCPU would be left for the reaper (lower TASKS_PER_SERVICE / MAX_TASKS_PER_SERVICE or raise the quota)"; exit 2; }
+    headroom
     terraform apply -input=false -auto-approve -var services_running=false
     one_off "$(terraform output -raw db_init_task)"
     terraform apply -input=false -auto-approve -var services_running=true
-    aws ecs wait services-stable --region $REGION --cluster "$(terraform output -raw cluster)" --services $(terraform output -json services | jq -r '.[]')
+    aws ecs wait services-stable --region $REGION --cluster "$(terraform output -raw cluster)" --services $(terraform output -json services | "$py" -c 'import json,sys; print(" ".join(json.load(sys.stdin)))')
     one_off "$(terraform output -raw seed_task)"
     echo "UP: $(terraform output -raw url)"
     ;;
