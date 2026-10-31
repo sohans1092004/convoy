@@ -35,11 +35,23 @@ if grep -q "Error acquiring the state lock" "$out"; then
   exit 2
 fi
 
+# The tagging API also lists things that are already gone: deregistered task definitions (until deleted), and NAT
+# gateways, VPC endpoints and clusters in a deleted/INACTIVE state for up to an hour. Only a live resource counts.
+alive() { # arn -> exit 0 if the resource still exists
+  case "$1" in
+    *:task-definition/*) aws ecs delete-task-definitions --region "$region" --task-definitions "$1" >/dev/null 2>&1; return 1 ;;
+    *:natgateway/*) st=$(aws ec2 describe-nat-gateways --region "$region" --nat-gateway-ids "${1##*/}" --query 'NatGateways[0].State' --output text 2>/dev/null); [ -n "$st" ] && [ "$st" != None ] && [ "$st" != deleted ] ;;
+    *:vpc-endpoint/*) st=$(aws ec2 describe-vpc-endpoints --region "$region" --vpc-endpoint-ids "${1##*/}" --query 'VpcEndpoints[0].State' --output text 2>/dev/null); [ -n "$st" ] && [ "$st" != None ] && [ "${st,,}" != deleted ] ;;
+    *:cluster/*) st=$(aws ecs describe-clusters --region "$region" --clusters "$1" --query 'clusters[0].status' --output text 2>/dev/null); [ "$st" = ACTIVE ] || [ "$st" = PROVISIONING ] || [ "$st" = DEPROVISIONING ] ;;
+    *) return 0 ;;
+  esac
+}
 verified=1 left=""
 for i in $(seq 1 30); do
-  left=$(aws resourcegroupstaggingapi get-resources --region "$region" \
+  listed=$(aws resourcegroupstaggingapi get-resources --region "$region" \
     --tag-filters Key=project,Values=convoy Key=profile,Values=full Key=run,Values="$run" \
     --query 'ResourceTagMappingList[].ResourceARN' --output text | tr '\t' '\n' | sed '/^$/d')
+  left=$(for a in $listed; do alive "$a" && echo "$a"; done)
   [ -z "$left" ] && { verified=0; break; }
   log "verification attempt $i: still listed: $(echo "$left" | tr '\n' ' ')"
   sleep 30
