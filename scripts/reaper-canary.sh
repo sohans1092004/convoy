@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export AWS_REGION=${AWS_REGION:-ap-southeast-2}
-export MSYS2_ENV_CONV_EXCL="*" # Git Bash on Windows: never rewrite env values (a secret starting with "/") for native programs
+export MSYS2_ENV_CONV_EXCL="*" MSYS_NO_PATHCONV=1 # Git Bash on Windows: never rewrite env values or arguments (a secret or "/convoy/reaper" starting with "/") for native programs
 account=$(aws sts get-caller-identity --query Account --output text)
 run="canary$(date -u +%Y%m%d%H%M)"
 role="arn:aws:iam::$account:role/convoy-reaper"
