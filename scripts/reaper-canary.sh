@@ -44,8 +44,13 @@ echo "== 3. scheduled destroy"
 [ -z "$(git status --porcelain -- infra scripts)" ] || { echo "refused: commit and push infra/ and scripts/ first"; exit 2; }
 sha=$(git rev-parse HEAD)
 scripts/schedule-reap.sh infra/aws/reaper/canary "$run" 3 "$sha"
+deadline=$(( $(date +%s) + 13 * 60 )) # 3 min to the schedule + 10 min for it to start the build
 until build=$(aws codebuild list-builds-for-project --project-name convoy-full-reaper --query 'ids[0]' --output text) &&
       [ "$build" != None ] && aws codebuild batch-get-builds --ids "$build" --query 'builds[0].environment.environmentVariables[?name==`RUN_ID`].value' --output text | grep -qx "$run"; do
+  if [ "$(date +%s)" -gt "$deadline" ]; then
+    errors=$(aws cloudwatch get-metric-statistics --namespace AWS/Scheduler --metric-name TargetErrorCount --period 3600 --statistics Sum       --start-time "$(date -u -d '-30 min' +%FT%TZ)" --end-time "$(date -u +%FT%TZ)" --query 'Datapoints[0].Sum' --output text)
+    echo "CANARY FAILED: no reaper build 10 min after the deadline (Scheduler target errors: $errors)"; exit 1
+  fi
   sleep 20
 done
 echo "build $build started"
