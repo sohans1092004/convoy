@@ -12,8 +12,7 @@ region=${AWS_REGION:-ap-southeast-2}
 account=$(aws sts get-caller-identity --query Account --output text)
 git cat-file -e "$sha^{commit}" && git branch -r --contains "$sha" | grep -q . || { echo "refused: $sha is not pushed (the reaper clones it from GitHub)"; exit 2; }
 at=$(date -u -d "+$minutes minutes" +%Y-%m-%dT%H:%M:%S)
-# The input uses CodeBuild's own JSON member names (camelCase), which the Scheduler universal target passes through.
-input=$(printf '{"projectName":"convoy-full-reaper","environmentVariablesOverride":[{"name":"TARGET_DIR","value":"%s","type":"PLAINTEXT"},{"name":"RUN_ID","value":"%s","type":"PLAINTEXT"},{"name":"SOURCE_SHA","value":"%s","type":"PLAINTEXT"}]}' "$dir" "$run" "$sha")
+input=$(printf '{"ProjectName":"convoy-full-reaper","EnvironmentVariablesOverride":[{"Name":"TARGET_DIR","Value":"%s","Type":"PLAINTEXT"},{"Name":"RUN_ID","Value":"%s","Type":"PLAINTEXT"},{"Name":"SOURCE_SHA","Value":"%s","Type":"PLAINTEXT"}]}' "$dir" "$run" "$sha")
 target=$("$(command -v python3 || command -v python)" -c 'import json,sys; print(json.dumps({"Arn": "arn:aws:scheduler:::aws-sdk:codebuild:startBuild", "RoleArn": sys.argv[1], "Input": sys.argv[2]}))' \
   "arn:aws:iam::$account:role/convoy-reaper-scheduler" "$input")
 aws scheduler create-schedule --region "$region" --name "convoy-reap-$run" --schedule-expression "at($at)" \
