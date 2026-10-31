@@ -13,6 +13,7 @@ region=${AWS_REGION:-ap-southeast-2}
 account=$(aws sts get-caller-identity --query Account --output text)
 log() { echo "$(date -u +%FT%TZ) $*"; }
 
+# -refresh=false: delete what the state records without re-reading it first (no read rights on run secrets needed).
 # Destroy needs every variable set; the values do not matter (nothing is created or updated), only the run id does.
 if grep -q 'variable "images"' "$dir"/*.tf; then
   echo "{\"run_id\":\"$run\",\"images\":{},\"secrets\":{\"POSTGRES_PASSWORD\":\"destroy-only\"},\"shared\":{\"smtp_host\":\"x\",\"smtp_username\":\"x\",\"mail_from\":\"x\",\"export_bucket\":\"x\",\"evidence_bucket\":\"x\"}}" > "$dir/reap.auto.tfvars.json"
@@ -25,7 +26,7 @@ out=$(mktemp)
 # The state is locked (S3 lockfile) while another terraform run uses it. Wait up to 10 min; if it is still held, destroy
 # nothing (never race another run) and report, so a person looks.
 terraform -chdir="$dir" init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$account" >/dev/null &&
-  terraform -chdir="$dir" destroy -input=false -auto-approve -no-color -lock-timeout=10m 2>&1 | tee "$out"
+  terraform -chdir="$dir" destroy -input=false -auto-approve -no-color -lock-timeout=10m -refresh=false 2>&1 | tee "$out"
 destroyed=${PIPESTATUS[0]:-1}
 rm -f "$dir/reap.auto.tfvars.json"
 if grep -q "Error acquiring the state lock" "$out"; then
