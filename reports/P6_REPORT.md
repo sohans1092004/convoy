@@ -1,8 +1,8 @@
 # P6 report: deployment
 
-> **Status: built and validated; the cloud parts wait for your applies.** Sections 4, 5 and 7 and the live half of 6 are
-> filled in after `infra/aws/shared` and `infra/oci` are applied and the full-profile smoke run is approved. Nothing
-> that costs money has been created.
+> **Status (2026-10-31 19:50 UTC): AWS `shared` and the reaper are applied; OCI network and bucket are applied, the VM
+> waits for Always Free A1 capacity in ap-hyderabad-1 (retry loop). The full-profile smoke run waits for the real-slice
+> reaper canary (§5). Sections 4, 7 and the live half of 6 wait for the VM.**
 
 ## 1. Summary
 - **Live demo URL:** pending (`https://convoy-demo.duckdns.org` once the VM, DuckDNS name and first deploy exist).
@@ -70,7 +70,10 @@
   cost estimate and runbooks changed; lite in India talks to Sydney (+0.3 to 0.6 s per event, reports/p6/latency-oracle-sydney.md).
 - **No GitHub OIDC role**: an organisation SCP denies `iam:CreateOpenIDConnectProvider`. The `full` workflow is removed;
   the full profile runs from the laptop, and its scheduled destroy needs another runner (proposal: in-account CodeBuild).
-- **WAF is regional on the ALB**: CloudFront-scoped WAF is not available here. CloudFront stays, for HTTPS without a domain.
+- **WAF is regional on the ALB; no CloudFront**: CloudFront needs account verification this account does not have
+  (smoke1, §5). The full profile serves HTTPS from the ALB with a self-signed certificate imported into ACM. The journey
+  and k6 skip TLS verification only there (`FULL_SELF_SIGNED=1`); browsers and passkeys are not expected to work on the
+  full profile. The public demo is the OCI host, with a real Let's Encrypt certificate.
 - **Queue-age alarms on payment and order queues only** (your decision); DLQ alarms on all.
 - **Lite host is an Oracle Cloud Always Free VM, not EC2 behind CloudFront** (PLAN §4.7). Caddy terminates TLS with
   Let's Encrypt; SSH from one IP. deployment-profiles.md updated.
@@ -103,7 +106,38 @@ little free memory), to be measured on the VM.
   checks: no Convoy VPC, RDS, ElastiCache, load balancer, Elastic IP, ECS cluster or schedule left.
 - Cost (estimate; Cost Explorer lags up to 24 h): about $0.18, mostly partial-hour charges (NAT, ALB, ElastiCache, IPv4),
   RDS for ~10 min, no Fargate tasks ran.
-- Next run needs HTTPS without CloudFront (self-signed certificate on the ALB) or AWS Support's CloudFront verification.
+- Next run needs HTTPS without CloudFront: built (ALB + self-signed ACM certificate, §3).
+
+**Real-slice reaper canary `canary1` (the old SQS canary missed both destroy bugs).** `full.sh canary` applies
+`infra/aws/full` with the real variables and `canary=true`: VPC, NAT, ALB + WAF + certificate, ECS cluster and 16
+services at 0 tasks, no RDS or ElastiCache (72 resources). Nothing on the laptop destroys it; the scheduled reaper must.
+- 18:43 scope check (delete convoy/full ALB allowed, convoy/lite denied), headroom 2.5 vCPU, 72 applied by 18:48.
+- Each reaper run found one real defect that would also have broken the reaper's destroy of a real run:
+  1. 19:04, pinned abad08c: `terraform init` failed, the provider lock file held only Windows hashes for `tls`.
+     Fix: lock for linux_amd64/arm64 + windows (3debfa5).
+  2. 19:12, pinned 3debfa5: the pre-destroy refresh read the run's secret value (`GetSecretValue`, which the reaper
+     role deliberately lacks). Fix: `destroy -refresh=false` (87bec30).
+  3. 19:19, pinned 87bec30: 38 destroyed, then the WAF could not be detached from the ALB (needs
+     `elasticloadbalancing:SetWebAcl`), so the ALB, internet gateway and VPC stayed. Fix: action added, tag-scoped (d4125eb).
+     I stopped this task mid-destroy, which left its state lock behind.
+  4. 19:34, pinned d4125eb: the state was locked; the reaper waited 10 min, destroyed nothing, exited 2 with
+     `REAPER STOPPED` (the designed behaviour). Fix: removed the stale lock after confirming its owner was the stopped
+     task and nothing else ran.
+  5. 19:49, pinned d4125eb: **FAILED, same step.** CloudTrail: `AccessDenied ... elasticloadbalancing:SetWebACL` on
+     the convoy/full ALB, although the action is granted. Probable cause: SetWebACL does not support the
+     `aws:ResourceTag` condition, so the tag-scoped grant never matches. Stopped here (speed mode: one fix attempt per new
+     failure). Next fix, not applied: grant `elasticloadbalancing:SetWebACL` on `loadbalancer/app/convoy-full-*` by ARN
+     instead of by tag, then re-run the canary.
+- **Canary verdict: FAIL.** The reaper cannot yet destroy a full run that has the WAF attached. Cleaned up with the
+  manual fallback (`full.sh down canary1` from the laptop): remaining 34 resources destroyed by 19:58 UTC; direct checks at 19:58: no canary1 VPC, ALB, NAT gateway, Elastic IP, WAF, ECS cluster or reaper schedule left; reap.sh: verification step still running at commit time.
+- Carriage returns: a Windows-side edit gave `infra/aws/reaper/main.tf` CRLF endings, and the plan would have replaced
+  the reaper task definition with a start script ending every line in `
+`. Caught at plan, never applied.
+  `.gitattributes` now forces LF for `*.sh`, `*.tf`, `Dockerfile*`, `*.yml/*.yaml`, `scripts/**`; CI (`eol.yml`)
+  fails on a carriage return in any shell script (22 files clean).
+- Canary cost (estimate): ≈ $0.15 (NAT, ALB and IPv4 for ~1.2 h, WAF prorated, five reaper tasks).
+
+**Smoke run (ALB edge):** not started. It needs a passing canary, which needs the SetWebACL fix above.
 
 ## 6. Security checks
 Built and tested so far:
@@ -120,7 +154,7 @@ Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, ro
 ## 8. Gaps for P7
 - **Fargate on-demand vCPU quota is 8**: 2 tasks per service with autoscaling needs a quota increase before P7 (requested).
 - The reaper runs on Fargate (CodeBuild's concurrency quota is 0 here).
-- Reaper canary 2026-10-31 (`scripts/reaper-canary.sh`): **PASSED**. Scope: the role may delete a convoy/full-tagged
+- First (SQS-only) reaper canary 2026-10-31 (`scripts/reaper-canary.sh`): passed, but proved only scope and scheduling. Scope: the role may delete a convoy/full-tagged
   queue, not convoy/lite or Concord's. The schedule fired at 14:53:45 UTC, the Fargate task checked out exactly
   78ca8f4db9e1…, destroyed the canary queue, logged TEARDOWN VERIFIED (exit 0), and the schedule deleted itself.
 - No load test has touched the full stack; autoscaling thresholds (2,000 SSE per task, backlog 200) are first guesses.
@@ -130,5 +164,7 @@ Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, ro
 - PowerUser on the GitHub `full` role is broad (ponytail note in `github.tf`).
 
 ## 9. Needs from me
-See the PR description and the session summary: Oracle API key and limits, DuckDNS name, AWS account + `shared`
-apply, `oci` apply, GitHub environments and secrets, GHCR package visibility, approval of one full-profile run.
+- OK to apply the SetWebACL-by-ARN reaper fix and re-run the canary; then "apply" on the smoke-run plan.
+- OCI A1 capacity: keep the retry loop running (`cd infra/oci && bash retry-apply.sh`), or upgrade the tenancy to Pay As
+  You Go (Always Free limits still apply) to improve capacity odds. Then the lite deploy and §4, §6, §7 follow.
+- AWS Support: CloudFront account verification only if a CloudFront edge is wanted later.
