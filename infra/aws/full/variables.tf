@@ -25,8 +25,15 @@ variable "services_running" {
 }
 
 variable "tasks_per_service" {
-  type    = number
-  default = 2
+  description = "Minimum tasks per service. 2 for the P7 availability drills; the P6 smoke run uses 1 (no HA claim)."
+  type        = number
+  default     = 2
+}
+
+variable "max_tasks_per_service" {
+  description = "Autoscaling ceiling per service. Bounded so the worst case fits the Fargate quota with 0.5 vCPU left for the reaper."
+  type        = number
+  default     = 6
 }
 
 variable "multi_az" {

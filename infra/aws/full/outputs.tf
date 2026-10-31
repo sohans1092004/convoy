@@ -5,3 +5,4 @@ output "seed_task" { value = aws_ecs_task_definition.seed.arn }
 output "private_subnets" { value = join(",", aws_subnet.private[*].id) }
 output "tasks_security_group" { value = aws_security_group.tasks.id }
 output "services" { value = keys(local.services) }
+output "worst_case_vcpu" { value = local.worst_case_vcpu }

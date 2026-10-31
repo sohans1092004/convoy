@@ -69,6 +69,9 @@ locals {
   # Spring services read their own secrets; the JVM env sets apply to the Spring services only
   jvm     = toset(["identity", "gateway", "catalog", "dealer", "pool", "quote", "order", "payment", "realtime", "notification", "audit"])
   desired = { for k, v in local.services : k => var.services_running ? (contains(["adot", "demo-bots"], k) ? 1 : var.tasks_per_service) : 0 }
+  # Worst case on Fargate (every scalable service at its ceiling, + db-init/seed 0.25): scripts/full.sh refuses a run
+  # that would leave less than 0.5 vCPU of the account's on-demand quota for the reaper task (0.25 vCPU).
+  worst_case_vcpu = (sum([for k, v in local.services : v.cpu * (v.scale == "none" ? 1 : max(var.tasks_per_service, var.max_tasks_per_service))]) + 256) / 1024
 }
 
 resource "aws_cloudwatch_log_group" "l" {
@@ -203,7 +206,7 @@ resource "aws_appautoscaling_target" "s" {
   resource_id        = "service/${aws_ecs_cluster.c.name}/${aws_ecs_service.s[each.key].name}"
   scalable_dimension = "ecs:service:DesiredCount"
   min_capacity       = var.tasks_per_service
-  max_capacity       = each.key == "realtime" ? 10 : 6
+  max_capacity       = max(var.tasks_per_service, var.max_tasks_per_service)
 }
 
 resource "aws_appautoscaling_policy" "cpu" {

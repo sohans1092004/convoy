@@ -3,8 +3,8 @@
 #   1. scope: the reaper role may delete a convoy+full-tagged queue, and may not delete one tagged convoy+lite or untagged
 #      (IAM policy simulation, nothing created)
 #   2. apply the canary (one empty SQS queue tagged project=convoy, profile=full, run=<canary id>) from this laptop
-#   3. schedule the reaper 3 minutes ahead, wait for the CodeBuild build, check: build succeeded, its log says
-#      TEARDOWN VERIFIED, the queue is gone, the schedule deleted itself
+#   3. schedule the reaper 3 minutes ahead, wait for its Fargate task, check: exit code 0, it ran the pinned commit,
+#      its log says TEARDOWN VERIFIED, the queue is gone, the schedule deleted itself
 #   AWS_PROFILE=convoy-aws scripts/reaper-canary.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -44,22 +44,22 @@ echo "== 3. scheduled destroy"
 [ -z "$(git status --porcelain -- infra scripts)" ] || { echo "refused: commit and push infra/ and scripts/ first"; exit 2; }
 sha=$(git rev-parse HEAD)
 scripts/schedule-reap.sh infra/aws/reaper/canary "$run" 3 "$sha"
-deadline=$(( $(date +%s) + 13 * 60 )) # 3 min to the schedule + 10 min for it to start the build
-until build=$(aws codebuild list-builds-for-project --project-name convoy-full-reaper --query 'ids[0]' --output text) &&
-      [ "$build" != None ] && aws codebuild batch-get-builds --ids "$build" --query 'builds[0].environment.environmentVariables[?name==`RUN_ID`].value' --output text | grep -qx "$run"; do
+deadline=$(( $(date +%s) + 13 * 60 )) # 3 min to the schedule + 10 min for the task to start
+until task=$(aws ecs list-tasks --cluster convoy-reaper --started-by "$run" --desired-status RUNNING --query 'taskArns[0]' --output text) && [ "$task" != None ] ||
+      task=$(aws ecs list-tasks --cluster convoy-reaper --started-by "$run" --desired-status STOPPED --query 'taskArns[0]' --output text) && [ "$task" != None ]; do
   if [ "$(date +%s)" -gt "$deadline" ]; then
     errors=$(aws cloudwatch get-metric-statistics --namespace AWS/Scheduler --metric-name TargetErrorCount --period 3600 --statistics Sum       --start-time "$(date -u -d '-30 min' +%FT%TZ)" --end-time "$(date -u +%FT%TZ)" --query 'Datapoints[0].Sum' --output text)
-    echo "CANARY FAILED: no reaper build 10 min after the deadline (Scheduler target errors: $errors)"; exit 1
+    echo "CANARY FAILED: no reaper task 10 min after the deadline (Scheduler target errors: $errors)"; exit 1
   fi
   sleep 20
 done
-echo "build $build started"
-until st=$(aws codebuild batch-get-builds --ids "$build" --query 'builds[0].buildStatus' --output text) && [ "$st" != IN_PROGRESS ]; do sleep 20; done
-stream=$(aws codebuild batch-get-builds --ids "$build" --query 'builds[0].logs.streamName' --output text)
-verdict=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "$stream" --filter-pattern '"TEARDOWN"' \
-  --query 'events[-1].message' --output text)
+echo "task $task started"
+aws ecs wait tasks-stopped --cluster convoy-reaper --tasks "$task" || aws ecs wait tasks-stopped --cluster convoy-reaper --tasks "$task"
+st=$(aws ecs describe-tasks --cluster convoy-reaper --tasks "$task" --query 'tasks[0].containers[0].exitCode' --output text)
+stream="reaper/reaper/${task##*/}"
+verdict=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "$stream" --filter-pattern '"TEARDOWN"'   --query 'events[-1].message' --output text)
 gone=$(aws sqs get-queue-url --queue-name "convoy-reaper-canary-$run" >/dev/null 2>&1 && echo no || echo yes)
 sched=$(aws scheduler get-schedule --name "convoy-reap-$run" >/dev/null 2>&1 && echo still-there || echo deleted)
 pinned=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "$stream" --filter-pattern '"reaper code pinned at"'   --query 'events[0].message' --output text)
-echo "build: $st; $pinned (expected $sha); report: $verdict; queue gone: $gone; schedule: $sched"
-[ "$st" = SUCCEEDED ] && [ "$gone" = yes ] && echo "$pinned" | grep -q "$sha" && echo "$verdict" | grep -q "TEARDOWN VERIFIED" && echo "CANARY PASSED" || { echo "CANARY FAILED"; exit 1; }
+echo "task exit code: $st; $pinned (expected $sha); report: $verdict; queue gone: $gone; schedule: $sched"
+[ "$st" = 0 ] && [ "$gone" = yes ] && echo "$pinned" | grep -q "$sha" && echo "$verdict" | grep -q "TEARDOWN VERIFIED" && echo "CANARY PASSED" || { echo "CANARY FAILED"; exit 1; }

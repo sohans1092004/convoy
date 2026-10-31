@@ -2,7 +2,9 @@
 # Full AWS profile lifecycle (P6.E), run from the laptop with the convoy-aws session (make full-up / make full-down).
 # Before anything is applied, `up` schedules the destroy at the maximum duration (MAX_MINUTES, default 60) through the
 # in-account reaper (infra/aws/reaper, scripts/schedule-reap.sh), so a run ends even if this laptop is off.
-#   full.sh up      <run-id> <images.env>   apply (DB init first), wait for services, seed demo dealerships, print the URL
+#   full.sh up      <run-id> <images.env>   schedule the destroy, check Fargate headroom, apply (DB init first), wait for
+#                                           services, seed demo dealerships, print the URL. TASKS_PER_SERVICE (default 2),
+#                                           MAX_TASKS_PER_SERVICE (default 6); the P6 smoke run uses 1 and 1
 #   full.sh down    <run-id>                scripts/reap.sh: destroy, verify the teardown, report (the same path as the reaper)
 #   full.sh verify  <run-id>                tag inventory of the run must be empty
 #   full.sh cost    <run-id> <hours>        Cost Explorer by the run tag if available, else the estimate
@@ -31,6 +33,7 @@ images['pgbouncer'] = digest('alpine:3.22.2')
 images['postgres'] = digest('postgres:16.15-alpine')
 images['adot'] = digest('public.ecr.aws/aws-observability/aws-otel-collector:v0.43.3')
 json.dump({'run_id': sys.argv[2], 'images': images, 'shared': json.loads(os.environ['SHARED_JSON']),
+           'tasks_per_service': int(os.environ.get('TASKS_PER_SERVICE', '2')), 'max_tasks_per_service': int(os.environ.get('MAX_TASKS_PER_SERVICE', '6')),
            'secrets': json.loads(os.environ['SECRETS_JSON'])}, open('run.auto.tfvars.json', 'w'))
 PY
 }
@@ -53,6 +56,17 @@ case $cmd in
     (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") # first: the deadline holds whatever happens next
     tf_init
     tfvars "$3"
+    # Headroom for the reaper: quota - Fargate vCPU already running in the account - this run's worst case >= 0.5
+    quota=$(aws service-quotas get-service-quota --service-code fargate --quota-code L-3032A538 --query Quota.Value --output text)
+    running=$(for c in $(aws ecs list-clusters --query 'clusterArns[]' --output text); do
+        t=$(aws ecs list-tasks --cluster "$c" --desired-status RUNNING --query 'taskArns[]' --output text)
+        [ -n "$t" ] && aws ecs describe-tasks --cluster "$c" --tasks $t --query 'tasks[?launchType==`FARGATE`].cpu' --output text
+      done | tr '	' '
+' | awk '{s+=$1} END {print s/1024+0}')
+    worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"')
+    left=$(awk "BEGIN {print $quota - $running - $worst}")
+    echo "Fargate on-demand vCPU: quota $quota, running $running, this run at most $worst -> $left left for the reaper"
+    awk "BEGIN {exit !($left >= 0.5)}" || { echo "refused: less than 0.5 vCPU would be left for the reaper (lower TASKS_PER_SERVICE / MAX_TASKS_PER_SERVICE or raise the quota)"; exit 2; }
     terraform apply -input=false -auto-approve -var services_running=false
     one_off "$(terraform output -raw db_init_task)"
     terraform apply -input=false -auto-approve -var services_running=true

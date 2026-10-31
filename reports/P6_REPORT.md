@@ -92,7 +92,10 @@ for all lite containers, JVMs 175–234 MiB each against 384 MiB limits; journey
 little free memory), to be measured on the VM.
 
 ## 5. The full-profile smoke run, with its cost
-Pending your approval of a run (`make full-up HOURS=1`, ≈ $1.49 × 1 h idle estimate, at most 1 hour).
+Pending. The run uses **1 task per service** (`TASKS_PER_SERVICE=1 MAX_TASKS_PER_SERVICE=1`, 5.50 vCPU worst case,
+inside the account's 8 vCPU Fargate quota with headroom for the reaper). **This run makes no high-availability claim**:
+it shows the stack deploys and serves the journey; failover and availability need 2 tasks per service, measured in P7.
+At most 1 hour, destroyed by the reaper at the deadline if not before.
 
 ## 6. Security checks
 Built and tested so far:
@@ -107,9 +110,8 @@ Pending (VM): open ports from outside, `/metrics` / Prometheus / admin internals
 Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, row counts of every table).
 
 ## 8. Gaps for P7
-- **Scheduled destroy blocked:** CodeBuild concurrency quota is 0 in this account (canary 2026-10-31: the schedule
-  fired, StartBuild was refused). Needs a quota increase or a Fargate-based reaper before any full run.
-- **Fargate on-demand vCPU quota is 8**; the full profile needs ~10 vCPU at 2 tasks per service (P7 load more).
+- **Fargate on-demand vCPU quota is 8**: 2 tasks per service with autoscaling needs a quota increase before P7 (requested).
+- The reaper runs on Fargate (CodeBuild's concurrency quota is 0 here).
 - No load test has touched the full stack; autoscaling thresholds (2,000 SSE per task, backlog 200) are first guesses.
 - The WAF per-IP rate rule would block load generators at the edge; P7 drives load at the ALB origin (cost estimate §2).
 - VPC interface endpoints are not built (NAT carries SQS/SNS traffic); add them if NAT data dominates a run's cost.

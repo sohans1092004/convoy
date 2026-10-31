@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The one destroy path for full-profile runs (P6.E), used by `make full-down` on the laptop and by the convoy-full-reaper
-# CodeBuild project at a run's deadline (EventBridge Scheduler, scripts/schedule-reap.sh):
+# The one destroy path for full-profile runs (P6.E), used by `make full-down` on the laptop and by the convoy-reaper
+# Fargate task at a run's deadline (EventBridge Scheduler, scripts/schedule-reap.sh):
 #   1. terraform destroy of <dir> (state in s3://convoy-tfstate-<account>/<dir's backend key>)
 #   2. teardown verification: no resource tagged project=convoy, profile=full, run=<run> may remain (retried 15 min)
 #   3. report: the result (and the run's cost so far) to the convoy-alerts topic (email) and the build log
@@ -45,7 +45,8 @@ if [ $destroyed = 0 ] && [ $verified = 0 ]; then
 else
   status="TEARDOWN FAILED"; detail="destroy exit $destroyed; still tagged run=$run: ${left:-none}. Manual recovery: docs/runbooks/full-profile.md"
 fi
-msg="$status: $dir run $run. $detail. Cost so far: ${cost:-unavailable}. Build: ${CODEBUILD_BUILD_ID:-laptop}."
+runner=$(hostname); [ -n "${ECS_CONTAINER_METADATA_URI_V4:-}" ] && runner="reaper task ${ECS_CONTAINER_METADATA_URI_V4##*/}"
+msg="$status: $dir run $run. $detail. Cost so far: ${cost:-unavailable}. Runner: $runner."
 log "$msg"
 aws sns publish --region "$region" --topic-arn "arn:aws:sns:$region:$account:convoy-alerts" \
   --subject "Convoy $status ($run)" --message "$msg" >/dev/null || log "report not sent (convoy-alerts unreachable)"
