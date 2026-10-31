@@ -22,8 +22,9 @@ fi
 q="arn:aws:sqs:$AWS_REGION:$account:convoy-reaper-canary-$run"
 
 echo "== 1. scope (policy simulation)"
+# the region is part of the context: the organisation SCP denies everything outside it
 sim() { aws iam simulate-principal-policy --policy-source-arn "$role" --action-names sqs:DeleteQueue --resource-arns "$q" \
-  --context-entries "$@" --query 'EvaluationResults[0].EvalDecision' --output text; }
+  --context-entries ContextKeyName=aws:RequestedRegion,ContextKeyValues="$AWS_REGION",ContextKeyType=string "$@" --query 'EvaluationResults[0].EvalDecision' --output text; }
 full=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=convoy,ContextKeyType=string ContextKeyName=aws:ResourceTag/profile,ContextKeyValues=full,ContextKeyType=string)
 lite=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=convoy,ContextKeyType=string ContextKeyName=aws:ResourceTag/profile,ContextKeyValues=lite,ContextKeyType=string)
 other=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=concord,ContextKeyType=string)
