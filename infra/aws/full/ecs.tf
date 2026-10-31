@@ -1,6 +1,7 @@
 # ECS Fargate (ARM64), Service Connect (namespace "convoy": http://identity:8080 etc., as in compose), >= 2 tasks each.
 # Same images and the same prod profile as lite: the topology is checked, never created, and config is validated at start.
 locals {
+  # A destroy (scripts/reap.sh) passes no images; the placeholder is never deployed (image values are validated on apply).
   log_group = "/convoy-full/${var.run_id}"
   db_host   = aws_db_instance.pg.address
 
@@ -144,7 +145,7 @@ resource "aws_ecs_task_definition" "t" {
   }
   container_definitions = jsonencode([{
     name         = each.key
-    image        = var.images[each.key]
+    image        = lookup(var.images, each.key, "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
     essential    = true
     command      = each.key == "pgbouncer" ? ["sh", "-c", local.pgbouncer_start] : null
     portMappings = each.value.port == 0 ? [] : [{ name = each.key, containerPort = each.value.port, protocol = "tcp", appProtocol = contains(["pgbouncer"], each.key) ? null : "http" }]
@@ -311,7 +312,7 @@ resource "aws_ecs_task_definition" "db_init" {
   }
   container_definitions = jsonencode([{
     name      = "db-init"
-    image     = var.images["postgres"]
+    image     = lookup(var.images, "postgres", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
     essential = true
     command   = ["sh", "-c", "echo \"$S1\" | base64 -d > /tmp/1.sh && echo \"$S2\" | base64 -d > /tmp/2.sh && sh /tmp/1.sh && sh /tmp/2.sh"]
     environment = [
@@ -341,7 +342,7 @@ resource "aws_ecs_task_definition" "seed" {
   }
   container_definitions = jsonencode([{
     name             = "seed"
-    image            = var.images["postgres"]
+    image            = lookup(var.images, "postgres", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
     essential        = true
     command          = ["sh", "-c", "echo \"$SQL\" | base64 -d | psql -v ON_ERROR_STOP=1 -h \"$PGHOST\" -U dealer -d convoy"]
     environment      = [{ name = "SQL", value = base64encode(file("${path.module}/../../../deploy/local/seed/dealerships.sql")) }, { name = "PGHOST", value = local.db_host }]

@@ -91,7 +91,7 @@ case $cmd in
     # the running step is interrupted (SIGINT: terraform finishes in-flight calls, saves state, unlocks) and down runs.
     deadline=$(( started + ${CREATE_MINUTES:-35} * 60 ))
     within() { local left=$(( deadline - $(date +%s) )); [ "$left" -gt 0 ] || return 124; timeout -s INT -k 180 "$left" "$@"; }
-    abort() { echo "creation not finished by minute ${CREATE_MINUTES:-35} (or a step failed): destroying now"; "$0" down "$run"; exit 3; }
+    abort() { echo "creation not finished by minute ${CREATE_MINUTES:-35} (or a step failed): destroying now"; bash "$root/scripts/full.sh" down "$run"; exit 3; }
     within terraform apply -input=false -auto-approve -var services_running=false || abort
     one_off "$(terraform output -raw db_init_task)" || abort
     within terraform apply -input=false -auto-approve -var services_running=true || abort
