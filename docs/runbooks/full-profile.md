@@ -16,6 +16,12 @@ only resources tagged `project=convoy` and `profile=full`, plus the full-profile
 `profile=lite`, so it cannot delete itself. `make full-down` runs the same `reap.sh` and removes the schedule.
 Tested end to end by `scripts/reaper-canary.sh` (one empty SQS queue) before a real run relies on it.
 
+**Blocked (2026-10-31):** the account's CodeBuild quotas are 0 ("Concurrently running builds for Linux/Small
+environment" and every other environment), so StartBuild fails with `AccountLimitExceededException` and no scheduled
+destroy can run. The canary proved the schedule fires; it did not get a build. No full run until this is resolved
+(quota increase to 1, or the reaper moved to an ECS Fargate task). Fargate on-demand vCPU is 8 here, below the ~10 vCPU
+the full profile needs with 2 tasks per service.
+
 ## A run (from the laptop)
 `make full-up RUN=r1 IMAGES=images.env` with `SHARED_JSON` and `SECRETS_JSON` exported (see `scripts/full.sh`):
 1. applies with every service at 0 tasks, runs `db-init` (schemas and roles, the same scripts as local), applies again

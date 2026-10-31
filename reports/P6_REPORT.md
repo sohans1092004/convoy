@@ -107,6 +107,9 @@ Pending (VM): open ports from outside, `/metrics` / Prometheus / admin internals
 Pending (VM): first nightly backup and one restore drill (`restore-check.sh`, row counts of every table).
 
 ## 8. Gaps for P7
+- **Scheduled destroy blocked:** CodeBuild concurrency quota is 0 in this account (canary 2026-10-31: the schedule
+  fired, StartBuild was refused). Needs a quota increase or a Fargate-based reaper before any full run.
+- **Fargate on-demand vCPU quota is 8**; the full profile needs ~10 vCPU at 2 tasks per service (P7 load more).
 - No load test has touched the full stack; autoscaling thresholds (2,000 SSE per task, backlog 200) are first guesses.
 - The WAF per-IP rate rule would block load generators at the edge; P7 drives load at the ALB origin (cost estimate §2).
 - VPC interface endpoints are not built (NAT carries SQS/SNS traffic); add them if NAT data dominates a run's cost.
