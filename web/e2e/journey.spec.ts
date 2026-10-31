@@ -10,6 +10,9 @@ const THREE = process.env.THREE_DEALERS === '1';
 // P4.F (nightly): LIFECYCLE=1 carries the booking through to delivery and a review; CANCEL=1 has the dealer cancel after FINAL.
 const LIFECYCLE = process.env.LIFECYCLE === '1';
 const CANCEL = process.env.CANCEL === '1';
+// P6: REMOTE=1 runs the journey against a deployed URL (lite VM, full stack). The checks that read the local compose
+// stack (database, metrics, logs, verify-chain) are skipped here and run on the host instead (docs/runbooks/lite-host.md).
+const REMOTE = process.env.REMOTE === '1';
 
 /** A query as the payment service's database role (the ledger is checked where it lives). */
 function paymentSql(sql: string): string {
@@ -33,6 +36,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // dealer quote -> compare -> accept -> confirm -> tier resolves -> booking voucher.
 // Same guard as scripts/require-razorpay-fake.sh: the journey pays through the fake's checkout, so stop at once on real test mode.
 test.beforeAll(() => {
+  if (REMOTE) return; // the deployment itself is configured with the simulated payment (P6.B)
   let url = '';
   try {
     url = execFileSync('docker', ['compose', 'exec', '-T', 'payment', 'printenv', 'RAZORPAY_BASE_URL'], { cwd: new URL('../..', import.meta.url), encoding: 'utf8' }).trim();
@@ -93,7 +97,7 @@ test.afterEach(async ({}, info) => {
   mkdirSync(dir, { recursive: true });
   const stamp = `${new Date().toISOString().replace(/[:.]/g, '-')}-${info.project.name}`;
   let logs = '';
-  try {
+  if (!REMOTE) try {
     logs = execFileSync('docker', ['compose', 'logs', '--no-color', '--since', '2m', 'gateway', 'identity', 'web'], { cwd: new URL('../..', import.meta.url), maxBuffer: 64 * 1024 * 1024 }).toString();
   } catch (e) { logs = `could not read docker logs: ${e}`; }
   writeFileSync(new URL(`${stamp}-logs.txt`, dir), logs);
@@ -316,6 +320,7 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
 });
 
 test.afterAll(() => {
+  if (REMOTE) { console.log('REMOTE: database, metrics and audit-chain checks are run on the host'); return; }
   // P5.0 version guard: no service dropped an event as stale at a version another event already used.
   // Every consumer must answer: a failed scrape would hide a dropped event (until P5.C every scrape got 401 and counted nothing).
   let distinct = 0;

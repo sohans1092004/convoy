@@ -1,0 +1,468 @@
+{
+  "topics": [
+    "convoy-catalog-events",
+    "convoy-dealer-events",
+    "convoy-identity-events",
+    "convoy-order-events",
+    "convoy-payment-events",
+    "convoy-pool-events.fifo",
+    "convoy-quote-events"
+  ],
+  "queues": [
+    {
+      "name": "convoy-audit--catalog-events",
+      "fifo": false,
+      "dlq": "convoy-audit--catalog-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-catalog-events",
+      "event_types": [
+        "CatalogPriceUpdated",
+        "RulesetPublished"
+      ]
+    },
+    {
+      "name": "convoy-audit--dealer-events",
+      "fifo": false,
+      "dlq": "convoy-audit--dealer-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-dealer-events",
+      "event_types": [
+        "DealershipSuspended",
+        "DealershipVerified",
+        "ReliabilityScoreChanged",
+        "ReviewPosted"
+      ]
+    },
+    {
+      "name": "convoy-audit--identity-events",
+      "fifo": false,
+      "dlq": "convoy-audit--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "DataExportDownloaded",
+        "ErasureRequested",
+        "SessionRevoked",
+        "StaffInvited",
+        "StaffRevoked",
+        "UserExportRequested",
+        "UserRegistered"
+      ]
+    },
+    {
+      "name": "convoy-audit--order-events",
+      "fifo": false,
+      "dlq": "convoy-audit--order-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-order-events",
+      "event_types": [
+        "AllBookingsClosed",
+        "BookingCancelled",
+        "BookingConfirmedByDealer",
+        "BookingDelivered",
+        "BookingIssued",
+        "BookingOverdue",
+        "BookingsIssued",
+        "ConfirmationDeclined",
+        "ConfirmationRecorded",
+        "DeliveryScheduled",
+        "DepositHoldRequested",
+        "DepositRefundRequested",
+        "DisputeOpened",
+        "DisputeResolved",
+        "DisputeStatusChanged",
+        "InvoiceConfirmed",
+        "OrderCancelled",
+        "OrderCreated",
+        "StockReservationRequested",
+        "TierResolved"
+      ]
+    },
+    {
+      "name": "convoy-audit--payment-events",
+      "fifo": false,
+      "dlq": "convoy-audit--payment-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-payment-events",
+      "event_types": [
+        "DepositHeld",
+        "DepositHoldRejected",
+        "DepositReleased",
+        "PaymentCaptured",
+        "PaymentFailed",
+        "PaymentVoided",
+        "ReconciliationMismatchFound",
+        "RefundCompleted",
+        "RefundFailed",
+        "RefundRequested"
+      ]
+    },
+    {
+      "name": "convoy-audit--pool-events",
+      "fifo": false,
+      "dlq": "convoy-audit--pool-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-pool-events.fifo",
+      "event_types": [
+        "AcceptanceChanged",
+        "AcceptancesFrozen",
+        "DecisionOpened",
+        "FinalRoundOpened",
+        "MemberCommitted",
+        "MemberJoined",
+        "MemberLeft",
+        "MemberReleased",
+        "PoolBookingStarted",
+        "PoolClosed",
+        "PoolCompleted",
+        "PoolCreated",
+        "PoolReady",
+        "PoolReopened",
+        "QuoteRoundOpened",
+        "RoundClosed"
+      ]
+    },
+    {
+      "name": "convoy-audit--quote-events",
+      "fifo": false,
+      "dlq": "convoy-audit--quote-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-quote-events",
+      "event_types": [
+        "ClarificationAnswered",
+        "ClarificationAsked",
+        "QuoteExpired",
+        "QuoteFinalised",
+        "QuoteRevised",
+        "QuoteSubmitted",
+        "QuoteVoided",
+        "QuoteWithdrawn",
+        "RankChanged",
+        "StockReserved",
+        "StockUnavailable"
+      ]
+    },
+    {
+      "name": "convoy-catalog--identity-events",
+      "fifo": false,
+      "dlq": "convoy-catalog--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-dealer--identity-events",
+      "fifo": false,
+      "dlq": "convoy-dealer--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-dealer--order-events",
+      "fifo": false,
+      "dlq": "convoy-dealer--order-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-order-events",
+      "event_types": [
+        "BookingCancelled",
+        "BookingDelivered"
+      ]
+    },
+    {
+      "name": "convoy-dealer--quote-events",
+      "fifo": false,
+      "dlq": "convoy-dealer--quote-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-quote-events",
+      "event_types": [
+        "QuoteWithdrawn"
+      ]
+    },
+    {
+      "name": "convoy-identity--dealer-events",
+      "fifo": false,
+      "dlq": "convoy-identity--dealer-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-dealer-events",
+      "event_types": [
+        "DealershipVerified"
+      ]
+    },
+    {
+      "name": "convoy-notification--identity-events",
+      "fifo": false,
+      "dlq": "convoy-notification--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-notification--order-events",
+      "fifo": false,
+      "dlq": "convoy-notification--order-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-order-events",
+      "event_types": [
+        "BookingConfirmedByDealer",
+        "BookingIssued",
+        "DeliveryScheduled",
+        "DisputeOpened",
+        "DisputeResolved",
+        "DisputeStatusChanged",
+        "OrderCreated",
+        "TierResolved"
+      ]
+    },
+    {
+      "name": "convoy-notification--payment-events",
+      "fifo": false,
+      "dlq": "convoy-notification--payment-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-payment-events",
+      "event_types": [
+        "PaymentCaptured",
+        "RefundCompleted"
+      ]
+    },
+    {
+      "name": "convoy-notification--pool-events",
+      "fifo": false,
+      "dlq": "convoy-notification--pool-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-pool-events.fifo",
+      "event_types": [
+        "DecisionOpened",
+        "FinalRoundOpened",
+        "MemberCommitted",
+        "MemberLeft",
+        "MemberReleased",
+        "PoolReady",
+        "QuoteRoundOpened",
+        "RoundClosed"
+      ]
+    },
+    {
+      "name": "convoy-notification--quote-events",
+      "fifo": false,
+      "dlq": "convoy-notification--quote-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-quote-events",
+      "event_types": [
+        "ClarificationAnswered",
+        "ClarificationAsked"
+      ]
+    },
+    {
+      "name": "convoy-order--identity-events",
+      "fifo": false,
+      "dlq": "convoy-order--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-order--payment-events",
+      "fifo": false,
+      "dlq": "convoy-order--payment-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-payment-events",
+      "event_types": [
+        "DepositHeld",
+        "DepositHoldRejected",
+        "PaymentCaptured"
+      ]
+    },
+    {
+      "name": "convoy-order--pool-events.fifo",
+      "fifo": true,
+      "dlq": "convoy-order--pool-events-dlq.fifo",
+      "visibility_timeout": 30,
+      "topic": "convoy-pool-events.fifo",
+      "event_types": [
+        "AcceptanceChanged",
+        "AcceptancesFrozen"
+      ]
+    },
+    {
+      "name": "convoy-order--quote-events",
+      "fifo": false,
+      "dlq": "convoy-order--quote-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-quote-events",
+      "event_types": [
+        "QuoteFinalised",
+        "QuoteWithdrawn",
+        "StockReserved",
+        "StockUnavailable"
+      ]
+    },
+    {
+      "name": "convoy-payment--identity-events",
+      "fifo": false,
+      "dlq": "convoy-payment--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-payment--order-events",
+      "fifo": false,
+      "dlq": "convoy-payment--order-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-order-events",
+      "event_types": [
+        "BookingDelivered",
+        "DepositHoldRequested",
+        "DepositRefundRequested"
+      ]
+    },
+    {
+      "name": "convoy-payment--pool-events.fifo",
+      "fifo": true,
+      "dlq": "convoy-payment--pool-events-dlq.fifo",
+      "visibility_timeout": 30,
+      "topic": "convoy-pool-events.fifo",
+      "event_types": [
+        "AcceptancesFrozen",
+        "MemberLeft",
+        "MemberReleased",
+        "PoolClosed"
+      ]
+    },
+    {
+      "name": "convoy-pool--identity-events",
+      "fifo": false,
+      "dlq": "convoy-pool--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-pool--order-events",
+      "fifo": false,
+      "dlq": "convoy-pool--order-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-order-events",
+      "event_types": [
+        "AllBookingsClosed",
+        "BookingsIssued"
+      ]
+    },
+    {
+      "name": "convoy-pool--payment-events",
+      "fifo": false,
+      "dlq": "convoy-pool--payment-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-payment-events",
+      "event_types": [
+        "PaymentCaptured",
+        "PaymentFailed",
+        "PaymentVoided"
+      ]
+    },
+    {
+      "name": "convoy-quote--identity-events",
+      "fifo": false,
+      "dlq": "convoy-quote--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "ErasureRequested",
+        "UserExportRequested"
+      ]
+    },
+    {
+      "name": "convoy-quote--order-events",
+      "fifo": false,
+      "dlq": "convoy-quote--order-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-order-events",
+      "event_types": [
+        "ConfirmationRecorded",
+        "StockReservationRequested"
+      ]
+    },
+    {
+      "name": "convoy-quote--pool-events.fifo",
+      "fifo": true,
+      "dlq": "convoy-quote--pool-events-dlq.fifo",
+      "visibility_timeout": 30,
+      "topic": "convoy-pool-events.fifo",
+      "event_types": [
+        "AcceptanceChanged",
+        "AcceptancesFrozen",
+        "FinalRoundOpened",
+        "MemberCommitted",
+        "MemberLeft",
+        "QuoteRoundOpened",
+        "RoundClosed"
+      ]
+    },
+    {
+      "name": "convoy-realtime--identity-events",
+      "fifo": false,
+      "dlq": "convoy-realtime--identity-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-identity-events",
+      "event_types": [
+        "SessionRevoked"
+      ]
+    },
+    {
+      "name": "convoy-realtime--pool-events.fifo",
+      "fifo": true,
+      "dlq": "convoy-realtime--pool-events-dlq.fifo",
+      "visibility_timeout": 30,
+      "topic": "convoy-pool-events.fifo",
+      "event_types": [
+        "AcceptanceChanged",
+        "AcceptancesFrozen",
+        "DecisionOpened",
+        "FinalRoundOpened",
+        "MemberCommitted",
+        "MemberJoined",
+        "MemberLeft",
+        "MemberReleased",
+        "PoolBookingStarted",
+        "PoolClosed",
+        "PoolCompleted",
+        "PoolCreated",
+        "PoolReady",
+        "PoolReopened",
+        "QuoteRoundOpened",
+        "RoundClosed"
+      ]
+    },
+    {
+      "name": "convoy-realtime--quote-events",
+      "fifo": false,
+      "dlq": "convoy-realtime--quote-events-dlq",
+      "visibility_timeout": 30,
+      "topic": "convoy-quote-events",
+      "event_types": [
+        "QuoteSubmitted",
+        "QuoteWithdrawn",
+        "RankChanged"
+      ]
+    }
+  ]
+}

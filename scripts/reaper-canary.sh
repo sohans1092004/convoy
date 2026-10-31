@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# End-to-end test of the scheduled destroy (P6.E), run once before a full run relies on it:
+#   1. scope: the reaper role may delete a convoy+full-tagged queue, and may not delete one tagged convoy+lite or untagged
+#      (IAM policy simulation, nothing created)
+#   2. apply the canary (one empty SQS queue tagged project=convoy, profile=full, run=<canary id>) from this laptop
+#   3. schedule the reaper 3 minutes ahead, wait for its Fargate task, check: exit code 0, it ran the pinned commit,
+#      its log says TEARDOWN VERIFIED, the queue is gone, the schedule deleted itself
+#   AWS_PROFILE=convoy-aws scripts/reaper-canary.sh
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export AWS_REGION=${AWS_REGION:-ap-southeast-2}
+export MSYS2_ENV_CONV_EXCL="*" MSYS_NO_PATHCONV=1 # Git Bash on Windows: never rewrite env values or arguments (a secret or "/convoy/reaper" starting with "/") for native programs
+account=$(aws sts get-caller-identity --query Account --output text)
+run="canary$(date -u +%Y%m%d%H%M)"
+role="arn:aws:iam::$account:role/convoy-reaper"
+# terraform from PATH, else the official image with this session's (short-lived) credentials, refreshed on every call
+if command -v terraform >/dev/null; then tf() { terraform "$@"; }; else
+  py=$(command -v python3 || command -v python)
+  tf() {
+    # JSON -> quoted exports: a secret is never split by the shell or printed; MSYS2_ENV_CONV_EXCL stops Git Bash on
+    # Windows rewriting a value that starts with "/" into a Windows path on its way to docker
+    eval "export $(aws configure export-credentials --format process | "$py" -c 'import json,shlex,sys; c=json.load(sys.stdin); print(" ".join(k + "=" + shlex.quote(c[j]) for k, j in [("AWS_ACCESS_KEY_ID", "AccessKeyId"), ("AWS_SECRET_ACCESS_KEY", "SecretAccessKey"), ("AWS_SESSION_TOKEN", "SessionToken")]))')"
+    MSYS2_ENV_CONV_EXCL='*' MSYS_NO_PATHCONV=1 docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_REGION       -v "$(cygpath -w "$PWD" 2>/dev/null || pwd):/w" -w /w hashicorp/terraform:1.10.5 "$@"
+  }
+fi
+q="arn:aws:sqs:$AWS_REGION:$account:convoy-reaper-canary-$run"
+
+echo "== 1. scope (policy simulation)"
+# the region is part of the context: the organisation SCP denies everything outside it
+sim() { aws iam simulate-principal-policy --policy-source-arn "$role" --action-names sqs:DeleteQueue --resource-arns "$q" \
+  --context-entries ContextKeyName=aws:RequestedRegion,ContextKeyValues="$AWS_REGION",ContextKeyType=string "$@" --query 'EvaluationResults[0].EvalDecision' --output text; }
+full=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=convoy,ContextKeyType=string ContextKeyName=aws:ResourceTag/profile,ContextKeyValues=full,ContextKeyType=string)
+lite=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=convoy,ContextKeyType=string ContextKeyName=aws:ResourceTag/profile,ContextKeyValues=lite,ContextKeyType=string)
+other=$(sim ContextKeyName=aws:ResourceTag/project,ContextKeyValues=concord,ContextKeyType=string)
+echo "delete convoy/full: $full; convoy/lite: $lite; concord: $other"
+[ "$full" = allowed ] && [ "$lite" != allowed ] && [ "$other" != allowed ] || { echo "SCOPE CHECK FAILED"; exit 1; }
+
+echo "== 2. canary $run"
+tf -chdir=infra/aws/reaper/canary init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$account" >/dev/null
+tf -chdir=infra/aws/reaper/canary apply -input=false -auto-approve -var "run_id=$run" -no-color | tail -2
+aws sqs get-queue-url --queue-name "convoy-reaper-canary-$run" --query QueueUrl --output text
+
+echo "== 3. scheduled destroy"
+[ -z "$(git status --porcelain -- infra scripts)" ] || { echo "refused: commit and push infra/ and scripts/ first"; exit 2; }
+sha=$(git rev-parse HEAD)
+scripts/schedule-reap.sh infra/aws/reaper/canary "$run" 3 "$sha"
+deadline=$(( $(date +%s) + 13 * 60 )) # 3 min to the schedule + 10 min for the task to start
+until task=$(aws ecs list-tasks --cluster convoy-reaper --started-by "$run" --desired-status RUNNING --query 'taskArns[0]' --output text) && [ "$task" != None ] ||
+      task=$(aws ecs list-tasks --cluster convoy-reaper --started-by "$run" --desired-status STOPPED --query 'taskArns[0]' --output text) && [ "$task" != None ]; do
+  if [ "$(date +%s)" -gt "$deadline" ]; then
+    errors=$(aws cloudwatch get-metric-statistics --namespace AWS/Scheduler --metric-name TargetErrorCount --period 3600 --statistics Sum       --start-time "$(date -u -d '-30 min' +%FT%TZ)" --end-time "$(date -u +%FT%TZ)" --query 'Datapoints[0].Sum' --output text)
+    echo "CANARY FAILED: no reaper task 10 min after the deadline (Scheduler target errors: $errors)"; exit 1
+  fi
+  sleep 20
+done
+echo "task $task started"
+aws ecs wait tasks-stopped --cluster convoy-reaper --tasks "$task" || aws ecs wait tasks-stopped --cluster convoy-reaper --tasks "$task"
+st=$(aws ecs describe-tasks --cluster convoy-reaper --tasks "$task" --query 'tasks[0].containers[0].exitCode' --output text)
+stream="reaper/reaper/${task##*/}"
+verdict=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "$stream" --filter-pattern '"TEARDOWN"'   --query 'events[-1].message' --output text)
+gone=$(aws sqs get-queue-url --queue-name "convoy-reaper-canary-$run" >/dev/null 2>&1 && echo no || echo yes)
+sched=$(aws scheduler get-schedule --name "convoy-reap-$run" >/dev/null 2>&1 && echo still-there || echo deleted)
+pinned=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "$stream" --filter-pattern '"reaper code pinned at"'   --query 'events[0].message' --output text)
+echo "task exit code: $st; $pinned (expected $sha); report: $verdict; queue gone: $gone; schedule: $sched"
+[ "$st" = 0 ] && [ "$gone" = yes ] && echo "$pinned" | grep -q "$sha" && echo "$verdict" | grep -q "TEARDOWN VERIFIED" && echo "CANARY PASSED" || { echo "CANARY FAILED"; exit 1; }

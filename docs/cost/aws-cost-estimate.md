@@ -124,3 +124,48 @@ For comparison, leaving the full stack on idle for a month would cost **≈ $1,0
 | Secrets Manager / KMS / ECR | …/AWSSecretsManager, awskms, AmazonECR | 2026-09-11 | 0.40 $/secret-mo; 1 $/key-mo; 0.10 $/GB-mo |
 
 The arithmetic script used to produce these tables is reproduced in [`cost-arithmetic.md`](cost-arithmetic.md) so the numbers can be re-run when prices change.
+
+## 6. P6 lite: Oracle Cloud host + AWS messaging, storage and email in ap-southeast-2 (replaces §1 for the always-on demo)
+The account allows only **ap-southeast-2 (Sydney)** (organisation SCP) and is shared with Concord; Convoy's spend is
+tracked with the `project=convoy` cost allocation tag and its own budget. Sections 1–5 were estimated for ap-south-1 in P0.
+The host is an Oracle Cloud Always Free A1 VM (1 OCPU, 6 GB, 50 GB boot volume, Always Free Object Storage for backups):
+**$0**. No EC2, EBS, public IPv4, CloudFront, ECR (images on GHCR), Secrets Manager or KMS on AWS for lite.
+
+Sydney prices (AWS Price List offer files for ap-southeast-2: SQS 2026-09-11, SNS 2026-09-15, CloudWatch 2026-10-07,
+SES 2026-10-27): SQS standard 0.40 $/M and FIFO 0.50 $/M (tier 1) after 1 M free requests/month; SNS 0.50 $/M after
+1 M free; CloudWatch standard alarm 0.10 $ per alarm metric-month after 10 free; SES 0.00023 $/message; S3 0.025 $/GB-mo;
+data out to the internet free up to 100 GB/month. 730 h/month:
+
+| Line | Arithmetic | $/month |
+|---|---|---|
+| SQS empty long polls (dominant) | 33 queues × 1 poller × 2,628,000 s ÷ 20 s wait = 33 × 131,400 = **4.34 M** receives | |
+| SQS DLQ depth checks | 33 DLQs × 2,628,000 s ÷ 900 s (every 15 min) = 0.10 M | |
+| SQS real traffic | 2,000 demo scenarios × ~60 events × ~3 consumers = 0.36 M messages; batched receive/delete ≈ 0.5 M requests | |
+| SQS total | 4.34 + 0.10 + 0.5 = 4.94 M − 1 M free = 3.94 M × 0.40 $/M, + FIFO share (4 queues × 131,400 = 0.53 M × 0.10 $/M extra) 0.05 | **1.63** |
+| SNS publishes | 120 k events ÷ up to 10 per PublishBatch ≤ 0.12 M requests (inside the 1 M free); SNS → SQS delivery is free | 0.00 |
+| S3 (exports 24 h, evidence) | < 1 GB × 0.025 | 0.03 |
+| SES SMTP | demo accounts are `.invalid` and never mailed; real sign-in only with production access | 0.00 |
+| Data transfer out | ~4.4 M SQS responses × ~0.5 KB ≈ 2.2 GB (inside the 100 GB free) | 0.00 |
+| CloudWatch alarms | DLQ not empty: 33 alarm metrics; oldest message > 15 min on payment and order queues: 7; 40 − 10 free = 30 × 0.10 (4 + 1 alarms, metric math) | **3.00** |
+| AWS Budgets | 1 budget (first 2 free) | 0.00 |
+| **Total** | | **≈ 4.66** |
+
+- Long polling is what makes idle messaging cheap: with the local defaults (4 pollers, 1 s waits) the same 33 queues
+  would make 33 × 4 × 2,628,000 = 347 M requests ≈ $138/month. Lite sets 1 poller, 20 s, DLQ checks every 15 min.
+- Budget alerts at $8 and $20 actual (and $20 forecast), filtered on `project=convoy`: $8 fires only on a real jump
+  (a traffic spike or a stuck redelivery loop), not every month.
+- The reaper (infra/aws/reaper): CodeBuild general1.small, ~15–40 build minutes per full run, inside the 100 free
+  minutes/month; EventBridge Scheduler inside 14 M free invocations; logs < 1 MB. ≈ $0.
+- Alarm cost is per metric read, not per alarm: grouping 10 queues into one metric-math alarm saves nothing.
+
+### Full profile in ap-southeast-2: edge options (P6.E)
+CloudFront-scoped WAF is not available (it is managed from us-east-1, which the SCP denies), so the WAF is **regional, on
+the ALB**. The ALB accepts only CloudFront's origin-facing addresses plus a secret header, so every request passes it.
+Keep CloudFront or not:
+
+| Option | HTTPS for browsers | Extra cost per 1-hour smoke run | Under P7 load (3.6 M req/h at the edge) |
+|---|---|---|---|
+| **Keep CloudFront** (recommended) | yes, `*.cloudfront.net` certificate, no domain needed | ≈ $0 (1 TB and 10 M requests/month always free) | ≈ $4.3/h requests + transfer; P7 drives load at the ALB origin instead |
+| Drop CloudFront | only with an ACM certificate, which needs a domain you control (DNS validation in ap-southeast-2 works; DuckDNS cannot hold the CNAME) | $0 | $0 |
+Regional WAF either way: 5 $/web ACL-month + 1 $/rule-month prorated (≈ $0.01/h for 2 rules) + 0.60 $/M requests.
+Without a domain, dropping CloudFront leaves the stack on plain HTTP, which breaks passkeys and secure cookies; so keep it.

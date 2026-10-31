@@ -26,7 +26,7 @@ public class NotificationApplication {
      * Push is off while the VAPID keys are blank (scripts/gen-vapid.mjs writes them to .env); pushEndpoints allow-lists push services.
      */
     @ConfigurationProperties(prefix = "notification")
-    public record Settings(String mailFrom, int maxAttempts, Duration baseBackoff, Duration maxBackoff, Duration pollEvery,
+    public record Settings(String mailFrom, String webUrl, int maxAttempts, Duration baseBackoff, Duration maxBackoff, Duration pollEvery,
                            String vapidPublicKey, String vapidPrivateKey, String vapidSubject, String pushEndpoints) {}
 
     @Bean

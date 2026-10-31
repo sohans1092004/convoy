@@ -1,0 +1,20 @@
+# Lite edge (P6.A). Only the web app and the two browser-facing paths of the simulated payment are public;
+# gateway, /actuator, /metrics and every service stay on the compose network.
+{$SITE_ADDRESS} {
+	encode gzip
+	@pay path /pay/checkout.js /pay/fake/pay
+	handle @pay {
+		uri strip_prefix /pay
+		reverse_proxy razorpay-fake:9090
+	}
+	handle /pay/* {
+		respond 404
+	}
+	handle {
+		# flush_interval -1: SSE goes through the web BFF unbuffered
+		reverse_proxy web:3000 {
+			flush_interval -1
+		}
+	}
+	header Strict-Transport-Security "max-age=31536000"
+}

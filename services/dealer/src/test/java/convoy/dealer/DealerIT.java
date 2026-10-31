@@ -13,9 +13,30 @@ import org.springframework.context.annotation.Import;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "convoy.messaging.enabled=false", "convoy.issuers.convoy-gateway=http://unused", "convoy.issuers.convoy-identity=http://unused",
         // The demo seed (P4.0), from the same file the local stack mounts: the migrations alone hold no dealership.
-        "dealer.demo=true", "dealer.demo-seed-file=../../deploy/local/seed/dealerships.sql"})
+        "dealer.demo=true", "dealer.demo-seed-file=../../deploy/local/seed/dealerships.sql", "dealer.demo-scenarios=true"})
 @Import(ServiceTest.Config.class)
 class DealerIT extends ServiceTest {
+    @org.springframework.beans.factory.annotation.Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @org.springframework.beans.factory.annotation.Autowired DemoDealerships demo;
+
+    /** P6.B: a visitor's demo dealership (E172) is eligible only for its owner's pools (E055 owner), and goes after 24 h. */
+    @Test
+    void demoDealershipIsInvitedOnlyToItsOwnersPools() {
+        java.util.UUID id = java.util.UUID.randomUUID(), owner = java.util.UUID.randomUUID(), other = java.util.UUID.randomUUID();
+        String body = "{\"dealership_id\":\"" + id + "\",\"owner\":\"" + owner + "\",\"trade_name\":\"Demo Motors T\"}";
+        assertThat(send("POST", "/internal/demo/dealerships", TestTokens.service("dealer", "pool", List.of("eligibility:read")), body, java.util.Map.of()).status()).isEqualTo(403);
+        assertThat(send("POST", "/internal/demo/dealerships", TestTokens.buyer("dealer", owner), body, java.util.Map.of()).status()).isIn(401, 403);
+        assertThat(send("POST", "/internal/demo/dealerships", TestTokens.service("dealer", "identity", List.of("demo:write")), body, java.util.Map.of()).status()).isEqualTo(200);
+        String pool = TestTokens.service("dealer", "pool", List.of("eligibility:read"));
+        String q = "/internal/eligibility?brand=Maruti%20Suzuki&city=Pune";
+        assertThat(get(q + "&owner=" + owner, pool).body()).contains(id.toString());
+        assertThat(get(q + "&owner=" + other, pool).body()).doesNotContain(id.toString()).contains("00000000d002");
+        assertThat(get(q, pool).body()).doesNotContain(id.toString()).contains("\"count\":4");
+        jdbc.update("update dealerships set created_at = clock_timestamp() - interval '25 hours' where id = ?", id);
+        demo.expire();
+        assertThat(jdbc.queryForObject("select count(*) from dealerships where id = ?", Integer.class, id)).isZero();
+    }
+
     @Test
     void eligibilityFindsTheSyntheticDealershipForItsBrandAndCityOnly() {
         String pool = TestTokens.service("dealer", "pool", List.of("eligibility:read"));
@@ -29,7 +50,6 @@ class DealerIT extends ServiceTest {
         assertThat(AuthzDenyChecks.run("dealer", this::send, (m, p) -> null)).isEmpty();
     }
 
-    @org.springframework.beans.factory.annotation.Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
 
     static String gstin(String first14) { return first14 + Gstin.checkChar(first14); }

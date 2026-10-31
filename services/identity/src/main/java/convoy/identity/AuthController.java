@@ -49,6 +49,8 @@ public class AuthController {
         this.settings = settings;
     }
 
+    @org.springframework.beans.factory.annotation.Value("${identity.email-sign-in:true}") boolean emailSignIn;
+
     public record OtpStart(@NotBlank @Email String email) {}
 
     public record OtpVerify(@NotBlank @Email String email, @NotBlank @Pattern(regexp = "\\d{6}") String code) {}
@@ -57,6 +59,8 @@ public class AuthController {
     @PostMapping("/auth/otp/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Api.OtpStarted start(@Valid @RequestBody OtpStart body) {
+        // P6.B: off until SES production access exists (the sandbox only delivers to verified addresses)
+        if (!emailSignIn) throw ApiProblem.of(ProblemType.EMAIL_SIGN_IN_DISABLED, "Email sign-in is off on this demo. Use Try the demo instead.");
         String email = Users.normalise(body.email());
         String code = Crypto.otpCode();
         jdbc.update("insert into otp_challenges(id, email_hash, code_hash, expires_at) values (?, ?, ?, clock_timestamp() + make_interval(mins => ?))",

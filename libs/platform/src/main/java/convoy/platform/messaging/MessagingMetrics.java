@@ -17,7 +17,7 @@ public class MessagingMetrics {
     private final MeterRegistry meters;
     final Map<String, Integer> depths = new ConcurrentHashMap<>();
 
-    public MessagingMetrics(InboxConsumer consumer, Topology topology, MeterRegistry meters, TaskScheduler scheduler) {
+    public MessagingMetrics(InboxConsumer consumer, Topology topology, MeterRegistry meters, TaskScheduler scheduler, Duration dlqCheckInterval) {
         this.topology = topology;
         this.meters = meters;
         if (consumer != null && meters != null) {
@@ -30,7 +30,7 @@ public class MessagingMetrics {
             FunctionCounter.builder("snapshot_fallbacks_total", consumer, x -> x.snapshots.get()).tag("consumer", c).register(meters);
             FunctionCounter.builder("inbox_applied_total", consumer, x -> x.applied.get()).tag("consumer", c).register(meters);
         }
-        scheduler.scheduleWithFixedDelay(this::checkDlqs, Duration.ofSeconds(30));
+        scheduler.scheduleWithFixedDelay(this::checkDlqs, dlqCheckInterval);
     }
 
     /** Returns the DLQs that are not empty (also used by tests). */

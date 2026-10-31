@@ -7,7 +7,7 @@
     "bookings": "Bookings",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "testMode": "TEST MODE: no real money",
+    "testMode": "Demo: synthetic dealers, test payments, no real money",
     "saved": "My cars",
     "account": "Account",
     "admin": "Admin",
@@ -603,5 +603,18 @@
     "win": "Win rate (final offers that got a booking)",
     "reliability": "Reliability score",
     "reliabilityNote": "FINAL commitments honoured, last 90 days"
+  },
+  "demo": {
+    "try": "Try the demo",
+    "trying": "Setting up your demo…",
+    "intro": "Get your own sandbox for 24 hours: a buyer account, a fresh pool for a Swift in Pune, simulated dealers who quote within minutes, and a demo dealership of your own to try the quote builder. No email needed.",
+    "failed": "The demo could not start: {detail}",
+    "toDealer": "Switch to dealer view",
+    "toBuyer": "Switch to buyer view",
+    "expires": "Your demo ends {at}; everything in it is then deleted.",
+    "adminLink": "View as admin (read-only)",
+    "adminTitle": "Admin view (read-only, synthetic data)",
+    "adminNote": "This is what the operations team sees, filled with made-up figures. Real admin powers need a passkey and are not offered publicly.",
+    "emailOff": "Email sign-in is off on this public demo. Use Try the demo instead."
   }
 }

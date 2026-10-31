@@ -55,6 +55,11 @@ identity:
   otp-minutes: 10
   session-days: 30
   seed-users-file: ${SEED_USERS_FILE:}
+  # P6.B public demo (lite): visitor scenarios on, simulated dealer users from this file; email sign-in only with SES production access
+  demo-scenarios: ${DEMO_SCENARIOS:false}
+  demo-bots-file: ${DEMO_BOTS_FILE:}
+  demo-dealer-url: ${DEALER_URL:http://dealer:8080}
+  email-sign-in: ${EMAIL_SIGN_IN:true}
   invite-hours: 72
   web-url: ${WEB_URL:http://localhost:3000}
   passkeys:
@@ -78,6 +83,7 @@ identity:
     dealer: { secret: "${CLIENT_SECRET_DEALER}", scopes: { identity: [privacy:write] } }
     quote: { secret: "${CLIENT_SECRET_QUOTE}", scopes: { identity: [privacy:write] } }
     payment: { secret: "${CLIENT_SECRET_PAYMENT}", scopes: { identity: [privacy:write] } }
+    demo-bots: { secret: "${CLIENT_SECRET_DEMO_BOTS:}", scopes: { identity: [demo:sessions] } } # P6.B simulated dealers; absent without a secret
     realtime:
       secret: "${CLIENT_SECRET_REALTIME}"
       scopes: { pool: [pools:access], identity: [sessions:check] }
