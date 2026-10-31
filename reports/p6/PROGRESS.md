@@ -18,3 +18,24 @@ failure on `main` (40244851654, `price-breakdown` snapshot) was pre-P5 code; the
   the simulated payment, memory limits everywhere, JVMs without the OTel agent (SerialGC, C1, 32 MB code cache, 65 % RAM).
 - PgBouncer: not needed. `DB_POOL_SIZE=4` × 10 services with a database = 40 connections, plus Flyway at startup and one
   `pg_dump`, under `max_connections=100`.
+
+## P6.B: public demo mode
+- **Try the demo** (home page and sign-in page, `DEMO_PUBLIC=true`): identity E170 creates an isolated scenario with no
+  email: a temporary buyer and the admin of a fresh demo dealership (dealer E172), both role `demo`, sessions of 24 h,
+  addresses under `.invalid` (notification marks their emails SKIPPED). The web app then creates a fresh pool for the
+  Swift in Pune and opens it. "Switch to dealer view" swaps to the dealership admin, for the quote builder.
+- **Isolation:** pool keeps a demo buyer's pools to that buyer (`demo_owner`; never found, joined by create, or suggested
+  to anyone else). E055 takes the pool's owner: a visitor's dealership is invited only to that visitor's pools; the shared
+  simulated dealers are invited everywhere.
+- **Simulated dealers:** `tools/simulator/demo-bots.mjs` (own image) runs the P3.F simulator for every sealed round,
+  signing in through identity E171 (client `demo-bots`, scope `demo:sessions`, simulated dealers only). Demo durations as before.
+- **Admin:** `/demo/admin` renders the real analytics component with fixed synthetic figures; no admin API is called.
+  Real admin needs a passkey (unchanged).
+- **Limits:** gateway caps E170 at 20 per IP per day (429) and 200 per day in total (503 `demo-capacity-reached`,
+  "The demo is full for today"). Expiry: identity's hourly job sends scenarios older than 24 h through the P5.D erasure flow
+  (every service deletes or pseudonymises) and ends their sessions; dealer removes demo dealerships older than 24 h.
+- **Banner** on every page: "Demo: synthetic dealers, test payments, no real money". Payments use the built-in fake.
+- **Email sign-in** stays in the code; `EMAIL_SIGN_IN=false` (lite default) returns 503 `email-sign-in-disabled`.
+  Passkey sign-in still works for real admins.
+- Tests: DemoIT 4/4, IdentityIT 11/11, DealerIT 7/7 (demo dealership eligibility + expiry), PoolIT 20/20 (demo pool
+  isolation), GatewayIT 5/5, FailFastTest 2/2, NotificationIT 5/5, web unit 26/26, tsc + eslint clean, validate_spec 14/14.

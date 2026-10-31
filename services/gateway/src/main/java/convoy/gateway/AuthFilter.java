@@ -91,6 +91,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
         Mono<Identity> who = session == null || session.isBlank() ? Mono.just(Identity.ANONYMOUS) : validate(session);
         return who.flatMap(id -> rateLimit(exchange, id).flatMap(limited -> {
+            if (DEMO_FULL.equals(limited)) return problem(exchange, HttpStatus.SERVICE_UNAVAILABLE, "demo-capacity-reached", "DEMO_CAPACITY_REACHED",
+                    "The public demo has reached today's limit of new scenarios", "The demo is full for today. Please come back tomorrow.");
             if (!limited.isEmpty()) return problem(exchange, HttpStatus.TOO_MANY_REQUESTS, "rate-limited", "RATE_LIMITED", "Too many requests", limited);
             String jwt = mint(id, audience);
             return chain.filter(exchange.mutate().request(cleaned.header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt).build()).build());
@@ -155,16 +157,32 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String rule = null, subject = null;
         if (r.getMethod() == HttpMethod.POST && path.equals("/api/auth/otp/start")) {
             rule = "otp";
-            String fwd = r.getHeaders().getFirst("X-Forwarded-For");
-            subject = fwd != null ? fwd.split(",")[0].trim() : String.valueOf(r.getRemoteAddress() == null ? "?" : r.getRemoteAddress().getAddress());
+            subject = clientIp(r);
+        } else if (r.getMethod() == HttpMethod.POST && path.equals("/api/auth/demo")) {
+            // P6.B: new demo scenarios per IP per day (429), then all of them per day (503, DEMO_FULL)
+            return count("demo", clientIp(r)).flatMap(ip -> !ip.isEmpty() ? Mono.just(ip)
+                    : count("demo-global", "all").map(all -> all.isEmpty() ? "" : DEMO_FULL));
         } else if (r.getMethod() == HttpMethod.POST && path.matches("/api/pools/[^/]+/members")) {
             rule = "join";
             subject = id.userId();
         }
-        GatewayApplication.GatewaySettings.Limit limit = rule == null ? null : settings.limits().get(rule);
+        return rule == null ? Mono.just("") : count(rule, subject);
+    }
+
+    static final String DEMO_FULL = "demo-full";
+
+    /** The first X-Forwarded-For hop (set by Caddy / the BFF), else the socket address. */
+    static String clientIp(ServerHttpRequest r) {
+        String fwd = r.getHeaders().getFirst("X-Forwarded-For");
+        return fwd != null ? fwd.split(",")[0].trim() : String.valueOf(r.getRemoteAddress() == null ? "?" : r.getRemoteAddress().getAddress());
+    }
+
+    /** One fixed-window counter in Redis (in-process if Redis is down); a detail message when over the limit, else empty. */
+    Mono<String> count(String rule, String subject) {
+        GatewayApplication.GatewaySettings.Limit limit = settings.limits().get(rule);
         if (limit == null) return Mono.just("");
         String key = "rl:" + rule + ":" + sha256(subject) + ":" + (Instant.now().getEpochSecond() / limit.window().toSeconds());
-        String detail = "Too many attempts. Wait a few minutes and try again.";
+        String detail = rule.equals("demo") ? "You have started the demo many times today. Try again tomorrow." : "Too many attempts. Wait a few minutes and try again.";
         return redis.opsForValue().increment(key)
                 .flatMap(n -> (n == 1 ? redis.expire(key, limit.window()) : Mono.just(true)).thenReturn(n))
                 .onErrorResume(e -> Mono.just((long) localBuckets.computeIfAbsent(key, k -> new AtomicInteger()).incrementAndGet()))

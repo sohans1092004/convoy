@@ -31,7 +31,7 @@ public record ConvoyProperties(
         issuers = issuers == null ? Map.of() : issuers;
         publicPaths = publicPaths == null ? List.of("/actuator/health/**", "/actuator/health", "/actuator/prometheus", "/v3/api-docs/**") : publicPaths;
         aws = aws == null ? new Aws(null, "ap-south-1", null) : aws;
-        messaging = messaging == null ? new Messaging(0, 0, null, null, 0) : messaging;
+        messaging = messaging == null ? new Messaging(0, 0, null, null, 0, 0, null) : messaging;
     }
 
     /** @param accountId prod only (CONVOY_AWS_ACCOUNT_ID): topics and queues are checked in this account, not created */
@@ -43,9 +43,15 @@ public record ConvoyProperties(
      * @param enabled          false in tests that have no broker
      * @param gapSnapshotAfter a FULL subscriber's version gap older than this falls back to the owner snapshot (catalogue: 5 min)
      * @param visibilityTimeoutSeconds SQS visibility timeout of the consumer queues (30 s; failure tests shorten it)
+     * @param pollers          concurrent long polls per queue (4; lite runs 1: each idle poll is a billed SQS request)
+     * @param dlqCheckInterval how often DLQ depth is read for the dlq_depth gauge and ALARM log line (30 s; lite 15 min,
+     *                         where CloudWatch alarms on the DLQs are the real alert)
      */
-    public record Messaging(long relayIntervalMs, int waitSeconds, Boolean enabled, java.time.Duration gapSnapshotAfter, int visibilityTimeoutSeconds) {
+    public record Messaging(long relayIntervalMs, int waitSeconds, Boolean enabled, java.time.Duration gapSnapshotAfter, int visibilityTimeoutSeconds,
+                            int pollers, java.time.Duration dlqCheckInterval) {
         public Messaging {
+            pollers = pollers <= 0 ? 4 : pollers;
+            dlqCheckInterval = dlqCheckInterval == null ? java.time.Duration.ofSeconds(30) : dlqCheckInterval;
             gapSnapshotAfter = gapSnapshotAfter == null ? java.time.Duration.ofMinutes(5) : gapSnapshotAfter;
             visibilityTimeoutSeconds = visibilityTimeoutSeconds <= 0 ? 30 : visibilityTimeoutSeconds;
             // Setting any one messaging property binds the whole record: unset fields keep their defaults, never 0 / false.

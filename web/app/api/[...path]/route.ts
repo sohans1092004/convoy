@@ -12,9 +12,11 @@ const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:8080';
 const SECURE = process.env.COOKIE_SECURE !== 'false';
 const FORWARD_REQ = ['content-type', 'accept', 'idempotency-key', 'if-match', 'x-correlation-id'];
 const FORWARD_RES = ['content-type', 'etag', 'server-time', 'idempotent-replayed', 'x-correlation-id', 'retry-after'];
-const NO_SESSION_NEEDED = new Set(['auth/otp/start', 'auth/otp/verify', 'auth/passkeys/authenticate/options', 'auth/passkeys/authenticate']);
+const NO_SESSION_NEEDED = new Set(['auth/demo', 'auth/otp/start', 'auth/otp/verify', 'auth/passkeys/authenticate/options', 'auth/passkeys/authenticate']);
 const SIGN_IN = new Set(['auth/otp/verify', 'auth/passkeys/authenticate']); // responses carry a session id: set the cookie, never echo it
 const SESSION_DAYS = 30;
+// P6.B public demo: the scenario's other account (dealer while viewing as buyer, and back) waits in cv_demo_alt.
+const DEMO_COOKIES = ['cv_demo_alt', 'cv_demo_alt_roles', 'cv_demo_until'];
 
 function problem(status: number, slug: string, code: string, title: string, detail: string) {
   return NextResponse.json({ type: `https://convoy.example/problems/${slug}`, title, status, code, detail }, { status, headers: { 'content-type': 'application/problem+json' } });
@@ -35,6 +37,21 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     if (!csrf || req.headers.get('x-csrf-token') !== csrf) {
       return problem(403, 'forbidden', 'FORBIDDEN', 'Authenticated but not allowed on this resource', 'Missing or stale security token. Reload the page.');
     }
+  }
+
+  if (route === 'demo/switch' && req.method === 'POST') {
+    const alt = jar.get('cv_demo_alt')?.value;
+    if (!alt) return problem(404, 'not-found', 'NOT_FOUND', 'Resource does not exist or is not visible to the caller', 'No demo in this browser.');
+    const altRoles = jar.get('cv_demo_alt_roles')?.value ?? '';
+    const until = jar.get('cv_demo_until')?.value;
+    const maxAge = until ? Math.max(0, Math.floor((Date.parse(until) - Date.now()) / 1000)) : 0;
+    const res = NextResponse.json({ roles: altRoles.split(',') });
+    const opts = { httpOnly: true, secure: SECURE, sameSite: 'lax' as const, path: '/', maxAge };
+    res.cookies.set('cv_sid', alt, opts);
+    res.cookies.set('cv_roles', altRoles, opts);
+    res.cookies.set('cv_demo_alt', jar.get('cv_sid')?.value ?? '', opts);
+    res.cookies.set('cv_demo_alt_roles', jar.get('cv_roles')?.value ?? '', opts);
+    return res;
   }
 
   const headers = new Headers();
@@ -92,10 +109,20 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       res.cookies.set('cv_roles', (data.user.roles as string[]).join(','), opts);
       return res;
     }
+    if (route === 'auth/demo' && upstream.ok) {
+      const d = JSON.parse(new TextDecoder().decode(body as ArrayBuffer));
+      const res = NextResponse.json({ scenario_id: d.scenario_id, expires_at: d.expires_at, user: d.buyer.user }, { status: 200 });
+      const opts = { httpOnly: true, secure: SECURE, sameSite: 'lax' as const, path: '/', maxAge: 24 * 3600 };
+      res.cookies.set('cv_sid', d.buyer.session_id, opts);
+      res.cookies.set('cv_roles', (d.buyer.user.roles as string[]).join(','), opts);
+      res.cookies.set('cv_demo_alt', d.dealer.session_id, opts);
+      res.cookies.set('cv_demo_alt_roles', (d.dealer.user.roles as string[]).join(','), opts);
+      res.cookies.set('cv_demo_until', d.expires_at, opts);
+      return res;
+    }
     if (route === 'auth/logout') {
       const res = new NextResponse(body, { status: upstream.status, headers: out });
-      res.cookies.delete('cv_sid');
-      res.cookies.delete('cv_roles');
+      for (const c of ['cv_sid', 'cv_roles', ...DEMO_COOKIES]) res.cookies.delete(c);
       return res;
     }
     if (upstream.status === 401 && sid) {

@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGES: identity gateway catalog dealer pool quote order payment realtime notification audit web razorpay-fake
+  IMAGES: identity gateway catalog dealer pool quote order payment realtime notification audit web razorpay-fake demo-bots
 
 jobs:
   build:
@@ -45,6 +45,7 @@ jobs:
             case $name in
               web) args="-f web/Dockerfile" ;;
               razorpay-fake) args="-f tools/razorpay-fake/Dockerfile" ;;
+              demo-bots) args="-f tools/simulator/Dockerfile" ;;
               *) args="-f deploy/docker/service.Dockerfile --build-arg SERVICE=$name" ;;
             esac
             docker buildx build $args --platform linux/${{ matrix.arch }} \

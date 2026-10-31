@@ -74,10 +74,11 @@ public class PoolSweeper {
     // POOL-T02 + RND-T01
     @SuppressWarnings("unchecked")
     void openSealedRound(UUID poolId) {
-        Map<String, Object> p = jdbc.queryForMap("select brand, city from pools where id = ?", poolId);
+        Map<String, Object> p = jdbc.queryForMap("select brand, city, demo_owner from pools where id = ?", poolId);
         Map<String, Object> elig;
         try {
-            elig = clients.dealer().get().uri(b -> b.path("/internal/eligibility").queryParam("brand", p.get("brand")).queryParam("city", p.get("city")).build())
+            elig = clients.dealer().get().uri(b -> b.path("/internal/eligibility").queryParam("brand", p.get("brand")).queryParam("city", p.get("city"))
+                            .queryParamIfPresent("owner", java.util.Optional.ofNullable(p.get("demo_owner"))).build())
                     .retrieve().body(Map.class);
         } catch (RestClientException e) {
             log.info("dealer eligibility unavailable for pool {}: retry next tick", poolId);

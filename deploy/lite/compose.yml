@@ -31,6 +31,11 @@ x-service-env: &service-env
   IDENTITY_JWKS: http://identity:8080/.well-known/jwks.json
   IDENTITY_URL: http://identity:8080
   DEMO: ${DEMO:-true} # the public demo (P6.B): synthetic dealers, figures labelled simulated
+  # Every empty long poll is a billed SQS request (docs/cost/aws-cost-estimate.md): 1 poller per queue, 20 s waits,
+  # DLQ depth read every 15 min (CloudWatch alarms on the DLQs are the real alert).
+  CONVOY_MESSAGING_POLLERS: "1"
+  CONVOY_MESSAGING_WAIT_SECONDS: "20"
+  CONVOY_MESSAGING_DLQ_CHECK_INTERVAL: 15m
 
 x-mail-env: &mail-env
   SMTP_HOST: ${SMTP_HOST:?SES SMTP endpoint}
@@ -97,6 +102,18 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:?https://<site>}/pay
     mem_limit: 64m
 
+  # P6.B: simulated dealers that quote in every visitor's sealed round (tools/simulator/demo-bots.mjs)
+  demo-bots:
+    image: ${IMAGE_DEMO_BOTS:?}
+    restart: unless-stopped
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      IDENTITY_URL: http://identity:8080
+      CLIENT_SECRET_DEMO_BOTS: ${CLIENT_SECRET_DEMO_BOTS}
+    depends_on:
+      gateway: { condition: service_healthy }
+    mem_limit: 64m
+
   identity:
     <<: *service
     image: ${IMAGE_IDENTITY:?}
@@ -121,6 +138,12 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       SEED_USERS_FILE: ${SEED_USERS_FILE:-} # local-only (ProdGuard rejects it under prod)
+      # P6.B public demo: visitor scenarios, the simulated dealers' users, email sign-in only with SES production access
+      DEMO_SCENARIOS: "true"
+      DEMO_BOTS_FILE: /demo/dealers.json
+      EMAIL_SIGN_IN: ${EMAIL_SIGN_IN:-false}
+      CLIENT_SECRET_DEMO_BOTS: ${CLIENT_SECRET_DEMO_BOTS:?}
+    volumes: ["../../tools/simulator/dealers.json:/demo/dealers.json:ro"]
 
   gateway:
     <<: *service
@@ -153,6 +176,7 @@ services:
       CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER}
       DB_PASSWORD: ${DB_PASSWORD_DEALER}
       DEMO_SEED_DEALERSHIPS: /seed/dealerships.sql
+      DEMO_SCENARIOS: "true" # P6.B: each visitor gets a demo dealership (E172), invited only to their own pools
     volumes: ["../local/seed/dealerships.sql:/seed/dealerships.sql:ro"]
 
   pool:
@@ -218,6 +242,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD_NOTIFICATION}
       CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
       VAPID_SUBJECT: mailto:${MAIL_FROM}
+      WEB_URL: ${PUBLIC_URL}
 
   audit:
     <<: *service
@@ -236,6 +261,8 @@ services:
       RAZORPAY_CHECKOUT_URL: ${PUBLIC_URL}/pay/checkout.js
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       NODE_OPTIONS: --max-old-space-size=160
+      DEMO_PUBLIC: "true" # P6.B: Try the demo + view as admin (read-only)
+      EMAIL_SIGN_IN: ${EMAIL_SIGN_IN:-false}
     depends_on: [gateway]
     healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"], interval: 10s, timeout: 3s, retries: 30 }
     mem_limit: 256m

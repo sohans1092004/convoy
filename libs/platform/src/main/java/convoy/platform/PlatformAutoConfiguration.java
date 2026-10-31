@@ -217,8 +217,8 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
     convoy.platform.messaging.MessagingMetrics messagingMetrics(ObjectProvider<InboxConsumer> consumer, Topology topology,
-            ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters, TaskScheduler scheduler) {
-        return new convoy.platform.messaging.MessagingMetrics(consumer.getIfAvailable(), topology, meters.getIfAvailable(), scheduler);
+            ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters, TaskScheduler scheduler, ConvoyProperties p) {
+        return new convoy.platform.messaging.MessagingMetrics(consumer.getIfAvailable(), topology, meters.getIfAvailable(), scheduler, p.messaging().dlqCheckInterval());
     }
 
     @Bean
@@ -248,7 +248,7 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
         // P5.D: every service with personal tables handles export and erasure (identity coordinates them itself)
         if (!p.serviceName().equals("identity")) privacy.ifAvailable(pr -> pr.subscribe(subs));
         return new InboxConsumer(p.serviceName(), sqs, topology, jdbc, tx, json,
-                subs, p.messaging().waitSeconds(), p.messaging().gapSnapshotAfter());
+                subs, p.messaging().waitSeconds(), p.messaging().gapSnapshotAfter(), p.messaging().pollers());
     }
 
     /** P5.D: only for a service that lists personal tables (convoy.privacy.tables); retention runs daily. */

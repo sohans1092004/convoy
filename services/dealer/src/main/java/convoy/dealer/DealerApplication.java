@@ -31,10 +31,11 @@ public class DealerApplication {
     /** E055: verified dealerships of the brand in the city with at least one active staff member. Service token only. */
     @GetMapping("/internal/eligibility")
     @convoy.platform.security.RequiresScope("eligibility:read")
-    public Api.Eligibility eligibility(@RequestParam String brand, @RequestParam String city) {
+    public Api.Eligibility eligibility(@RequestParam String brand, @RequestParam String city, @RequestParam(required = false) UUID owner) {
         Caller.current().requireScope("eligibility:read");
+        // P6.B: a demo visitor's dealership is eligible only for that visitor's pools (owner = the pool's demo owner)
         List<UUID> ids = jdbc.queryForList("select id from dealerships where status = 'VERIFIED' and city = ? and ? = any(brands) "
-                + "and active_staff_count >= 1 order by id", UUID.class, city, brand);
+                + "and active_staff_count >= 1 and (demo_owner is null or demo_owner = ?) order by id", UUID.class, city, brand, owner);
         return convoy.platform.web.Dto.as(Map.of("brand", brand, "city", city, "dealership_ids", ids, "count", ids.size()), Api.Eligibility.class);
     }
 

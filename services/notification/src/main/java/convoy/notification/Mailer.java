@@ -66,12 +66,16 @@ public class Mailer {
         try {
             convoy.platform.Faults.hit("notification.send");
             String to = (String) identity.get().uri("/internal/users/{id}/contact", d.get("user_id")).retrieve().body(Map.class).get("email");
+            if (to.endsWith(".invalid")) { // P6.B demo accounts: RFC 2606 reserved, never deliverable (and the SES sandbox would refuse it)
+                jdbc.update("update deliveries set status = 'SKIPPED', attempts = ?, last_error = 'undeliverable demo address' where notification_id = ? and channel = 'EMAIL'", attempts, id);
+                return true;
+            }
             Inbox.Rendered r = inbox.render((String) d.get("kind"), inbox.read((String) d.get("payload")), "en");
             SimpleMailMessage m = new SimpleMailMessage();
             m.setFrom(s.mailFrom());
             m.setTo(to);
             m.setSubject(r.subject());
-            m.setText(r.body() + "\n\nhttps://convoy.test" + r.link());
+            m.setText(r.body() + "\n\n" + s.webUrl() + r.link());
             mail.send(m);
             jdbc.update("update deliveries set status = 'SENT', attempts = ?, sent_at = clock_timestamp(), last_error = null where notification_id = ? and channel = 'EMAIL'",
                     attempts, id);

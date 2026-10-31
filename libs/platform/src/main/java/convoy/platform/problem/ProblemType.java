@@ -31,6 +31,10 @@ public enum ProblemType {
     WEBHOOK_SIGNATURE_INVALID("webhook-signature-invalid", 400, "Razorpay webhook HMAC check failed"),
     REVIEW_NOT_ELIGIBLE("review-not-eligible", 403, "Only buyers with a delivered booking from this dealer can review"),
     DEPENDENCY_UNAVAILABLE("dependency-unavailable", 503, "A required downstream dependency is unavailable; retry with the same Idempotency-Key"),
+    /** P6.B: the global cap on new demo scenarios per day (the gateway applies it). */
+    DEMO_CAPACITY_REACHED("demo-capacity-reached", 503, "The public demo has reached today's limit of new scenarios"),
+    /** P6.B: email sign-in needs SES production access; off until then (identity.email-sign-in). */
+    EMAIL_SIGN_IN_DISABLED("email-sign-in-disabled", 503, "Email sign-in is switched off on this deployment"),
     /** P1 only: the command exists in the spec but is outside the walking skeleton. */
     NOT_IMPLEMENTED_IN_P1("not-implemented-in-p1", 501, "This command is specified but not built in Phase 1");
 
