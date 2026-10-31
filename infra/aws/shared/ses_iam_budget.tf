@@ -16,8 +16,10 @@ resource "aws_ses_domain_dkim" "d" {
 # objects in the two buckets. Nothing can create, delete or reconfigure a resource. Its access key is not made by
 # Terraform (it would sit in the state): scripts/create-host-keys.sh writes it straight into the git-ignored env file.
 locals {
-  topic_arns = [for t in aws_sns_topic.t : t.arn]
-  queue_arns = concat([for q in aws_sqs_queue.q : q.arn], [for q in aws_sqs_queue.dlq : q.arn])
+  # Name patterns, not ARN lists: IAM caps a user's inline policy at 2,048 bytes. They match exactly the event topics
+  # (convoy-<producer>-events[.fifo], not convoy-alerts) and the consumer queues and DLQs (convoy-<consumer>--...).
+  topic_arns = ["arn:aws:sns:${var.region}:${local.account}:convoy-*-events*"]
+  queue_arns = ["arn:aws:sqs:${var.region}:${local.account}:convoy-*--*"]
 }
 
 resource "aws_iam_user" "host" {
@@ -33,7 +35,7 @@ resource "aws_iam_user_policy" "host" {
     Statement = [
       { Sid = "Publish", Effect = "Allow", Action = ["sns:Publish", "sns:GetTopicAttributes", "sns:ListSubscriptionsByTopic"], Resource = local.topic_arns },
       # Subscription ARNs are <topic arn>:<uuid>: scoped to Convoy's topics
-      { Sid = "CheckSubscriptions", Effect = "Allow", Action = ["sns:GetSubscriptionAttributes"], Resource = [for a in local.topic_arns : "${a}:*"] },
+      { Sid = "CheckSubscriptions", Effect = "Allow", Action = ["sns:GetSubscriptionAttributes"], Resource = ["arn:aws:sns:${var.region}:${local.account}:convoy-*-events*:*"] },
       {
         Sid    = "Consume", Effect = "Allow", Resource = local.queue_arns
         Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"]

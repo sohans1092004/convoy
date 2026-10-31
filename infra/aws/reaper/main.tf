@@ -3,11 +3,19 @@
 # repo at the run's commit -> scripts/reap.sh: terraform destroy, teardown verification by tag, report to convoy-alerts.
 # Its role may change or delete only resources tagged project=convoy AND profile=full, plus the full-profile state
 # objects; reads (Describe/List/Get, which AWS cannot scope by tag) are account-wide. Tagged profile=lite, so the reaper
-# can never delete itself. Local state (git-ignored), like infra/aws/shared. Cost: docs/cost/aws-cost-estimate.md §6.
+# can never delete itself. Cost: docs/cost/aws-cost-estimate.md §6.
 terraform {
-  required_version = ">= 1.6"
+  required_version = ">= 1.10"
   required_providers {
     aws = { source = "hashicorp/aws", version = "~> 5.80" }
+  }
+  # State in the shared state bucket (encrypted, versioned); the reaper's own role cannot read or write this key.
+  #   terraform init -backend-config=bucket=convoy-tfstate-<account>
+  backend "s3" {
+    key          = "reaper/terraform.tfstate"
+    region       = "ap-southeast-2"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
@@ -137,7 +145,11 @@ resource "aws_codebuild_project" "reaper" {
             - curl -fsSLO https://releases.hashicorp.com/terraform/${local.tf}/terraform_${local.tf}_linux_amd64.zip
             - curl -fsSL https://releases.hashicorp.com/terraform/${local.tf}/terraform_${local.tf}_SHA256SUMS | grep linux_amd64.zip | sha256sum -c -
             - unzip -qo terraform_${local.tf}_linux_amd64.zip -d /usr/local/bin
-            - git clone -q ${var.repo} src && git -C src checkout -q "$SOURCE_SHA"
+            # Only the exact commit the run was deployed from: a branch or a short sha is refused, and HEAD must equal it.
+            - '[[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "refused: SOURCE_SHA must be a full commit sha"; exit 1; }'
+            - git clone -q --no-checkout ${var.repo} src && git -C src checkout -q --detach "$SOURCE_SHA"
+            - '[ "$(git -C src rev-parse HEAD)" = "$SOURCE_SHA" ] || { echo "refused: checked-out commit differs"; exit 1; }'
+            - 'echo "reaper code pinned at $SOURCE_SHA"' 
         build:
           commands:
             - cd src && bash scripts/reap.sh "$TARGET_DIR" "$RUN_ID"

@@ -47,7 +47,10 @@ one_off() { # task definition arn -> runs it in the private subnets, fails on a 
 
 case $cmd in
   up)
-    (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}") # first: the deadline holds whatever happens next
+    # The destroy code is pinned to the commit this run is applied from: no uncommitted infra or script changes allowed.
+    [ -z "$(git -C "$root" status --porcelain -- infra scripts)" ] || { echo "refused: commit infra/ and scripts/ first (the reaper runs that exact commit)"; exit 2; }
+    sha=$(git -C "$root" rev-parse HEAD)
+    (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") # first: the deadline holds whatever happens next
     tf_init
     tfvars "$3"
     terraform apply -input=false -auto-approve -var services_running=false

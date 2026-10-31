@@ -12,6 +12,13 @@ export AWS_REGION=${AWS_REGION:-ap-southeast-2}
 account=$(aws sts get-caller-identity --query Account --output text)
 run="canary$(date -u +%Y%m%d%H%M)"
 role="arn:aws:iam::$account:role/convoy-reaper"
+# terraform from PATH, else the official image with this session's (short-lived) credentials, refreshed on every call
+if command -v terraform >/dev/null; then tf() { terraform "$@"; }; else
+  tf() {
+    eval "$(aws configure export-credentials --format env)"
+    MSYS_NO_PATHCONV=1 docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_REGION       -v "$(cygpath -w "$PWD" 2>/dev/null || pwd):/w" -w /w hashicorp/terraform:1.10.5 "$@"
+  }
+fi
 q="arn:aws:sqs:$AWS_REGION:$account:convoy-reaper-canary-$run"
 
 echo "== 1. scope (policy simulation)"
@@ -24,12 +31,14 @@ echo "delete convoy/full: $full; convoy/lite: $lite; concord: $other"
 [ "$full" = allowed ] && [ "$lite" != allowed ] && [ "$other" != allowed ] || { echo "SCOPE CHECK FAILED"; exit 1; }
 
 echo "== 2. canary $run"
-terraform -chdir=infra/aws/reaper/canary init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$account" >/dev/null
-terraform -chdir=infra/aws/reaper/canary apply -input=false -auto-approve -var "run_id=$run" -no-color | tail -2
+tf -chdir=infra/aws/reaper/canary init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$account" >/dev/null
+tf -chdir=infra/aws/reaper/canary apply -input=false -auto-approve -var "run_id=$run" -no-color | tail -2
 aws sqs get-queue-url --queue-name "convoy-reaper-canary-$run" --query QueueUrl --output text
 
 echo "== 3. scheduled destroy"
-scripts/schedule-reap.sh infra/aws/reaper/canary "$run" 3
+[ -z "$(git status --porcelain -- infra scripts)" ] || { echo "refused: commit and push infra/ and scripts/ first"; exit 2; }
+sha=$(git rev-parse HEAD)
+scripts/schedule-reap.sh infra/aws/reaper/canary "$run" 3 "$sha"
 until build=$(aws codebuild list-builds-for-project --project-name convoy-full-reaper --query 'ids[0]' --output text) &&
       [ "$build" != None ] && aws codebuild batch-get-builds --ids "$build" --query 'builds[0].environment.environmentVariables[?name==`RUN_ID`].value' --output text | grep -qx "$run"; do
   sleep 20
@@ -41,5 +50,6 @@ verdict=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-strea
   --query 'events[-1].message' --output text)
 gone=$(aws sqs get-queue-url --queue-name "convoy-reaper-canary-$run" >/dev/null 2>&1 && echo no || echo yes)
 sched=$(aws scheduler get-schedule --name "convoy-reap-$run" >/dev/null 2>&1 && echo still-there || echo deleted)
-echo "build: $st; report: $verdict; queue gone: $gone; schedule: $sched"
-[ "$st" = SUCCEEDED ] && [ "$gone" = yes ] && echo "$verdict" | grep -q "TEARDOWN VERIFIED" && echo "CANARY PASSED" || { echo "CANARY FAILED"; exit 1; }
+pinned=$(aws logs filter-log-events --log-group-name /convoy/reaper --log-stream-names "$stream" --filter-pattern '"reaper code pinned at"'   --query 'events[0].message' --output text)
+echo "build: $st; $pinned (expected $sha); report: $verdict; queue gone: $gone; schedule: $sched"
+[ "$st" = SUCCEEDED ] && [ "$gone" = yes ] && echo "$pinned" | grep -q "$sha" && echo "$verdict" | grep -q "TEARDOWN VERIFIED" && echo "CANARY PASSED" || { echo "CANARY FAILED"; exit 1; }
