@@ -56,7 +56,7 @@ one_off() { # task definition arn -> runs it in the private subnets, fails on a 
     --query 'tasks[0].taskArn' --output text)
   within aws ecs wait tasks-stopped --region $REGION --cluster "$(terraform output -raw cluster)" --tasks "$arn" || return 1
   code=$(aws ecs describe-tasks --region $REGION --cluster "$(terraform output -raw cluster)" --tasks "$arn" --query 'tasks[0].containers[0].exitCode' --output text)
-  [ "$code" = 0 ] || { echo "one-off task $1 exited $code"; exit 1; }
+  [ "$code" = 0 ] || { echo "one-off task $1 exited $code"; return 1; } # return: the caller's || abort must run
 }
 
 headroom() { # the reaper must always be able to launch: quota - Fargate vCPU running - this run's worst case >= 0.5

@@ -6,8 +6,14 @@ for svc in identity catalog pool dealer quote order payment realtime notificatio
   var="DB_PASSWORD_$(echo "$svc" | tr '[:lower:]' '[:upper:]')"
   pw=$(printenv "$var")
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<SQL
-CREATE ROLE "$svc" LOGIN PASSWORD '$pw' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
-CREATE SCHEMA "$svc" AUTHORIZATION "$svc";
+DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$svc') THEN
+    CREATE ROLE "$svc" LOGIN PASSWORD '$pw' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+  END IF;
+END \$\$;
+-- RDS: the admin is not a superuser and must be a member of a role to make it a schema owner (PostgreSQL 16).
+GRANT "$svc" TO CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS "$svc" AUTHORIZATION "$svc";
 ALTER ROLE "$svc" SET search_path = "$svc";
 GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO "$svc";
 SQL
