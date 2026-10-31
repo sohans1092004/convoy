@@ -52,7 +52,7 @@ one_off() { # task definition arn -> runs it in the private subnets, fails on a 
   arn=$(aws ecs run-task --region $REGION --cluster "$(terraform output -raw cluster)" --launch-type FARGATE --task-definition "$1" \
     --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -raw private_subnets)],securityGroups=[$(terraform output -raw tasks_security_group)]}" \
     --query 'tasks[0].taskArn' --output text)
-  aws ecs wait tasks-stopped --region $REGION --cluster "$(terraform output -raw cluster)" --tasks "$arn"
+  within aws ecs wait tasks-stopped --region $REGION --cluster "$(terraform output -raw cluster)" --tasks "$arn" || return 1
   code=$(aws ecs describe-tasks --region $REGION --cluster "$(terraform output -raw cluster)" --tasks "$arn" --query 'tasks[0].containers[0].exitCode' --output text)
   [ "$code" = 0 ] || { echo "one-off task $1 exited $code"; exit 1; }
 }
@@ -64,7 +64,8 @@ headroom() { # the reaper must always be able to launch: quota - Fargate vCPU ru
       if [ -n "$t" ]; then aws ecs describe-tasks --cluster "$c" --tasks $t --query 'tasks[?launchType==`FARGATE`].cpu' --output text; fi
     done | tr '	' '
 ' | awk '{s+=$1} END {print s/1024+0}')
-  worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"' | grep -E '^[0-9.]+$' | tail -1)
+  worst=$(echo 'local.worst_case_vcpu' | terraform console -var services_running=true | tr -d '"
+' | grep -E '^[0-9.]+$' | tail -1)
   [ -n "$worst" ] || { echo "refused: could not compute this run's worst-case vCPU"; exit 2; }
   left=$(awk "BEGIN {print $quota - $running - $worst}")
   echo "Fargate on-demand vCPU: quota $quota, running $running, this run at most $worst -> $left left for the reaper"
@@ -79,6 +80,7 @@ case $cmd in
     terraform plan -input=false -no-color -var services_running=true | tee plan.txt | grep -E "^Plan:|Error|will be|must be"
     ;;
   up)
+    started=$(date +%s)
     # The destroy code is pinned to the commit this run is applied from: no uncommitted infra or script changes allowed.
     [ -z "$(git -C "$root" status --porcelain -- infra scripts)" ] || { echo "refused: commit infra/ and scripts/ first (the reaper runs that exact commit)"; exit 2; }
     sha=$(git -C "$root" rev-parse HEAD)
@@ -86,17 +88,27 @@ case $cmd in
     tf_init
     tfvars "$3"
     headroom
-    terraform apply -input=false -auto-approve -var services_running=false
-    one_off "$(terraform output -raw db_init_task)"
-    terraform apply -input=false -auto-approve -var services_running=true
-    aws ecs wait services-stable --region $REGION --cluster "$(terraform output -raw cluster)" --services $(terraform output -json services | "$py" -c 'import json,sys; print(" ".join(json.load(sys.stdin)))')
-    one_off "$(terraform output -raw seed_task)"
-    echo "UP: $(terraform output -raw url)"
+    # Creation must finish by minute CREATE_MINUTES (35) so the destroy ends well inside the 60-minute limit: past it,
+    # the running step is interrupted (SIGINT: terraform finishes in-flight calls, saves state, unlocks) and down runs.
+    deadline=$(( started + ${CREATE_MINUTES:-35} * 60 ))
+    within() { local left=$(( deadline - $(date +%s) )); [ "$left" -gt 0 ] || return 124; timeout -s INT -k 180 "$left" "$@"; }
+    abort() { echo "creation not finished by minute ${CREATE_MINUTES:-35} (or a step failed): destroying now"; "$0" down "$run"; exit 3; }
+    within terraform apply -input=false -auto-approve -var services_running=false || abort
+    one_off "$(terraform output -raw db_init_task)" || abort
+    within terraform apply -input=false -auto-approve -var services_running=true || abort
+    # services-stable takes at most 10 services per call
+    cluster=$(terraform output -raw cluster)
+    for chunk in $(terraform output -json services | "$py" -c 'import json,sys; s=json.load(sys.stdin); print(" ".join(",".join(s[i:i+10]) for i in range(0, len(s), 10)))'); do
+      within aws ecs wait services-stable --region $REGION --cluster "$cluster" --services ${chunk//,/ } || abort
+    done
+    one_off "$(terraform output -raw seed_task)" || abort
+    echo "UP after $(( ($(date +%s) - started) / 60 )) min: $(terraform output -raw url)"
     ;;
   down)
+    # First the run's reaper schedule (it must not fire while this destroy runs), then the same destroy path it uses.
+    aws scheduler delete-schedule --name "convoy-reap-$run" >/dev/null 2>&1 && echo "schedule convoy-reap-$run deleted" || echo "no schedule convoy-reap-$run"
     rm -f run.auto.tfvars.json
     (cd "$root" && scripts/reap.sh infra/aws/full "$run")
-    aws scheduler delete-schedule --name "convoy-reap-$run" >/dev/null 2>&1 || true # no longer needed
     ;;
   verify)
     # The tagging API can list a resource for some minutes after it is deleted: retry for 15 minutes.

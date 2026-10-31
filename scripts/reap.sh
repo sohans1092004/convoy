@@ -21,10 +21,19 @@ else
 fi
 
 log "destroy $dir (run $run)"
+out=$(mktemp)
+# The state is locked (S3 lockfile) while another terraform run uses it. Wait up to 10 min; if it is still held, destroy
+# nothing (never race another run) and report, so a person looks.
 terraform -chdir="$dir" init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$account" >/dev/null &&
-  terraform -chdir="$dir" destroy -input=false -auto-approve -no-color
-destroyed=$?
+  terraform -chdir="$dir" destroy -input=false -auto-approve -no-color -lock-timeout=10m 2>&1 | tee "$out"
+destroyed=${PIPESTATUS[0]:-1}
 rm -f "$dir/reap.auto.tfvars.json"
+if grep -q "Error acquiring the state lock" "$out"; then
+  msg="REAPER STOPPED: $dir run $run. The state stayed locked for 10 min (another terraform run holds it); nothing destroyed. Check that run, then make full-down RUN=$run."
+  log "$msg"
+  aws sns publish --region "$region" --topic-arn "arn:aws:sns:$region:$account:convoy-alerts" --subject "Convoy REAPER STOPPED ($run)" --message "$msg" >/dev/null || true
+  exit 2
+fi
 
 verified=1 left=""
 for i in $(seq 1 30); do
