@@ -130,7 +130,7 @@ services:
       CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER:?}
       CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE:?}
       CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT:?}
-      EXPORT_BUCKET: ${EXPORT_BUCKET:-convoy-data-exports}
+      EXPORT_BUCKET: ${EXPORT_BUCKET:?infra/aws/shared output export_bucket}
       EXPORT_PUBLIC_ENDPOINT: ${EXPORT_PUBLIC_ENDPOINT:-}
       WEB_URL: ${PUBLIC_URL}
       PASSKEY_RP_ID: ${SITE_ADDRESS}
@@ -221,6 +221,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD_ORDER}
       CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER}
       EVIDENCE_PUBLIC_ENDPOINT: ${EVIDENCE_PUBLIC_ENDPOINT:-}
+      EVIDENCE_BUCKET: ${EVIDENCE_BUCKET:?infra/aws/shared output evidence_bucket}
 
   payment:
     <<: *service

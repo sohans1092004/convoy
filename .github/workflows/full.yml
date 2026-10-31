@@ -1,0 +1,109 @@
+name: full
+
+# P6.E: the full AWS profile, on demand and budgeted (PLAN §6). `make full-up` / `make full-down` dispatch this.
+# up: apply (OIDC role, no stored keys), optional smoke run of the public demo journey, then the guard job sleeps for
+#     max_hours and destroys the stack, verifies the teardown (tag inventory empty) and reports the cost, so a run
+#     cannot outlive its budget. down: destroy now (the guard then finds nothing to destroy).
+# Environment `full`: vars AWS_ROLE_ARN, SHARED_JSON (infra/aws/shared outputs + mail_from); secret SECRETS_JSON.
+on:
+  workflow_dispatch:
+    inputs:
+      action: { description: up or down, required: true, type: choice, options: [up, down] }
+      max_hours: { description: scheduled destroy after this many hours (smoke run 1), required: false, default: '1' }
+      images_run_id: { description: images workflow run id to deploy (default the latest successful on main), required: false }
+      smoke: { description: run the public demo journey after up, required: false, type: boolean, default: true }
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+concurrency:
+  group: full-${{ inputs.action }}
+  cancel-in-progress: false
+
+env:
+  SHARED_JSON: ${{ vars.SHARED_JSON }}
+  SECRETS_JSON: ${{ secrets.SECRETS_JSON }}
+
+jobs:
+  up:
+    if: inputs.action == 'up'
+    runs-on: ubuntu-24.04
+    environment: full
+    outputs:
+      run: ${{ steps.run.outputs.run }}
+      url: ${{ steps.up.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.10.5, terraform_wrapper: false }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: '${{ vars.AWS_ROLE_ARN }}', aws-region: ap-south-1, role-duration-seconds: 7200 }
+      - id: run
+        run: echo "run=r$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+      - name: images.env
+        env: { GH_TOKEN: '${{ github.token }}', RUN_ID: '${{ inputs.images_run_id }}' }
+        run: |
+          id=${RUN_ID:-$(gh run list -R $GITHUB_REPOSITORY -w images -b main -s success -L 1 --json databaseId -q '.[0].databaseId')}
+          sha=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/$id --jq .head_sha)
+          gh run download "$id" -R "$GITHUB_REPOSITORY" -n "images-$sha"
+      - id: up
+        run: |
+          echo "start=$(date -u +%FT%TZ)" >> "$GITHUB_STEP_SUMMARY"
+          scripts/full.sh up ${{ steps.run.outputs.run }} "$PWD/images.env" | tee up.log
+          echo "url=$(grep '^UP: ' up.log | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      - if: failure()
+        run: scripts/full.sh down ${{ steps.run.outputs.run }} # a half-applied run is destroyed at once
+
+  smoke:
+    needs: up
+    if: inputs.action == 'up' && inputs.smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Public demo journey against the full stack
+        working-directory: web
+        env: { WEB_URL: '${{ needs.up.outputs.url }}' }
+        run: pnpm exec playwright install --with-deps chromium && pnpm exec playwright test e2e/demo.spec.ts --project=mobile-360
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: full-smoke-report, path: web/playwright-report }
+
+  guard:
+    needs: up
+    if: always() && inputs.action == 'up' && needs.up.outputs.run != ''
+    runs-on: ubuntu-24.04
+    environment: full
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.10.5, terraform_wrapper: false }
+      - name: Wait until the run's maximum duration
+        run: sleep $(( ${{ inputs.max_hours }} * 3600 - 600 )) # minus the time up took, roughly
+      - uses: aws-actions/configure-aws-credentials@v4 # assumed only now: a fresh session for the destroy
+        with: { role-to-assume: '${{ vars.AWS_ROLE_ARN }}', aws-region: ap-south-1 }
+      - run: scripts/full.sh down ${{ needs.up.outputs.run }} | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        run: scripts/full.sh cost ${{ needs.up.outputs.run }} ${{ inputs.max_hours }} | tee -a "$GITHUB_STEP_SUMMARY"
+
+  down:
+    if: inputs.action == 'down'
+    runs-on: ubuntu-24.04
+    environment: full
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.10.5, terraform_wrapper: false }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: '${{ vars.AWS_ROLE_ARN }}', aws-region: ap-south-1 }
+      - name: Destroy now (the run id is read from the state's tags)
+        run: |
+          cd infra/aws/full && terraform init -input=false -backend-config="bucket=convoy-tfstate-$(aws sts get-caller-identity --query Account --output text)" >/dev/null
+          run=$(terraform show -json | jq -r '[.. | .tags_all? // empty | .run? // empty] | first // "none"')
+          cd - && scripts/full.sh down "$run" | tee -a "$GITHUB_STEP_SUMMARY"

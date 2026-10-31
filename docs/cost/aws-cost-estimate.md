@@ -124,3 +124,27 @@ For comparison, leaving the full stack on idle for a month would cost **≈ $1,0
 | Secrets Manager / KMS / ECR | …/AWSSecretsManager, awskms, AmazonECR | 2026-09-11 | 0.40 $/secret-mo; 1 $/key-mo; 0.10 $/GB-mo |
 
 The arithmetic script used to produce these tables is reproduced in [`cost-arithmetic.md`](cost-arithmetic.md) so the numbers can be re-run when prices change.
+
+## 6. P6 lite: Oracle Cloud host + AWS messaging, storage and email (replaces §1 for the always-on demo)
+The host is an Oracle Cloud Always Free A1 VM (1 OCPU, 6 GB, 50 GB boot volume, Always Free Object Storage for backups):
+**$0**. No EC2, EBS, public IPv4, CloudFront, ECR (images on GHCR), Secrets Manager or KMS on AWS. What AWS bills
+(`infra/aws/shared`, prices from §5, 730 h/month):
+
+| Line | Arithmetic | $/month |
+|---|---|---|
+| SQS empty long polls (dominant) | 33 queues × 1 poller × 2,628,000 s ÷ 20 s wait = 33 × 131,400 = **4.34 M** receives | |
+| SQS DLQ depth checks | 33 DLQs × 2,628,000 s ÷ 900 s (every 15 min) = 0.10 M | |
+| SQS real traffic | 2,000 demo scenarios × ~60 events × ~3 consumers = 0.36 M messages, + receive/delete ≈ 0.5 M | |
+| SQS total | 4.34 + 0.10 + 0.5 = 4.94 M − 1 M always-free = 3.94 M × 0.40 $/M (FIFO share: 4 queues ≈ 0.53 M at +0.10 $/M = +0.05) | **1.63** |
+| SNS publishes | 120 k events ÷ up to 10 per PublishBatch ≤ 0.12 M requests, inside the 1 M always-free; SNS → SQS delivery is free | 0.00 |
+| S3 (exports 24 h, evidence) | < 1 GB × 0.025 | 0.03 |
+| SES SMTP | demo accounts are `.invalid` and never mailed; only real sign-ins (off without production access) | 0.00 |
+| Data transfer out | ~4.4 M SQS responses × ~0.5 KB ≈ 2.2 GB, inside the 100 GB/month always-free | 0.00 |
+| CloudWatch alarms | DLQ depth: 33 metrics; oldest-message age: 33 metrics; 66 − 10 free = 56 × 0.10 | **5.60** |
+| AWS Budgets | 1 budget (first 2 free) | 0.00 |
+| **Total** | | **≈ 7.26** (≈ **3.96** with `queue_age_alarms = false`: 23 × 0.10 alarms) |
+
+- Long polling is what makes idle messaging cheap: with the local defaults (4 pollers, 1 s waits) the same 33 queues
+  would make 33 × 4 × 2,628,000 = 347 M requests ≈ $138/month. Lite sets 1 poller, 20 s, DLQ checks every 15 min.
+- The budget alerts ($5 actual, $20 actual and forecast) trip at $5 with every alarm on; that is the expected bill.
+- Credits: a new account's $200 credits cover this for longer than the 6-month credit window.
