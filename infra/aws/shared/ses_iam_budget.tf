@@ -13,14 +13,16 @@ resource "aws_ses_domain_dkim" "d" {
 
 # ---------------------------------------------------------------- the lite host's IAM user (least privilege)
 # Exactly the calls the services make: publish + check topics; receive/delete/extend/redrive and check queues;
-# objects in the two buckets. Nothing can create, delete or reconfigure a resource. Rotation: README.md.
+# objects in the two buckets. Nothing can create, delete or reconfigure a resource. Its access key is not made by
+# Terraform (it would sit in the state): scripts/create-host-keys.sh writes it straight into the git-ignored env file.
 locals {
   topic_arns = [for t in aws_sns_topic.t : t.arn]
   queue_arns = concat([for q in aws_sqs_queue.q : q.arn], [for q in aws_sqs_queue.dlq : q.arn])
 }
 
 resource "aws_iam_user" "host" {
-  name = "convoy-lite-host"
+  name          = "convoy-lite-host"
+  force_destroy = true # its keys come from scripts/create-host-keys.sh, outside Terraform: destroy removes them too
 }
 
 resource "aws_iam_user_policy" "host" {
@@ -42,13 +44,11 @@ resource "aws_iam_user_policy" "host" {
   })
 }
 
-resource "aws_iam_access_key" "host" {
-  user = aws_iam_user.host.name
-}
 
-# SES SMTP: a separate user that can only send, only from var.mail_from. Its SMTP password is derived by AWS from the key.
+# SES SMTP: a separate user that can only send, only from var.mail_from. Its key and SMTP password: scripts/create-host-keys.sh.
 resource "aws_iam_user" "smtp" {
-  name = "convoy-lite-smtp"
+  name          = "convoy-lite-smtp"
+  force_destroy = true # its keys come from scripts/create-host-keys.sh, outside Terraform: destroy removes them too
 }
 
 resource "aws_iam_user_policy" "smtp" {
@@ -63,11 +63,9 @@ resource "aws_iam_user_policy" "smtp" {
   })
 }
 
-resource "aws_iam_access_key" "smtp" {
-  user = aws_iam_user.smtp.name
-}
 
-# ---------------------------------------------------------------- budget alerts at $5 and $20 (actual), plus forecast
+# ---------------------------------------------------------------- budget alerts at $8 and $20 (actual), plus $20 forecast
+# The expected bill is ~$4.66/month (docs/cost/aws-cost-estimate.md §6): $8 fires only on a real jump.
 resource "aws_budgets_budget" "monthly" {
   name         = "convoy-monthly"
   budget_type  = "COST"
@@ -82,7 +80,7 @@ resource "aws_budgets_budget" "monthly" {
   }
 
   dynamic "notification" {
-    for_each = [{ t = 5, kind = "ACTUAL" }, { t = 20, kind = "ACTUAL" }, { t = 20, kind = "FORECASTED" }]
+    for_each = [{ t = 8, kind = "ACTUAL" }, { t = 20, kind = "ACTUAL" }, { t = 20, kind = "FORECASTED" }]
     content {
       comparison_operator        = "GREATER_THAN"
       threshold                  = notification.value.t

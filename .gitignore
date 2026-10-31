@@ -24,3 +24,4 @@ tfplan
 *.tfvars
 run.auto.tfvars.json
 plan.txt
+deploy/lite/convoy.env

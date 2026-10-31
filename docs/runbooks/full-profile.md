@@ -6,12 +6,15 @@ RDS PostgreSQL (single-AZ; `multi_az = true` only for the failover drill) behind
 ADOT -> X-Ray (5 % sampling), one Secrets Manager secret per run. SNS/SQS/S3 come from `infra/aws/shared`.
 Only for P7's load tests and failure drills; ≈ $1.49/h idle (cost estimate §2; one NAT and single-AZ RDS make it less).
 
-## Runner (decision pending)
-The account's organisation SCP denies `iam:CreateOpenIDConnectProvider`, so GitHub Actions cannot assume a role, and
-stored keys are not allowed. Runs therefore go from the laptop with the `convoy-aws` session (`make full-up` /
-`make full-down`, `scripts/full.sh`). The maximum duration needs a destroy that does not depend on the laptop; the
-proposal is an in-account CodeBuild project (started by an EventBridge Scheduler one-time schedule at the deadline)
-that runs `scripts/full.sh down` with its own role and reads the state from `convoy-tfstate-<account>`.
+## Runner and scheduled destroy
+No GitHub runner (the SCP denies the OIDC provider; no stored keys). Runs go from the laptop with the `convoy-aws`
+session. The maximum duration is enforced in the account: `scripts/full.sh up` first creates a one-time EventBridge
+Scheduler schedule (`scripts/schedule-reap.sh`, default 60 minutes) that starts the `convoy-full-reaper` CodeBuild
+project (`infra/aws/reaper`). It clones the run's commit and runs `scripts/reap.sh`: `terraform destroy`, teardown
+verification (no resource tagged with the run), and a report to `convoy-alerts` (email). Its role may change or delete
+only resources tagged `project=convoy` and `profile=full`, plus the full-profile state objects; it is itself tagged
+`profile=lite`, so it cannot delete itself. `make full-down` runs the same `reap.sh` and removes the schedule.
+Tested end to end by `scripts/reaper-canary.sh` (one empty SQS queue) before a real run relies on it.
 
 ## A run (from the laptop)
 `make full-up RUN=r1 IMAGES=images.env` with `SHARED_JSON` and `SECRETS_JSON` exported (see `scripts/full.sh`):

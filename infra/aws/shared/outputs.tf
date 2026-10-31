@@ -1,21 +1,13 @@
-# Values for the lite host's env file (/opt/convoy/convoy.env). Secrets are marked sensitive:
-#   terraform output -raw host_secret_access_key   /   terraform output -raw smtp_password
+# Values for the lite host's env file (/opt/convoy/convoy.env). No secrets: the access keys and the SMTP password are
+# made by scripts/create-host-keys.sh, outside Terraform and its state.
 output "account_id" { value = local.account }
+output "host_user" { value = aws_iam_user.host.name }
+output "smtp_user" { value = aws_iam_user.smtp.name }
 output "export_bucket" { value = aws_s3_bucket.b["exports"].bucket }
 output "evidence_bucket" { value = aws_s3_bucket.b["evidence"].bucket }
 output "smtp_host" { value = "email-smtp.${var.region}.amazonaws.com" }
-output "host_access_key_id" { value = aws_iam_access_key.host.id }
-output "smtp_username" { value = aws_iam_access_key.smtp.id }
 
-output "host_secret_access_key" {
-  value     = aws_iam_access_key.host.secret
-  sensitive = true
-}
 
-output "smtp_password" {
-  value     = aws_iam_access_key.smtp.ses_smtp_password_v4
-  sensitive = true
-}
 
 output "ses_dkim_cnames" {
   description = "Publish these at your DNS host (only with ses_domain)."

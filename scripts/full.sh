@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Full AWS profile lifecycle (P6.E), run from the laptop with the convoy-aws session (make full-up / make full-down).
-# The scheduled destroy at the maximum duration is pending a decision (docs/runbooks/full-profile.md).
+# Before anything is applied, `up` schedules the destroy at the maximum duration (MAX_MINUTES, default 60) through the
+# in-account reaper (infra/aws/reaper, scripts/schedule-reap.sh), so a run ends even if this laptop is off.
 #   full.sh up      <run-id> <images.env>   apply (DB init first), wait for services, seed demo dealerships, print the URL
-#   full.sh down    <run-id>                destroy, then verify the teardown and report the cost
+#   full.sh down    <run-id>                scripts/reap.sh: destroy, verify the teardown, report (the same path as the reaper)
 #   full.sh verify  <run-id>                tag inventory of the run must be empty
 #   full.sh cost    <run-id> <hours>        Cost Explorer by the run tag if available, else the estimate
 # Needs: AWS credentials (AWS_PROFILE=convoy-aws), terraform >= 1.10, jq; SHARED_JSON (infra/aws/shared outputs, + mail_from)
 # and SECRETS_JSON (service secrets) in the environment.
 set -euo pipefail
-cd "$(dirname "$0")/../infra/aws/full"
+root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$root/infra/aws/full"
 cmd=$1 run=$2
 REGION=${AWS_REGION:-ap-southeast-2}
 account() { aws sts get-caller-identity --query Account --output text; }
@@ -45,6 +47,7 @@ one_off() { # task definition arn -> runs it in the private subnets, fails on a 
 
 case $cmd in
   up)
+    (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}") # first: the deadline holds whatever happens next
     tf_init
     tfvars "$3"
     terraform apply -input=false -auto-approve -var services_running=false
@@ -55,10 +58,9 @@ case $cmd in
     echo "UP: $(terraform output -raw url)"
     ;;
   down)
-    tf_init
-    [ -f run.auto.tfvars.json ] || echo "{\"run_id\":\"$run\",\"images\":{},\"shared\":$SHARED_JSON,\"secrets\":$SECRETS_JSON}" > run.auto.tfvars.json
-    terraform destroy -input=false -auto-approve
-    "$0" verify "$run"
+    rm -f run.auto.tfvars.json
+    (cd "$root" && scripts/reap.sh infra/aws/full "$run")
+    aws scheduler delete-schedule --name "convoy-reap-$run" >/dev/null 2>&1 || true # no longer needed
     ;;
   verify)
     # The tagging API can list a resource for some minutes after it is deleted: retry for 15 minutes.

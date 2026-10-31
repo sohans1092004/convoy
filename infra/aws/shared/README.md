@@ -33,18 +33,23 @@ Then confirm the two subscription emails AWS sends (alerts topic, budget).
 service started once). Re-run it when a service subscribes to a new event type; a mismatch otherwise stops that
 service at startup with the missing queue, subscription or filter type named (`Topology.Missing`).
 
-## Host credentials
+## Host credentials (not in Terraform)
+Terraform creates the two users and their policies only. Their access keys would sit in the Terraform state, so they are
+made by a script that writes them straight into the git-ignored env file for the VM, never to the terminal:
 ```sh
-terraform output -raw host_secret_access_key   # AWS_SECRET_ACCESS_KEY (AWS_ACCESS_KEY_ID = host_access_key_id)
-terraform output -raw smtp_password            # SMTP_PASSWORD (SMTP_USERNAME = smtp_username)
+AWS_PROFILE=convoy-aws scripts/create-host-keys.sh        # -> deploy/lite/convoy.env (git-ignored, mode 600)
 ```
-The state file holds both: keep `terraform.tfstate` private (it is git-ignored), e.g. in a password manager.
+It creates a key for `convoy-lite-host` (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY) and one for `convoy-lite-smtp`,
+from which it derives the SES SMTP password (SMTP_USERNAME / SMTP_PASSWORD). Copy the file to the VM as
+`/opt/convoy/convoy.env` (owner `deploy`, mode 600) and delete the local copy if you like.
 
-## Rotating the lite host's access key
-1. `terraform apply -replace=aws_iam_access_key.host` (a new key is created; the old one is deleted in the same apply).
-2. On the host: put the new `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in `/opt/convoy/convoy.env`, then
-   `docker compose --env-file /opt/convoy/convoy.env --env-file /opt/convoy/deployed/images.env -f deploy/lite/compose.yml up -d`
-   (services restart one by one through compose; a few seconds of SQS polling errors between steps 1 and 2 are retried).
-3. For zero failed polls: create a second key in the console first, switch the host to it, then run step 1 and switch back.
-Same for SMTP: `-replace=aws_iam_access_key.smtp`, then `SMTP_USERNAME` / `SMTP_PASSWORD`. Rotate every 90 days or at once
-if the env file may have leaked.
+**State:** `infra/aws/shared/terraform.tfstate`, local and git-ignored (`*.tfstate`). With the keys outside Terraform it
+holds no secrets: names, ARNs, policies, the alert email. Keep a private copy anyway (it is the only record for `destroy`).
+
+## Rotating a key
+1. `AWS_PROFILE=convoy-aws scripts/create-host-keys.sh` writes a new key for both users into the env file
+   (it refuses if a user already has 2 keys, the IAM limit).
+2. Copy the file to the VM and restart: `docker compose --env-file /opt/convoy/convoy.env --env-file /opt/convoy/deployed/images.env -f deploy/lite/compose.yml up -d`.
+3. Delete the old keys: `aws iam list-access-keys --user-name convoy-lite-host --profile convoy-aws`, then
+   `aws iam delete-access-key --user-name convoy-lite-host --access-key-id <old> --profile convoy-aws` (same for convoy-lite-smtp).
+Rotate every 90 days, or at once if the env file may have leaked.

@@ -40,8 +40,9 @@
 - S3: exports (24 h lifecycle) and evidence (browser CORS for the site only); private, SSE-S3, public access blocked, TLS only.
 - SES: domain identity + DKIM only with a domain; otherwise skipped and email sign-in stays off.
 - IAM: host user with exactly the calls the services make on exactly these resources; a separate SMTP user that can only
-  send from `mail_from`. Rotation: `infra/aws/shared/README.md`.
-- Budgets: $5 and $20 actual, $20 forecast, filtered on `project=convoy` (the account also runs Concord).
+  send from `mail_from`. Their keys are made outside Terraform (`scripts/create-host-keys.sh`, straight into the git-ignored
+  env file), so the state holds no secrets. Rotation: `infra/aws/shared/README.md`.
+- Budgets: $8 and $20 actual, $20 forecast, filtered on `project=convoy` (the account also runs Concord).
   Cost arithmetic: `docs/cost/aws-cost-estimate.md §6`. Permissions Terraform needs: `infra/aws/shared/PERMISSIONS.md`.
 
 **P6.D Oracle VM and live demo** (`infra/oci`, scripts; validated, not applied)

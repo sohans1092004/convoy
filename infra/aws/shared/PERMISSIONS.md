@@ -12,7 +12,7 @@ and `s3:CreateBucket` denied outside ap-southeast-2. Everything is scoped to nam
 | SQS | CreateQueue, DeleteQueue, GetQueueAttributes, SetQueueAttributes, GetQueueUrl, TagQueue, UntagQueue, ListQueueTags | `arn:aws:sqs:ap-southeast-2:<acct>:convoy-*` |
 | S3 | CreateBucket, DeleteBucket, ListBucket; Get/Put BucketTagging, BucketPublicAccessBlock, BucketOwnershipControls, EncryptionConfiguration, BucketPolicy (+ Delete), BucketVersioning, LifecycleConfiguration, BucketCORS; Get BucketAcl, BucketWebsite, BucketLogging, AccelerateConfiguration, BucketRequestPayment, ReplicationConfiguration, BucketObjectLockConfiguration (read on refresh) | `arn:aws:s3:::convoy-*` |
 | CloudWatch | PutMetricAlarm, DeleteAlarms, DescribeAlarms, TagResource, ListTagsForResource | `arn:aws:cloudwatch:ap-southeast-2:<acct>:alarm:convoy-*` |
-| IAM | CreateUser, GetUser, DeleteUser, TagUser, UntagUser, PutUserPolicy, GetUserPolicy, DeleteUserPolicy, ListUserPolicies, ListAttachedUserPolicies, ListGroupsForUser, CreateAccessKey, ListAccessKeys, DeleteAccessKey | `arn:aws:iam::<acct>:user/convoy-*` |
+| IAM | CreateUser, GetUser, DeleteUser, TagUser, UntagUser, PutUserPolicy, GetUserPolicy, DeleteUserPolicy, ListUserPolicies, ListAttachedUserPolicies, ListGroupsForUser, ListAccessKeys, DeleteAccessKey (destroy, `force_destroy`); CreateAccessKey only by `scripts/create-host-keys.sh`, not Terraform | `arn:aws:iam::<acct>:user/convoy-*` |
 | Budgets | ModifyBudget (create, update, delete), ViewBudget, TagResource, ListTagsForResource | `arn:aws:budgets::<acct>:budget/convoy-*` |
 | SES (only with `ses_domain`) | VerifyDomainIdentity, VerifyDomainDkim, GetIdentityVerificationAttributes, GetIdentityDkimAttributes, DeleteIdentity | the domain identity |
 

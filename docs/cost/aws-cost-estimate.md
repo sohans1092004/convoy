@@ -152,7 +152,10 @@ data out to the internet free up to 100 GB/month. 730 h/month:
 
 - Long polling is what makes idle messaging cheap: with the local defaults (4 pollers, 1 s waits) the same 33 queues
   would make 33 × 4 × 2,628,000 = 347 M requests ≈ $138/month. Lite sets 1 poller, 20 s, DLQ checks every 15 min.
-- The $5 budget alert sits just above the expected bill: a jump in demo traffic or a stuck redelivery loop trips it.
+- Budget alerts at $8 and $20 actual (and $20 forecast), filtered on `project=convoy`: $8 fires only on a real jump
+  (a traffic spike or a stuck redelivery loop), not every month.
+- The reaper (infra/aws/reaper): CodeBuild general1.small, ~15–40 build minutes per full run, inside the 100 free
+  minutes/month; EventBridge Scheduler inside 14 M free invocations; logs < 1 MB. ≈ $0.
 - Alarm cost is per metric read, not per alarm: grouping 10 queues into one metric-math alarm saves nothing.
 
 ### Full profile in ap-southeast-2: edge options (P6.E)
