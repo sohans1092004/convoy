@@ -42,7 +42,6 @@ export function DemoSwitch({ dealer }: { dealer: boolean }) {
   const t = useTranslations('demo');
   const swap = async () => {
     const r = await postBff<{ roles: string[] }>('/demo/switch');
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load re-renders with the other session
     window.location.href = r.roles.some((x) => x.startsWith('dealer')) ? '/dealer' : '/';
   };
   return <Button variant="link" onClick={swap}>{dealer ? t('toBuyer') : t('toDealer')}</Button>;
