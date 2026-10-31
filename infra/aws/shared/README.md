@@ -1,22 +1,29 @@
 # infra/aws/shared (P6.C)
 
 AWS resources the lite host uses, which the full profile reuses: SNS/SQS exactly as the services create them locally
-(`topology.json`), private encrypted buckets, optional SES, the host's least-privilege IAM user, budget alerts, and for
-the full profile its state bucket and GitHub OIDC role. Every resource is tagged `project=convoy`, `profile=lite`.
-Cost: [docs/cost/aws-cost-estimate.md §6](../../../docs/cost/aws-cost-estimate.md) (≈ $7.26/month, ≈ $3.96 without queue-age alarms).
+(`topology.json`), private encrypted buckets, optional SES, the host's least-privilege IAM user, a budget on Convoy's own spend, and the full profile's state
+bucket. Every resource is tagged `project=convoy`, `profile=lite` and named `convoy-…`.
+Cost: [docs/cost/aws-cost-estimate.md §6](../../../docs/cost/aws-cost-estimate.md).
+
+**The account is shared with Concord** (project "concord", region `ap-southeast-2`, the only region an SCP allows).
+Terraform here manages only what it creates; a plan must show nothing but `convoy-` resources and 0 changes or
+destroys, otherwise stop. Access is your `aws login` session, profile `convoy-aws` (12 h). No GitHub OIDC provider:
+the organisation SCP denies `iam:CreateOpenIDConnectProvider`.
 
 ## Apply (you run it)
 ```sh
 cd infra/aws/shared
+export AWS_PROFILE=convoy-aws      # if Terraform does not pick the profile up:
+                                   # eval "$(aws configure export-credentials --profile convoy-aws --format env)"
 cat > terraform.tfvars <<EOF        # git-ignored
 site_origin = "https://convoy-demo.duckdns.org"
 alert_email = "you@example.com"
 mail_from   = "you@example.com"      # verify it in SES (AWS emails a link) before the first send
 # ses_domain = "example.com"         # only with a domain you control
-# queue_age_alarms = false           # DLQ alarms only, ~$3.30/month less
+# queue_age_consumers = ["payment", "order"]   # default: age alarms only on the money path
 EOF
 terraform init
-terraform plan -out tfplan            # review: ~180 resources, all tagged, nothing hourly-billed
+terraform plan -out tfplan            # review: only convoy- resources, 0 to change, 0 to destroy
 terraform apply tfplan
 terraform output                      # values for /opt/convoy/convoy.env; secrets with -raw (below)
 ```

@@ -1,8 +1,8 @@
-# Queue alarms, one metric-math alarm per 10 queues (the most metrics one alarm may read). Two kinds: any DLQ not
-# empty, and any queue whose oldest message is older than
-# 15 minutes (its consumer is down or failing). Both email var.alert_email. Billing counts every metric an alarm reads,
-# so grouping does not save money: 33 queues x 2 kinds = 66 alarm metrics (~$5.60/month after the free 10);
-# queue_age_alarms = false keeps only the DLQ alarms (~$2.30). Cost: docs/cost/aws-cost-estimate.md §6.
+# Queue alarms, one metric-math alarm per 10 queues (the most metrics one alarm may read):
+# - every DLQ not empty
+# - the oldest message older than 15 minutes (its consumer is down or failing), only for var.queue_age_consumers
+# Both email var.alert_email. CloudWatch bills every metric an alarm reads: 33 DLQs + 7 payment/order queues = 40 alarm
+# metrics, 10 free, 30 x $0.10 = $3.00/month (docs/cost/aws-cost-estimate.md §6).
 resource "aws_sns_topic" "alerts" {
   name = "convoy-alerts"
 }
@@ -14,12 +14,12 @@ resource "aws_sns_topic_subscription" "alerts_email" {
 }
 
 locals {
-  chunks = chunklist(sort(keys(local.queues)), 10)
+  aged = { dlq = sort(keys(local.queues)), stuck = sort([for n, q in local.queues : n if contains(var.queue_age_consumers, split("--", trimprefix(n, "convoy-"))[0])]) }
   alarms = {
     dlq   = { metric = "ApproximateNumberOfMessagesVisible", fn = "SUM", threshold = 0, dlq = true, what = "A DLQ has messages: fix the cause, then redrive (docs/runbooks/dlq-redrive.md)." }
     stuck = { metric = "ApproximateAgeOfOldestMessage", fn = "MAX", threshold = 900, dlq = false, what = "A queue's oldest message is over 15 min old: its consumer is down or failing." }
   }
-  alarm_list = flatten([for k, a in local.alarms : [for i, c in local.chunks : { key = "${k}-${i + 1}", a = a, queues = c }] if k == "dlq" || var.queue_age_alarms])
+  alarm_list = flatten([for k, a in local.alarms : [for i, c in chunklist(local.aged[k], 10) : { key = "${k}-${i + 1}", a = a, queues = c }]])
 }
 
 resource "aws_cloudwatch_metric_alarm" "queues" {

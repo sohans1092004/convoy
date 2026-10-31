@@ -9,7 +9,7 @@ x-jvm: &jvm
   # No OTel agent (no collector on lite); SerialGC, small stacks, C1 only: many JVMs on one host (P0 risk 5).
   JAVA_TOOL_OPTIONS: -XX:+UseSerialGC -Xss512k -XX:MaxRAMPercentage=65 -XX:ReservedCodeCacheSize=32m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError
   SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-  AWS_REGION: ${AWS_REGION:-ap-south-1}
+  AWS_REGION: ${AWS_REGION:-ap-southeast-2}
   AWS_ENDPOINT: ${AWS_ENDPOINT:-}
   CONVOY_AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID:-}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}

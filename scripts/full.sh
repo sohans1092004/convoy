@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Full AWS profile lifecycle (P6.E). Normally run by .github/workflows/full.yml (make full-up / make full-down), which
-# also schedules the destroy after MAX_HOURS, so a run can't outlive its budget even if the laptop is off.
+# Full AWS profile lifecycle (P6.E), run from the laptop with the convoy-aws session (make full-up / make full-down).
+# The scheduled destroy at the maximum duration is pending a decision (docs/runbooks/full-profile.md).
 #   full.sh up      <run-id> <images.env>   apply (DB init first), wait for services, seed demo dealerships, print the URL
 #   full.sh down    <run-id>                destroy, then verify the teardown and report the cost
 #   full.sh verify  <run-id>                tag inventory of the run must be empty
 #   full.sh cost    <run-id> <hours>        Cost Explorer by the run tag if available, else the estimate
-# Needs: AWS credentials (OIDC role in CI), terraform >= 1.10, jq; SHARED_JSON (infra/aws/shared outputs, + mail_from)
+# Needs: AWS credentials (AWS_PROFILE=convoy-aws), terraform >= 1.10, jq; SHARED_JSON (infra/aws/shared outputs, + mail_from)
 # and SECRETS_JSON (service secrets) in the environment.
 set -euo pipefail
 cd "$(dirname "$0")/../infra/aws/full"
 cmd=$1 run=$2
-REGION=ap-south-1
+REGION=${AWS_REGION:-ap-southeast-2}
 account() { aws sts get-caller-identity --query Account --output text; }
 tf_init() { terraform init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$(account)" >/dev/null; }
 
@@ -63,9 +63,9 @@ case $cmd in
   verify)
     # The tagging API can list a resource for some minutes after it is deleted: retry for 15 minutes.
     for i in $(seq 1 30); do
-      left=$(for r in $REGION us-east-1; do aws resourcegroupstaggingapi get-resources --region $r \
+      left=$(for r in $REGION; do aws resourcegroupstaggingapi get-resources --region $r \
         --tag-filters Key=project,Values=convoy Key=profile,Values=full Key=run,Values="$run" --query 'ResourceTagMappingList[].ResourceARN' --output text; done | tr '\t' '\n' | sed '/^$/d')
-      [ -z "$left" ] && { echo "TEARDOWN VERIFIED: no resource tagged run=$run in $REGION or us-east-1"; exit 0; }
+      [ -z "$left" ] && { echo "TEARDOWN VERIFIED: no resource tagged run=$run in $REGION"; exit 0; }
       echo "attempt $i: still listed:"; echo "$left"; sleep 30
     done
     echo "TEARDOWN NOT VERIFIED: resources above remain (docs/runbooks/full-profile.md, manual recovery)"; exit 1

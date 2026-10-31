@@ -1,6 +1,7 @@
 variable "region" {
-  type    = string
-  default = "ap-south-1"
+  description = "The only region this account may use (an organisation SCP denies the others)."
+  type        = string
+  default     = "ap-southeast-2"
 }
 
 variable "profile" {
@@ -30,8 +31,8 @@ variable "ses_domain" {
   default     = ""
 }
 
-variable "queue_age_alarms" {
-  description = "Also alarm on each queue's oldest-message age (a stuck consumer). ~$3.30/month more than DLQ-only alarms."
-  type        = bool
-  default     = true
+variable "queue_age_consumers" {
+  description = "Consumers whose queues also alarm on oldest-message age (a stuck consumer): the money path. Every DLQ alarms regardless."
+  type        = list(string)
+  default     = ["payment", "order"]
 }

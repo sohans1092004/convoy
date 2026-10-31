@@ -75,6 +75,12 @@ resource "aws_budgets_budget" "monthly" {
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
+  # Only Convoy's spend: the account also runs Concord (cost allocation tag `project` activated by you)
+  cost_filter {
+    name   = "TagKeyValue"
+    values = ["user:project$convoy"]
+  }
+
   dynamic "notification" {
     for_each = [{ t = 5, kind = "ACTUAL" }, { t = 20, kind = "ACTUAL" }, { t = 20, kind = "FORECASTED" }]
     content {

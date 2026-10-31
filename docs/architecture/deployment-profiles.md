@@ -33,10 +33,11 @@ SerialGC, C1, no OTel agent]
     SVC --> R[(Redis container)]
   end
   SVC --> AWS[SNS / SQS / S3 / SES SMTP
-ap-south-1]
+ap-southeast-2]
 ```
 P6 change from the P0 plan (EC2 behind CloudFront): the always-on host is an Oracle Cloud Always Free VM, so the demo costs only
-AWS request charges (docs/cost/aws-cost-estimate.md). Caddy terminates TLS; only 80/443 are open, SSH from one IP. `deploy/lite/compose.yml`,
+AWS request charges in ap-southeast-2, the only region the AWS account allows (docs/cost/aws-cost-estimate.md §6; the
+India–Sydney round trip adds 0.3–0.6 s per event, reports/p6/latency-oracle-sydney.md). Caddy terminates TLS; only 80/443 are open, SSH from one IP. `deploy/lite/compose.yml`,
 `SPRING_PROFILES_ACTIVE=prod`: config from env validated at startup (`ProdGuard`), SNS/SQS topology applied by `infra/aws/shared`
 and only checked by services. Images are pulled by digest (`images.env` from the `images` workflow).
 - **Connection budget, no PgBouncer:** `DB_POOL_SIZE=4` × 10 services with a database = 40, plus Flyway at startup and one `pg_dump`,

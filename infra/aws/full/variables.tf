@@ -1,6 +1,7 @@
 variable "region" {
-  type    = string
-  default = "ap-south-1"
+  description = "The only region the account allows (organisation SCP)."
+  type        = string
+  default     = "ap-southeast-2"
 }
 
 variable "run_id" {

@@ -79,3 +79,24 @@ jobs:
           cat images.env | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with: { name: 'images-${{ github.sha }}', path: images.env, retention-days: 90 }
+
+  # Before anything is public: no secrets in any published image (.env files, keys, tokens). Fails on a finding.
+  secret-scan:
+    needs: merge
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: 'images-${{ github.sha }}' }
+      - name: Trivy secret scan of every image in images.env (both architectures)
+        env: { TRIVY_USERNAME: '${{ github.actor }}', TRIVY_PASSWORD: '${{ secrets.GITHUB_TOKEN }}' }
+        run: |
+          fail=0
+          while IFS='=' read -r key ref; do
+            for arch in amd64 arm64; do
+              echo "== $key ($arch)"
+              docker run --rm -e TRIVY_USERNAME -e TRIVY_PASSWORD aquasec/trivy:0.65.0 image --quiet --scanners secret \
+                --image-src remote --platform linux/$arch --exit-code 1 --format table "$ref" || fail=1
+            done
+          done < images.env
+          echo "secret findings: $([ $fail = 0 ] && echo none || echo FOUND)" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit $fail

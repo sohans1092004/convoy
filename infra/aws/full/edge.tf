@@ -1,5 +1,7 @@
-# Browser -> CloudFront (HTTPS, *.cloudfront.net, no domain needed) -> WAF -> ALB (HTTP, CloudFront's origin-facing
-# prefix list only, and a secret header) -> web. Nothing is cached: every request reaches the app (SSE included).
+# Browser -> CloudFront (HTTPS on *.cloudfront.net: no domain needed, so no ACM certificate) -> ALB (HTTP, CloudFront's
+# origin-facing prefix list only, and a secret header) with a regional WAF -> web. Nothing is cached (SSE included).
+# CloudFront-scoped WAF is not available in this account (it lives in us-east-1, which an SCP denies), so the WAF is
+# REGIONAL on the ALB: every request still passes it, because the ALB accepts only CloudFront.
 resource "random_password" "origin" {
   length  = 32
   special = false
@@ -56,9 +58,8 @@ resource "aws_lb_listener_rule" "from_cloudfront" {
 }
 
 resource "aws_wafv2_web_acl" "edge" {
-  provider = aws.us_east_1
-  name     = "${local.name}-${var.run_id}"
-  scope    = "CLOUDFRONT"
+  name  = "${local.name}-${var.run_id}"
+  scope = "REGIONAL"
   default_action {
     allow {}
   }
@@ -88,8 +89,14 @@ resource "aws_wafv2_web_acl" "edge" {
     }
     statement {
       rate_based_statement {
-        limit              = 2000 # per 5 min per IP; P7 load generators hit the ALB origin directly (cost estimate §2)
-        aggregate_key_type = "IP"
+        limit              = 2000 # per 5 min per viewer IP; P7 load generators hit the ALB origin directly (cost estimate §2)
+        aggregate_key_type = "FORWARDED_IP"
+        # Behind CloudFront the ALB sees edge addresses; CloudFront adds the viewer's address to X-Forwarded-For.
+        # ponytail: WAF reads the first address, which a client can pre-set; key on CloudFront-Viewer-Address if abused.
+        forwarded_ip_config {
+          header_name       = "X-Forwarded-For"
+          fallback_behavior = "MATCH"
+        }
       }
     }
     visibility_config {
@@ -105,10 +112,14 @@ resource "aws_wafv2_web_acl" "edge" {
   }
 }
 
+resource "aws_wafv2_web_acl_association" "alb" {
+  resource_arn = aws_lb.alb.arn
+  web_acl_arn  = aws_wafv2_web_acl.edge.arn
+}
+
 resource "aws_cloudfront_distribution" "cdn" {
   enabled     = true
   price_class = "PriceClass_200" # includes India
-  web_acl_id  = aws_wafv2_web_acl.edge.arn
   comment     = "convoy full ${var.run_id}"
 
   origin {
