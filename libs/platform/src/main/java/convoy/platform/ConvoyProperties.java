@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param identityUrl  base URL of identity, for service tokens
  * @param clientId     this service's client id for service tokens (identity service_clients)
  * @param clientSecret its secret (env only)
- * @param aws          SNS/SQS endpoint override (LocalStack) and region
+ * @param aws          SNS/SQS endpoint override (LocalStack), region, and in prod the account the topology was applied in
  * @param messaging    relay and consumer timings
  */
 @ConfigurationProperties(prefix = "convoy")
@@ -30,11 +30,12 @@ public record ConvoyProperties(
     public ConvoyProperties {
         issuers = issuers == null ? Map.of() : issuers;
         publicPaths = publicPaths == null ? List.of("/actuator/health/**", "/actuator/health", "/actuator/prometheus", "/v3/api-docs/**") : publicPaths;
-        aws = aws == null ? new Aws(null, "ap-south-1") : aws;
+        aws = aws == null ? new Aws(null, "ap-south-1", null) : aws;
         messaging = messaging == null ? new Messaging(0, 0, null, null, 0) : messaging;
     }
 
-    public record Aws(String endpoint, String region) {}
+    /** @param accountId prod only (CONVOY_AWS_ACCOUNT_ID): topics and queues are checked in this account, not created */
+    public record Aws(String endpoint, String region, String accountId) {}
 
     /**
      * @param relayIntervalMs  outbox poll interval

@@ -20,18 +20,27 @@ Docker Compose. LocalStack for SNS/SQS/S3/SES; Razorpay test mode (webhooks via 
 ## lite (always-on demo)
 ```mermaid
 flowchart LR
-  B[Browser] --> CF[CloudFront]
-  CF --> C[EC2: Caddy]
-  subgraph EC2 ["single EC2 host (4 GB, 8 GB if measured need)"]
+  B[Browser] --> C[Caddy :443
+Let's Encrypt]
+  subgraph VM ["Oracle Cloud Always Free A1 VM (1 OCPU, 6 GB, arm64)"]
     C --> W[web]
-    C --> G[gateway]
-    G --> SVC[all 11 services\ncontainer mem limits\nSerialGC, CDS, heap caps]
-    SVC --> PG[(PostgreSQL on host)]
-    SVC --> R[(Redis on host)]
+    C -.checkout.js, /fake/pay only.-> F[simulated payment]
+    W --> G[gateway]
+    G --> SVC[all 11 services, 1 realtime
+container mem limits
+SerialGC, C1, no OTel agent]
+    SVC --> PG[(PostgreSQL container)]
+    SVC --> R[(Redis container)]
   end
-  SVC --> AWS[SNS / SQS / S3 / SES]
+  SVC --> AWS[SNS / SQS / S3 / SES SMTP
+ap-south-1]
 ```
-No ALB, no WAF, no NAT gateway (public subnet, security group allows only CloudFront origin-facing prefix list on 443 + SSM for admin; no SSH). Instance size chosen **after measuring** idle and peak memory in P6.
+P6 change from the P0 plan (EC2 behind CloudFront): the always-on host is an Oracle Cloud Always Free VM, so the demo costs only
+AWS request charges (docs/cost/aws-cost-estimate.md). Caddy terminates TLS; only 80/443 are open, SSH from one IP. `deploy/lite/compose.yml`,
+`SPRING_PROFILES_ACTIVE=prod`: config from env validated at startup (`ProdGuard`), SNS/SQS topology applied by `infra/aws/shared`
+and only checked by services. Images are pulled by digest (`images.env` from the `images` workflow).
+- **Connection budget, no PgBouncer:** `DB_POOL_SIZE=4` × 10 services with a database = 40, plus Flyway at startup and one `pg_dump`,
+  under `max_connections=100`. Add PgBouncer if replicas or pool sizes push the sum past ~80.
 - **May claim:** "a working public demo", end-to-end journey, real AWS messaging integration, functional demos of failure isolation on one host.
 - **May not claim:** availability, scale, latency SLOs, failover, multi-AZ, WAF protection, any load-test number.
 

@@ -88,7 +88,7 @@ async function deliver(eventId) {
 function checkoutJs() {
   // Minimal modal with the same constructor/handler contract as Razorpay Checkout.
   return `(function(){
-  var BASE = ${JSON.stringify(`http://localhost:${PORT}`)};
+  var BASE = ${JSON.stringify(process.env.PUBLIC_URL || `http://localhost:${PORT}`)}; // lite: behind Caddy at /pay
   function Razorpay(opts){ this.opts = opts; }
   Razorpay.prototype.on = function(name, fn){ this['on_' + name] = fn; return this; };
   Razorpay.prototype.open = function(){

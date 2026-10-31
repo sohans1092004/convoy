@@ -203,8 +203,10 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
 
     @Bean
     @ConditionalOnProperty(prefix = "convoy.messaging", name = "enabled", havingValue = "true", matchIfMissing = true)
-    Topology topology(SnsClient sns, SqsClient sqs, ObjectMapper json, ConvoyProperties p) {
-        return new Topology(sns, sqs, json, p.messaging().visibilityTimeoutSeconds());
+    Topology topology(SnsClient sns, SqsClient sqs, ObjectMapper json, ConvoyProperties p, org.springframework.core.env.Environment env) {
+        // prod (P6.A): the layout is infrastructure; check it, never create it (ProdGuard has validated the account id)
+        String account = env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod")) ? p.aws().accountId() : null;
+        return new Topology(sns, sqs, json, p.messaging().visibilityTimeoutSeconds(), account);
     }
 
     /**
@@ -224,6 +226,7 @@ public class PlatformAutoConfiguration implements WebMvcConfigurer {
     OutboxRelay outboxRelay(JdbcTemplate jdbc, TransactionTemplate tx, SnsClient sns, Topology topology, ObjectMapper json,
                             ConvoyProperties p, TaskScheduler scheduler, ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters) {
         OutboxRelay relay = new OutboxRelay(jdbc, tx, sns, topology, json, p.serviceName());
+        relay.topics().forEach(fifo -> topology.topicArn(p.serviceName(), fifo)); // at startup: in prod a missing topic stops the service here
         scheduler.scheduleWithFixedDelay(relay::tick, Duration.ofMillis(p.messaging().relayIntervalMs()));
         // P5.C reconciliation with audit: delivered events here == audit_events{producer=<service>} there, once the lag drains.
         // ponytail: count(*) per scrape; keep a counter row if outboxes grow past a few million rows.
