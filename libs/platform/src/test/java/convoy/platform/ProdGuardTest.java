@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 class ProdGuardTest {
     static Map<String, String> good() {
@@ -47,5 +50,26 @@ class ProdGuardTest {
         for (String k : List.of("convoy.aws.endpoint: must be empty", "convoy.aws.account-id", "convoy.client-secret: required", "spring.mail.host: 'mailpit'",
                 "smtp.auth: must be true", "identity.web-url: 'localhost'", "seed-users-file", "identity.mail-from: 'convoy.test'", "quote-url: not a URL"))
             assertTrue(all.contains(k), k + " missing from:\n" + all);
+    }
+
+    @Test
+    void accountIdFromTheEnvironmentVariableIsSeen() { // smoke2: set only as CONVOY_AWS_ACCOUNT_ID, not in application.yml
+        StandardEnvironment env = new StandardEnvironment();
+        env.setActiveProfiles("prod");
+        env.getPropertySources().addFirst(new MapPropertySource("Config resource 'class path resource [application.yml]'",
+                Map.of("convoy.client-secret", "s3cret")));
+        env.getPropertySources().addLast(new SystemEnvironmentPropertySource("test-env", Map.of("CONVOY_AWS_ACCOUNT_ID", "123456789012")));
+        new ProdGuard().postProcessEnvironment(env, null); // throws if the account id were not seen
+    }
+
+    @Test
+    void missingAccountIdStillRefused() {
+        StandardEnvironment env = new StandardEnvironment();
+        env.setActiveProfiles("prod");
+        env.getPropertySources().addFirst(new MapPropertySource("Config resource 'class path resource [application.yml]'",
+                Map.of("convoy.client-secret", "s3cret")));
+        IllegalStateException e = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> new ProdGuard().postProcessEnvironment(env, null));
+        assertTrue(e.getMessage().contains("convoy.aws.account-id"), e.getMessage());
     }
 }

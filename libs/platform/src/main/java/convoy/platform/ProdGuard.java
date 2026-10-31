@@ -36,6 +36,10 @@ public class ProdGuard implements EnvironmentPostProcessor {
                         problems.add(k + ": no value (" + e.getMessage() + ")");
                     }
                 });
+        // Keys the checks below name that services read only through relaxed binding (CONVOY_AWS_ACCOUNT_ID, ...),
+        // not from their own config files: resolve them from the whole environment (smoke2: every service refused).
+        for (String k : List.of("convoy.aws.endpoint", "convoy.aws.account-id", "identity.seed-users-file", "spring.mail.host"))
+            if (!resolved.containsKey(k)) resolved.put(k, env.getProperty(k, ""));
         problems.addAll(problems(resolved));
         if (!problems.isEmpty()) throw new IllegalStateException("prod config invalid:\n  " + String.join("\n  ", problems));
     }
