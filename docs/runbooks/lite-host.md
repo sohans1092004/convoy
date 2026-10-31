@@ -7,6 +7,7 @@ The always-on demo: one Oracle Cloud Always Free A1 VM (1 OCPU, 6 GB, Ubuntu 24.
 1. **OCI** (`infra/oci`): `terraform.tfvars` with `tenancy_ocid`, `region` (your home region), `admin_cidr` (`curl -s ifconfig.me`/32),
    then `terraform plan -out tfplan`, review (VCN, subnet, security list, 1 A1.Flex 1/6, bucket, PAR, lifecycle policy:
    all Always Free), `terraform apply tfplan`. On "Out of host capacity": `./retry-apply.sh` (same region and shape).
+   Then `scripts/create-backup-par.sh` (the VM's write-only backup link, into the env file).
 2. **DuckDNS**: point `convoy-demo.duckdns.org` at `terraform output public_ip`.
 3. **Host**: `scp deploy/lite/bootstrap.sh ubuntu@IP:` then
    `ssh ubuntu@IP 'sudo DEPLOY_PUBKEY="$(cat deploy_key.pub)" bash bootstrap.sh'` (idempotent; re-run after changes).
@@ -26,14 +27,21 @@ start), smoke test (home page, catalogue API, `/actuator` unreachable), automati
 Migrations must be backward compatible (expand now, contract in a later release): rollback never touches the database.
 
 ## Backups and restore
-Nightly 02:30 IST: `backup.sh` (pg_dumpall, gzip, `age` to the public key, upload through the PAR; 7 days kept by the
-bucket lifecycle rule; last 2 on the host). Restore drill:
+Nightly 02:30 IST: `backup.sh` on the VM (pg_dumpall, gzip, `age` to the public key, upload). The VM holds only a
+**write-only** link (OCI pre-authenticated request, AnyObjectWrite, no listing, 90-day expiry), made outside Terraform
+by `scripts/create-backup-par.sh` straight into the git-ignored env file. `convoy-backups` is versioned: an overwrite
+or a delete leaves the old object as a previous version (kept 14 days; current backups 7 days, lifecycle rules).
+Rotation: run `scripts/create-backup-par.sh` before `BACKUP_PAR_EXPIRES`, copy the env file to the VM, then
+`scripts/create-backup-par.sh --cleanup`.
+
+Restores run **from the laptop** with `~/.oci/config` (Python OCI SDK, `pip install --user oci`) and the age private
+key, which never leaves the laptop:
 ```sh
-scp convoy-backup.key ubuntu@<ip>:/tmp/k
-ssh ubuntu@<ip> 'sudo chown deploy /tmp/k && sudo -u deploy /opt/convoy/src/deploy/lite/restore-check.sh /tmp/k; sudo shred -u /tmp/k'
+scripts/restore-check.sh ~/convoy-backup.key <vm-ip>        # newest backup; or add an object name
 ```
-It loads the newest backup into a scratch Postgres container and diffs the row count of every table with the live one.
-A real restore: stop the services, `age -d` + `gunzip` into `psql` on the live container, start the services.
+It downloads the backup, decrypts it in a throwaway container, loads it into a scratch Postgres here and diffs the row
+count of every table with the live database on the VM (over SSH). A real restore: the same download and decrypt, then
+`psql` into the VM's Postgres with the services stopped.
 
 ## Checks on the live VM (P6.D, recorded in the P6 report)
 | Check | Command |
@@ -44,6 +52,10 @@ A real restore: stop the services, `age -d` + `gunzip` into `psql` on the live c
 | Internals unreachable | `curl -s -o /dev/null -w '%{http_code}' https://<site>/actuator/prometheus` and `/metrics`, `/api/admin/audit` without a session: not 200 |
 | TLS valid | `curl -vI https://<site> 2>&1 \| grep -E 'issuer\|expire'` (Let's Encrypt), `openssl s_client` chain verify OK |
 | Memory per container | `docker stats --no-stream` idle and during the journey (VM numbers, reported apart from laptop numbers) |
+| Backup + restore | nightly (or `backup.sh manual`) on the VM, then `scripts/restore-check.sh` on the laptop |
+
+**Always Free A1 is 2 OCPU / 12 GB per tenancy** (Oracle, since June 2026): convoy-lite takes 1 / 6, Reliant the other
+1 / 6. `infra/oci` refuses any plan that would take the tenancy's A1 total above 2 / 12 (precondition on the instance).
 
 Oracle reclaims idle Always Free VMs when CPU, network *and* memory (A1) stay under 20 % for 7 days. Lite idles at
 ≈ 39 % memory (2.3 GiB of 6 GB, laptop measurement), so it does not meet the idle criteria. Never generate fake load.

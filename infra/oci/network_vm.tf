@@ -88,8 +88,8 @@ resource "oci_core_instance" "lite" {
   freeform_tags       = local.tags
 
   shape_config {
-    ocpus         = 1
-    memory_in_gbs = 6
+    ocpus         = var.ocpus
+    memory_in_gbs = var.memory_gb
   }
 
   source_details {
@@ -110,5 +110,9 @@ resource "oci_core_instance" "lite" {
 
   lifecycle {
     ignore_changes = [source_details[0].source_id] # a newer Ubuntu image must not replace the running VM
+    precondition {
+      condition     = local.a1_other_ocpus + var.ocpus <= 2 && local.a1_other_gb + var.memory_gb <= 12
+      error_message = "Refused: the tenancy's A1 total would exceed the Always Free 2 OCPU / 12 GB (other A1 in use: ${local.a1_other_ocpus} OCPU / ${local.a1_other_gb} GB, convoy-lite asks ${var.ocpus} / ${var.memory_gb})."
+    }
   }
 }

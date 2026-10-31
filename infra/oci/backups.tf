@@ -1,12 +1,14 @@
 # Encrypted nightly Postgres dumps (age, on the VM) go here. Always Free: 20 GB of Object Storage in the tenancy.
-# The VM writes and reads through a pre-authenticated request (curl only, no OCI CLI or keys on the VM); objects older
-# than 7 days are deleted by a lifecycle rule, so 7 nightly backups are kept.
+# The VM can only WRITE: a write-only pre-authenticated request made outside Terraform (scripts/create-backup-par.sh,
+# straight into the git-ignored env file, never in state). Reading and restoring happen from the laptop with
+# ~/.oci/config (deploy/lite/restore-check.sh). Versioning keeps an overwritten or deleted backup as a previous version,
+# so a leaked write link cannot destroy history; lifecycle rules keep 7 days of current backups and 14 of old versions.
 resource "oci_objectstorage_bucket" "backups" {
   compartment_id = local.compartment
   namespace      = data.oci_objectstorage_namespace.ns.namespace
   name           = "convoy-backups"
   access_type    = "NoPublicAccess"
-  versioning     = "Disabled"
+  versioning     = "Enabled"
   freeform_tags  = local.tags
 }
 
@@ -30,18 +32,13 @@ resource "oci_objectstorage_object_lifecycle_policy" "keep7" {
     time_amount = 7
     time_unit   = "DAYS"
   }
-  depends_on = [oci_identity_policy.lifecycle]
-}
-
-# Read/write to objects + listing, valid for a year (renew with `terraform apply -replace=oci_objectstorage_preauthrequest.backups`).
-resource "oci_objectstorage_preauthrequest" "backups" {
-  namespace             = data.oci_objectstorage_namespace.ns.namespace
-  bucket                = oci_objectstorage_bucket.backups.name
-  name                  = "convoy-lite-backups"
-  access_type           = "AnyObjectReadWrite"
-  bucket_listing_action = "ListObjects"
-  time_expires          = timeadd(plantimestamp(), "8760h")
-  lifecycle {
-    ignore_changes = [time_expires]
+  rules {
+    name        = "delete-previous-versions-after-14-days"
+    action      = "DELETE"
+    is_enabled  = true
+    target      = "previous-object-versions"
+    time_amount = 14
+    time_unit   = "DAYS"
   }
+  depends_on = [oci_identity_policy.lifecycle]
 }

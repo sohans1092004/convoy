@@ -37,3 +37,14 @@ variable "availability_domain_index" {
   type        = number
   default     = 0
 }
+
+variable "ocpus" {
+  description = "convoy-lite's share of the Always Free A1 allowance (2 OCPU / 12 GB per tenancy; the rest is Reliant's)."
+  type        = number
+  default     = 1
+}
+
+variable "memory_gb" {
+  type    = number
+  default = 6
+}
