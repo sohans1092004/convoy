@@ -84,17 +84,22 @@ Source: reports/p7/frontend.md (2026-11-01).
 fresh "Try the demo" session). Lab gate (docs/testing/frontend-quality.md §2): LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1,
 performance ≥ 85.
 
-Build **2278af4** (after the P8 redeploy), 2026-11-01 20:32 UTC, laptop idle. Source: reports/p8/lighthouse-live.json.
+Build **2278af4** (after the P8 redeploy), 2026-11-01 20:51 UTC, 32 min after the deploy, laptop idle. Source:
+reports/p8/lighthouse-live.json.
 
 | Page | LCP | CLS | TBT | Performance | Gate |
 |---|---|---|---|---|---|
-| discover | 1,735 ms | 0 | **577 ms** | **80** | **TBT and performance missed** |
-| model | 1,055 ms | 0 | **603 ms** | **83** | **TBT and performance missed** |
-| pool | 1,976 ms | 0.049 | **535 ms** | **81** | **TBT and performance missed** |
+| discover | 1,090 ms | 0 | 111 ms | 98 | met |
+| model | 1,162 ms | 0 | 85 ms | 97 | met |
+| pool | 1,822 ms | 0.049 | 179 ms | 94 | met |
 
-Same build, 4 min earlier, with the local compose stack running on the laptop: TBT 630 / 479 / 534 ms, performance
-81 / 87 / 80 (reports/p8/lighthouse-live-2278af4-busy-laptop.json). Both runs agree: on 2278af4, TBT misses its gate on
-every page.
+**The same build missed the TBT and performance gates on every page in two earlier runs**, 13–17 min after the deploy and
+right after the live demo journey: TBT 630 / 479 / 534 ms, performance 81 / 87 / 80 (20:28 UTC, local stack running,
+reports/p8/lighthouse-live-2278af4-busy-laptop.json) and TBT 577 / 603 / 535 ms, performance 80 / 83 / 81 (20:32 UTC,
+laptop idle, reports/p8/lighthouse-live-2278af4-2032.json). The cause of those runs is not established. A back-to-back
+A/B of both builds on one laptop (reports/p8/lighthouse-ab-local.md) rules out a code regression: median TBT 03292c4 →
+2278af4, discover 190 → 128 ms, model 297 → 84 ms. Live TBT therefore varies run to run by more than the gate's margin;
+three runs over 25 minutes are not enough to call the gate reliably met.
 
 Build **03292c4** (before the redeploy), 2026-11-01 19:00 UTC: LCP 1,446 / 1,133 / 2,065 ms, CLS 0, TBT 194 / 218 /
 236 ms, performance 93 / 93 / 91 (reports/p8/lighthouse-live.json at commit 1ba7572). **Not a clean before/after pair:**
@@ -134,9 +139,9 @@ TBT 92 / 136 / 129 ms. Laptop and live numbers are different setups and are not 
 | HA drills (kill each service, RDS failover, Redis flush, SQS backlog on full) | **Not run.** Fargate quota 8 vCPU; full profile parked. Laptop-only equivalents: realtime kill (W5), Redis FLUSHALL, poison message (MF-5), consumer offline (MF-6). |
 | W3 capacity on one pool | **Missed** on the laptop: 27.6 % refused/failed, join p95 41.0 s (§2). |
 | W4 (50 pools × 20 dealers) | **Not built** (needs load-test dealerships). |
-| Lighthouse lab gate TBT ≤ 200 ms | **Missed** on the live site on all three pages for the current build 2278af4 (535–603 ms, §5); on 03292c4 model 218 ms and pool 236 ms missed. Cause of the increase not established. |
-| Lighthouse lab performance ≥ 85 | **Missed** on the live site for 2278af4: 80 / 83 / 81 (§5). |
-| Lighthouse lab gate LCP ≤ 2.5 s | Met on the live site (1.1–2.0 s on 2278af4); **missed** on the laptop run of 2026-10-25 (2.6–2.8 s). |
+| Lighthouse lab gate TBT ≤ 200 ms, live | **Not reliably met:** on 2278af4 met in the 20:51 run (111 / 85 / 179 ms), missed on every page in the 20:28 and 20:32 runs (479–630 ms), cause not established; on 03292c4 model 218 ms and pool 236 ms missed (§5). |
+| Lighthouse lab performance ≥ 85, live | **Not reliably met:** 98 / 97 / 94 at 20:51, 80–87 in the two earlier runs on the same build (§5). |
+| Lighthouse lab gate LCP ≤ 2.5 s | Met on the live site in every run (1.1–2.2 s on 2278af4); **missed** on the laptop run of 2026-10-25 (2.6–2.8 s). |
 | First-load JS cap 170 KB, order page | **Missed:** 178.4 KB (+8.4). |
 | RUM p75 LCP / INP / CLS from real users | **Not measured** (no real-user traffic collected). |
 | Reaper end-to-end destroy | **Unproven:** last canary failed; fix applied without a re-run. |

@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-11-01T20:32:16.987Z",
+  "measured_at": "2026-11-01T20:51:05.856Z",
   "url": "https://convoy-main.duckdns.org",
   "where": "live host",
   "lighthouse_cli": "@lhci/cli 0.15.1",
@@ -9,33 +9,33 @@
       "runs": 3,
       "form_factor": "mobile",
       "throttling": "simulate",
-      "lcp_ms": 1735,
+      "lcp_ms": 1090,
       "cls": 0,
-      "tbt_ms": 577,
-      "performance": 80
+      "tbt_ms": 111,
+      "performance": 98
     },
     "model": {
       "url": "https://convoy-main.duckdns.org/models/maruti-swift",
       "runs": 3,
       "form_factor": "mobile",
       "throttling": "simulate",
-      "lcp_ms": 1055,
+      "lcp_ms": 1162,
       "cls": 0,
-      "tbt_ms": 603,
-      "performance": 83
+      "tbt_ms": 85,
+      "performance": 97
     },
     "pool": {
       "url": "https://convoy-main.duckdns.org/pools/<pool-id>",
       "runs": 3,
       "form_factor": "mobile",
       "throttling": "simulate",
-      "lcp_ms": 1976,
+      "lcp_ms": 1822,
       "cls": 0.049,
-      "tbt_ms": 535,
-      "performance": 81
+      "tbt_ms": 179,
+      "performance": 94
     }
   },
   "site_commit": "2278af4 (read from https://convoy-main.duckdns.org/version, built 2026-11-01T19:56:00Z)",
-  "script_commit": "a753eb7",
-  "note": "laptop idle (no local containers). One demo scenario created for the pool page session (expires in 24 h)."
+  "script_commit": "939e168",
+  "note": "32 min after the deploy, laptop idle. One demo scenario created for the pool page session (expires in 24 h)."
 }

@@ -79,3 +79,9 @@
   local stack running gave TBT 630 / 479 / 534. TBT and performance gates missed on all three pages; LCP and CLS met.
   On 03292c4 the same script gave TBT 194 / 218 / 236. Cause not established; not investigated (time box).
 - The local compose stack is stopped (containers kept).
+- **Correction (page speed):** a back-to-back A/B of the 03292c4 and 2278af4 web images on one laptop rules out a code
+  regression (median TBT discover 190 → 128 ms, model 297 → 84 ms; reports/p8/lighthouse-ab-local.md). The official live
+  run at 20:51 UTC met every gate (TBT 111 / 85 / 179 ms, performance 98 / 97 / 94). The two missed runs (20:28, 20:32)
+  are kept in EVIDENCE.md; their cause is not established. Live TBT is recorded as "not reliably met". No fix needed.
+- lite-ec2: the full plan now shows no changes (`associate_public_ip_address` matches the host, `ami`/`user_data`
+  ignored, `prevent_destroy` on the instance and the Elastic IP).
