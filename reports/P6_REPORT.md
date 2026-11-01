@@ -237,8 +237,27 @@ for its whole length; the laptop is a single point of failure while the account'
   identity/quote/realtime/notification/pool/audit/payment -> `pgbouncer`, 10–18 times each), well after both were running.
   Journey failed. **Root cause not established**: Service Connect DNS is unreliable for these tasks in this setup
   (not an application bug: the same images pass the laptop prod rehearsal and the live lite host).
-  Candidate fix (not built): replace Service Connect with a Cloud Map private DNS namespace (plain A records via the VPC
-  resolver) for service-to-service calls. smoke9 was the last approved attempt; no further full run without a decision.
+  Parked (below); smoke9 was the last approved attempt.
+
+### Full profile: PARKED (2026-11-01, your decision after smoke9)
+**Works:** the stack applies end to end (107 resources: VPC, NAT, ALB + self-signed ACM certificate, ECS cluster,
+16 services, RDS, ElastiCache, secrets); db-init and the seed run on RDS with a non-superuser admin; all 16 services
+reached a stable state behind the ALB (smoke9, 19 min); teardown is verified after every run (`full-down`, the
+independent watchdog when the SCP denies the reaper schedule).
+**Does not work:** service-to-service names through ECS Service Connect. smoke9's saved logs
+(`.run/fail-logs-smoke9.txt`, `.run/smoke9-unknownhost.txt`): tasks of most services kept failing to resolve `adot` and
+`pgbouncer` (10–18 `UnknownHostException`s per service, long after both were running); `catalog` dropped to 0/1 and
+`web` could not reach `gateway`, so the ALB health check got 503 and the journey could not run.
+Closing state (2026-11-01 16:40 UTC): smoke9 TEARDOWN VERIFIED 16:33:26 (107 destroyed); every resource the tag index
+still lists under `profile=full` (81 entries: inactive ECS services/clusters, deregistered task definitions, deleted VPC
+endpoints and NAT gateway) was checked by its own describe call: 0 live. No watchdog task armed.
+**Next steps, in this order (not built):**
+1. Known Service Connect gotchas: (a) clients started before a server registered (a task gets the namespace's endpoints
+   at start; restart the clients after the servers are up, or start servers in an earlier apply); (b) client alias names
+   vs. the hostnames the services use (`pgbouncer`, `adot`, `gateway`, ... must equal each `client_alias.dns_name`, and
+   the port the clients dial must equal the alias port); (c) pgbouncer and adot as Service Connect servers with named port
+   mappings (pgbouncer's port has no appProtocol; check that both publish an endpoint in the namespace).
+2. Cloud Map private DNS namespace (plain A records via the VPC resolver) instead of Service Connect.
 
 **AWS spend for full-profile runs in P6 (estimates):** smoke1 ≈ $0.18, canary1 ≈ $0.17, canary2 ≈ $0.10, smoke2 ≈ $0.35;
 total ≈ **$0.80**; smoke3 ≈ $0.35, smoke4 ≈ $0.40, smoke5 $0, smoke6 ≈ $1.20 (RDS, NAT, ElastiCache live ~4.5 h during the interrupted teardown) → ≈ **$2.75**. Plus `shared` ≈ $4.66/month always on.
