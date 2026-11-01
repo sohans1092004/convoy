@@ -1,8 +1,8 @@
 'use client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import { ApiError, type Problem } from './api';
 import { recordServerTime } from './server-clock';
+import { useFetch } from './use-fetch';
 
 export type LiveStatus = 'live' | 'reconnecting' | 'delayed';
 
@@ -49,20 +49,20 @@ export function newer<T extends Versioned>(current: T | undefined, incoming: T):
  * (its counts are absolute: the buyer's action is never counted twice).
  */
 export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], load: () => Promise<{ data: T; response: Response }>, streamUrl: string | null) {
-  const qc = useQueryClient();
   const [status, setStatus] = React.useState<LiveStatus>('reconnecting');
   const loadRef = React.useRef(load);
   // eslint-disable-next-line react-hooks/refs -- latest-callback ref: the query function always calls the current loader
   loadRef.current = load;
-  const query = useQuery<T, ApiError>({
-    queryKey: key,
-    queryFn: async () => newer(qc.getQueryData<T>(key), (await loadRef.current()).data),
-    refetchInterval: status === 'live' ? false : 10_000,
-  });
+  const dataRef = React.useRef<T | undefined>(undefined);
+  const query = useFetch<T, ApiError>(key, async () => newer(dataRef.current, (await loadRef.current()).data),
+    { refetchInterval: status === 'live' ? false : 10_000 });
+  // eslint-disable-next-line react-hooks/refs -- the stream handlers read the latest snapshot version
+  dataRef.current = query.data;
   // Never cancels a refetch in flight: a flapping stream must not restart it forever and hide its failure.
-  const refresh = React.useCallback(() => qc.invalidateQueries({ queryKey: key }, { cancelRefetch: false }), [qc, key]);
-  const setData = React.useCallback((f: (old: T) => T) => qc.setQueryData<T>(key, (old) => (old ? f(old) : old)), [qc, key]);
-  const accept = React.useCallback((data: T) => qc.setQueryData<T>(key, (old) => newer(old, data)), [qc, key]);
+  const { refetch, setData: set } = query;
+  const refresh = React.useCallback(() => refetch(), [refetch]);
+  const setData = React.useCallback((f: (old: T) => T) => set((old) => (old ? f(old) : old)), [set]);
+  const accept = React.useCallback((data: T) => set((old) => newer(old, data)), [set]);
 
   React.useEffect(() => {
     if (!streamUrl) {
@@ -85,9 +85,9 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
     const onChanged = (ev: MessageEvent) => {
       const msg = JSON.parse(ev.data) as StreamMessage;
       if (msg.server_time) recordServerTime(msg.server_time, Date.now(), Date.now());
-      const local = qc.getQueryData<T>(key)?.version;
+      const local = dataRef.current?.version;
       const d = decide(local, msg.version, msg.event_type);
-      if (d === 'apply') qc.setQueryData<T>(key, (old) => (old ? applyDelta(old, msg) : old));
+      if (d === 'apply') set((old) => (old ? applyDelta(old, msg) : old));
       else if (d === 'resync') refresh();
     };
 
@@ -112,7 +112,7 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
       es.addEventListener('heartbeat', (ev) => {
         const hb = JSON.parse((ev as MessageEvent).data) as StreamMessage;
         if (hb.server_time) recordServerTime(hb.server_time, Date.now(), Date.now());
-        const local = qc.getQueryData<T>(key)?.version;
+        const local = dataRef.current?.version;
         if (local !== undefined && hb.version > local) refresh(); // missed a delta (e.g. Redis down)
       });
       const reconnect = () => {

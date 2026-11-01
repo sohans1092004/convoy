@@ -1,5 +1,5 @@
 'use client';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useFetch } from '@/lib/use-fetch';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -31,14 +31,9 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
   const [city, setCity] = React.useState<(typeof CITIES)[number]>('Pune');
   const online = useOnline();
   const t = useTranslations('join');
-  const estimate = useQuery<Estimate, ApiError>({
-    queryKey: ['estimate', variantId, city],
-    queryFn: async () => (await call(api.GET('/catalog/variants/{id}/price-estimate', { params: { path: { id: variantId! }, query: { city } } }))).data,
-    placeholderData: keepPreviousData,
-    staleTime: 0,
-    retry: (n, e) => n < 1 && e?.problem?.code !== 'QUOTE_INVALID',
-    enabled: Boolean(variantId),
-  });
+  const estimate = useFetch<Estimate, ApiError>(['estimate', variantId, city],
+    async () => (await call(api.GET('/catalog/variants/{id}/price-estimate', { params: { path: { id: variantId! }, query: { city } } }))).data,
+    { retry: (n, e) => n < 1 && e?.problem?.code !== 'QUOTE_INVALID', enabled: Boolean(variantId) });
   // QUOTE_INVALID = the engine has no verified inputs for this variant in this city: an empty state, not a failure.
   const noPrice = estimate.error?.problem?.code === 'QUOTE_INVALID';
   const current = estimate.data && !estimate.isPlaceholderData ? estimate.data : undefined;

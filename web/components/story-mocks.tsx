@@ -1,5 +1,5 @@
 'use client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { clearFetchCache } from '@/lib/use-fetch';
 import * as React from 'react';
 import type { Schemas } from '@/lib/api';
 import pricing from '../../spec-tools/vectors/pricing.json';
@@ -32,7 +32,7 @@ class FakeEventSource extends EventTarget {
 }
 
 export function Mocked({ routes, offline = false, stream = 'down', children }: { routes: Routes; offline?: boolean; stream?: 'live' | 'down'; children: React.ReactNode }) {
-  const [client] = React.useState(() => new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } }));
+  React.useState(() => clearFetchCache()); // each story starts with an empty cache
   const [ready, setReady] = React.useState(false);
   React.useLayoutEffect(() => {
     const calls: Record<string, number> = {};
@@ -62,7 +62,7 @@ export function Mocked({ routes, offline = false, stream = 'down', children }: {
       if (onLine) delete (navigator as unknown as Record<string, unknown>).onLine;
     };
   }, [routes, offline, stream]);
-  return ready ? <QueryClientProvider client={client}>{children}</QueryClientProvider> : null;
+  return ready ? <>{children}</> : null;
 }
 
 // ---- fixtures (shapes from the generated client; prices from the verified catalogue vectors)

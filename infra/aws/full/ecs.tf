@@ -49,7 +49,7 @@ locals {
     GATEWAY_KEY_DIR = "/tmp/keys", REALTIME_1_URL = "http://realtime:8080", REALTIME_2_URL = "http://realtime:8080" }, secrets = ["CLIENT_SECRET_GATEWAY"] }
     catalog       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_CATALOG:DB_PASSWORD", "CLIENT_SECRET_CATALOG"] }
     dealer        = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { DEMO_SCENARIOS = "true" }, secrets = ["DB_PASSWORD_DEALER:DB_PASSWORD", "CLIENT_SECRET_DEALER"] }
-    pool          = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = { DEMO_SEALED_ROUND_SECONDS = "90", DEMO_FINAL_ROUND_SECONDS = "20", DEMO_DECISION_SECONDS = "60", DEMO_CONFIRMATION_SECONDS = "60", POOL_MIN_MEMBERS = "1" }, secrets = ["DB_PASSWORD_POOL:DB_PASSWORD", "CLIENT_SECRET_POOL"] }
+    pool          = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = { DEMO_SEALED_ROUND_SECONDS = tostring(var.sealed_round_seconds), DEMO_FINAL_ROUND_SECONDS = "20", DEMO_DECISION_SECONDS = "60", DEMO_CONFIRMATION_SECONDS = "60", POOL_MIN_MEMBERS = "1" }, secrets = ["DB_PASSWORD_POOL:DB_PASSWORD", "CLIENT_SECRET_POOL"] }
     quote         = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_QUOTE:DB_PASSWORD", "CLIENT_SECRET_QUOTE"] }
     order         = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { EVIDENCE_BUCKET = var.shared["evidence_bucket"] }, secrets = ["DB_PASSWORD_ORDER:DB_PASSWORD", "CLIENT_SECRET_ORDER"] }
     payment       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { RAZORPAY_BASE_URL = "http://razorpay-fake:9090" }, secrets = ["DB_PASSWORD_PAYMENT:DB_PASSWORD", "CLIENT_SECRET_PAYMENT", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] }
@@ -134,6 +134,8 @@ resource "aws_iam_role_policy" "task" {
       { Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"], Resource = "arn:aws:sqs:${var.region}:${local.account}:convoy-*" },
       { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], Resource = ["arn:aws:s3:::${var.shared["export_bucket"]}/*", "arn:aws:s3:::${var.shared["evidence_bucket"]}/*"] },
       { Effect = "Allow", Action = ["s3:ListBucket"], Resource = ["arn:aws:s3:::${var.shared["export_bucket"]}", "arn:aws:s3:::${var.shared["evidence_bucket"]}"] },
+      # P7 load-test sessions (loadseed task): only this run's prefix in the encrypted state bucket
+      { Effect = "Allow", Action = ["s3:PutObject"], Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/*" },
       { Effect = "Allow", Action = ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets", "cloudwatch:PutMetricData", "logs:PutLogEvents", "logs:CreateLogStream", "logs:CreateLogGroup", "logs:DescribeLogStreams"], Resource = "*" },
     ]
   })
@@ -359,3 +361,97 @@ resource "aws_ecs_task_definition" "seed" {
     logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "seed" } }
   }])
 }
+
+# P7: load-test buyers and dealer staff with sessions, written straight into the identity schema (tools/load/provision.py).
+# Exists only when a run asks for it (var.load_users > 0); scripts/full.sh runs it once after the seed task.
+variable "load_users" {
+  description = "P7: number of load-test buyers to pre-provision (0 = none)"
+  type        = number
+  default     = 0
+}
+
+variable "sealed_round_seconds" {
+  description = "Sealed quote round length on this run (demo 90; P7 W4 uses 600 so 50 pools x 20 dealers can prepare drafts before T)"
+  type        = number
+  default     = 90
+}
+
+variable "load_new_dealerships" {
+  description = "P7 W4: synthetic verified dealerships to create for the run (each gets one load-test staff account)"
+  type        = number
+  default     = 0
+}
+
+variable "load_dealerships" {
+  description = "P7: dealership ids that get load-test staff accounts (one each)"
+  type        = list(string)
+  default     = []
+}
+
+resource "aws_ecs_task_definition" "loadseed" {
+  count                    = var.load_users > 0 ? 1 : 0
+  family                   = "convoy-full-loadseed"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.exec.arn
+  task_role_arn            = aws_iam_role.task.arn
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+  container_definitions = jsonencode([{
+    name      = "loadseed"
+    image     = lookup(var.images, "python", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
+    essential = true
+    command   = ["sh", "-c", "pip install -q --no-cache-dir 'cryptography==44.0.2' 'psycopg[binary]==3.2.6' 'boto3==1.37.30' && echo \"$PY\" | base64 -d > /tmp/p.py && python /tmp/p.py"]
+    environment = [
+      { name = "PY", value = base64encode(file("${path.module}/../../../tools/load/provision.py")) },
+      { name = "PGHOST", value = local.db_host }, { name = "RUN_ID", value = var.run_id }, { name = "LOAD_USERS", value = tostring(var.load_users) },
+      { name = "LOAD_DEALERSHIPS", value = join(",", var.load_dealerships) }, { name = "STATE_BUCKET", value = "convoy-tfstate-${local.account}" },
+      { name = "AWS_REGION", value = var.region }, { name = "LOAD_NEW_DEALERSHIPS", value = tostring(var.load_new_dealerships) },
+    ]
+    secrets = [
+      { name = "PGPASSWORD", valueFrom = "${aws_secretsmanager_secret.app.arn}:DB_PASSWORD_IDENTITY::" },
+      { name = "IDENTITY_DATA_KEY", valueFrom = "${aws_secretsmanager_secret.app.arn}:IDENTITY_DATA_KEY::" },
+      { name = "PGPASSWORD_DEALER", valueFrom = "${aws_secretsmanager_secret.app.arn}:DB_PASSWORD_DEALER::" },
+    ]
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "loadseed" } }
+  }])
+}
+
+output "loadseed_task" { value = var.load_users > 0 ? aws_ecs_task_definition.loadseed[0].arn : "" }
+
+# P7.C drills: a toolbox task in the run's private subnets (psql + redis-cli) for counts, ledger checks and the Redis
+# flush. Exists only for a drill run (var.drills); scripts/p7-drill.sh runs it with a command override.
+variable "drills" {
+  description = "P7.C: create the drill toolbox task definition"
+  type        = bool
+  default     = false
+}
+
+resource "aws_ecs_task_definition" "toolbox" {
+  count                    = var.drills ? 1 : 0
+  family                   = "convoy-full-toolbox"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.exec.arn
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+  container_definitions = jsonencode([{
+    name             = "toolbox"
+    image            = lookup(var.images, "postgres", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
+    essential        = true
+    command          = ["sh", "-c", "echo override me"]
+    environment      = [{ name = "PGHOST", value = local.db_host }, { name = "PGDATABASE", value = "convoy" }, { name = "PGUSER", value = "convoy_admin" }, { name = "REDIS_HOST", value = local.redis_host }]
+    secrets          = [{ name = "PGPASSWORD", valueFrom = "${aws_secretsmanager_secret.app.arn}:POSTGRES_PASSWORD::" }]
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "toolbox" } }
+  }])
+}
+
+output "toolbox_task" { value = var.drills ? aws_ecs_task_definition.toolbox[0].arn : "" }

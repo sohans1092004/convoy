@@ -3,12 +3,10 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { Toaster } from '@/components/ui/toast';
 import { LocaleSwitch } from '@/components/locale-switch';
 import { SignOutButton } from '@/components/sign-out';
 import { DemoSwitch } from '@/components/demo';
 import { ServiceWorkerRegister } from '@/components/sw-register';
-import { QueryProvider } from '@/lib/query';
 import { gatewayGet } from '@/lib/gateway';
 import './globals.css';
 
@@ -30,8 +28,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen">
         <ServiceWorkerRegister />
         <NextIntlClientProvider>
-          <QueryProvider>
-          <Toaster>
             <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-fg focus:px-3 focus:py-2 focus:text-bg">Skip to content</a>
             <p className="bg-fg py-1 text-center text-xs font-bold tracking-wide text-bg">{t('testMode')}</p>
             <header className="border-b border-border bg-surface">
@@ -58,8 +54,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </nav>
             </header>
             <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{children}</main>
-          </Toaster>
-          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -152,6 +152,7 @@ resource "aws_iam_role_policy" "reaper" {
           "cloudwatch:DeleteAlarms", "logs:DeleteLogGroup",
           "iam:DeleteRole", "iam:DeleteRolePolicy", "iam:DetachRolePolicy",
           "sqs:DeleteQueue", "acm:DeleteCertificate",
+          "ec2:TerminateInstances", "iam:DeleteInstanceProfile", "iam:RemoveRoleFromInstanceProfile", # P7 load generator
         ]
         Resource  = "*"
         Condition = local.tagged
