@@ -1,9 +1,9 @@
 'use client';
 /* eslint-disable react-hooks/refs -- remembers the first ruleset seen to flag a recalculation; reading this ref during render is intentional */
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import * as React from 'react';
+import { useFetch } from '@/lib/use-fetch';
 import { EvidenceBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
@@ -25,12 +25,8 @@ export function Discover() {
   const [q, setQ] = React.useState('');
   const [city, setCity] = React.useState('');
   const firstRuleset = React.useRef<string | null>(null);
-  const models = useQuery({
-    queryKey: ['models', city],
-    queryFn: async () => (await call(api.GET('/catalog/models', { params: { query: city ? { city } : {} } }))).data as ModelList,
-    placeholderData: keepPreviousData,
-    staleTime: 0, // returning to a city refreshes its prices; a failed refresh shows the cached list as stale
-  });
+  // returning to a city refreshes its prices; a failed refresh shows the cached list as stale
+  const models = useFetch(['models', city], async () => (await call(api.GET('/catalog/models', { params: { query: city ? { city } : {} } }))).data as ModelList);
   const data = models.data;
   if (data && firstRuleset.current === null) firstRuleset.current = data.ruleset_version;
   const rulesetChanged = data && firstRuleset.current !== null && data.ruleset_version !== firstRuleset.current;
