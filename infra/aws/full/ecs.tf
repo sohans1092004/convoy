@@ -69,8 +69,13 @@ locals {
     "exec pgbouncer -u nobody /tmp/pgbouncer.ini",
   ])
   # Spring services read their own secrets; the JVM env sets apply to the Spring services only
-  jvm     = toset(["identity", "gateway", "catalog", "dealer", "pool", "quote", "order", "payment", "realtime", "notification", "audit"])
-  desired = { for k, v in local.services : k => var.services_running ? (contains(["adot", "demo-bots"], k) ? 1 : var.tasks_per_service) : 0 }
+  # Migrations go straight to RDS (SPRING_FLYWAY_URL, bypassing PgBouncer); with its own URL Spring Boot takes
+  # Flyway's user and password, not the datasource's, so each service's DB login is passed to Flyway too (smoke3:
+  # "SCRAM-based authentication, but no password"). audit migrates as audit_owner (its application.yml).
+  flyway_secret = { for k, v in local.services : k => [for s in v.secrets : "${split(":", s)[0]}:SPRING_FLYWAY_PASSWORD" if endswith(s, ":DB_PASSWORD") && k != "audit"] }
+  flyway_user   = { for k, v in local.services : k => length(local.flyway_secret[k]) > 0 ? { SPRING_FLYWAY_USER = k } : {} }
+  jvm           = toset(["identity", "gateway", "catalog", "dealer", "pool", "quote", "order", "payment", "realtime", "notification", "audit"])
+  desired       = { for k, v in local.services : k => var.services_running ? (contains(["adot", "demo-bots"], k) ? 1 : var.tasks_per_service) : 0 }
   # Worst case on Fargate (every scalable service at its ceiling, + db-init/seed 0.25): scripts/full.sh refuses a run
   # that would leave less than 0.5 vCPU of the account's on-demand quota for the reaper task (0.25 vCPU).
   worst_case_vcpu = (sum([for k, v in local.services : v.cpu * (v.scale == "none" ? 1 : max(var.tasks_per_service, var.max_tasks_per_service))]) + 256) / 1024
@@ -150,8 +155,8 @@ resource "aws_ecs_task_definition" "t" {
     essential    = true
     command      = each.key == "pgbouncer" ? ["sh", "-c", local.pgbouncer_start] : null
     portMappings = each.value.port == 0 ? [] : [{ name = each.key, containerPort = each.value.port, protocol = "tcp", appProtocol = contains(["pgbouncer"], each.key) ? null : "http" }]
-    environment  = [for k, v in merge(contains(local.jvm, each.key) ? local.common_env : {}, each.value.env) : { name = k, value = v }]
-    secrets = [for s in each.value.secrets : {
+    environment  = [for k, v in merge(contains(local.jvm, each.key) ? local.common_env : {}, each.value.env, local.flyway_user[each.key]) : { name = k, value = v }]
+    secrets = [for s in concat(each.value.secrets, local.flyway_secret[each.key]) : {
       name      = length(split(":", s)) > 1 ? split(":", s)[1] : s
       valueFrom = "${aws_secretsmanager_secret.app.arn}:${split(":", s)[0]}::"
     }]
