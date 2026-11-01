@@ -27,6 +27,14 @@ resource "aws_iam_role_policy_attachment" "loadgen_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy" "loadgen_sessions" {
+  count = var.loadgen_type == "" ? 0 : 1
+  name  = "read-run-sessions"
+  role  = aws_iam_role.loadgen[0].id
+  policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = "s3:GetObject",
+  Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/*" }] })
+}
+
 resource "aws_iam_instance_profile" "loadgen" {
   count = var.loadgen_type == "" ? 0 : 1
   name  = "${local.name}-${var.run_id}-loadgen"
