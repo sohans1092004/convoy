@@ -15,8 +15,9 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
  * (convoy-&lt;producer&gt;-events) plus convoy-pool-events.fifo; one SQS queue (+ DLQ, maxReceiveCount 5)
  * per consumer per topic, subscribed with raw delivery and a filter policy on the event_type attribute.
  *
- * Create calls are idempotent, so each service ensures what it publishes to and consumes from at startup.
- * ponytail: in AWS (P6) this layout moves to infrastructure code and services only look ARNs up.
+ * Local and CI: create calls are idempotent, so each service ensures what it publishes to and consumes from at startup.
+ * prod (P6.A): the layout is infrastructure (infra/aws/shared). Given the account it was applied in, services only
+ * check that their topics, queues, DLQs and subscriptions exist and refuse to start, naming what is missing, if not.
  */
 public class Topology {
     private final SnsClient sns;
@@ -26,14 +27,24 @@ public class Topology {
     /** DLQ url -> source queue url, for every queue this service consumes (depth alarm, redrive). */
     private final Map<String, String> dlqs = new ConcurrentHashMap<>();
     private final int visibilitySeconds;
+    /** null: create the layout (local, CI). Otherwise the AWS account it was applied in: check only (prod). */
+    private final String account;
 
-    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json) { this(sns, sqs, json, 30); }
+    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json) { this(sns, sqs, json, 30, null); }
 
-    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json, int visibilitySeconds) {
+    public Topology(SnsClient sns, SqsClient sqs, ObjectMapper json, int visibilitySeconds, String account) {
         this.sns = sns;
         this.sqs = sqs;
         this.json = json;
         this.visibilitySeconds = visibilitySeconds;
+        this.account = account;
+    }
+
+    /** Thrown at startup in prod when the applied infrastructure lacks something this service needs. */
+    public static final class Missing extends IllegalStateException {
+        Missing(String what) {
+            super(what + " does not exist or is not as this service needs it; apply infra/aws/shared (it is not created at startup in prod)");
+        }
     }
 
     public Map<String, String> dlqs() { return dlqs; }
@@ -74,6 +85,15 @@ public class Topology {
 
     public String topicArn(String producer, boolean fifo) {
         return topicArns.computeIfAbsent(topicName(producer, fifo), name -> {
+            if (account != null) {
+                String arn = "arn:aws:sns:" + sns.serviceClientConfiguration().region().id() + ":" + account + ":" + name;
+                try {
+                    sns.getTopicAttributes(b -> b.topicArn(arn));
+                } catch (software.amazon.awssdk.services.sns.model.NotFoundException e) {
+                    throw new Missing("SNS topic " + arn);
+                }
+                return arn;
+            }
             Map<String, String> attrs = new HashMap<>();
             if (fifo) {
                 attrs.put("FifoTopic", "true");
@@ -91,6 +111,7 @@ public class Topology {
         boolean fifo = fifoTopic && fifoQueue;
         String base = "convoy-" + consumer + "--" + producer + "-events";
         String suffix = fifo ? ".fifo" : "";
+        if (account != null) return checkQueue(base, suffix, topicArn(producer, fifoTopic), eventTypes);
         Map<QueueAttributeName, String> dlqAttrs = new HashMap<>();
         if (fifo) dlqAttrs.put(QueueAttributeName.FIFO_QUEUE, "true");
         String dlqUrl = sqs.createQueue(b -> b.queueName(base + "-dlq" + suffix).attributes(dlqAttrs)).queueUrl();
@@ -132,6 +153,35 @@ public class Topology {
                     sns.setSubscriptionAttributes(b -> b.subscriptionArn(s.subscriptionArn()).attributeName("FilterPolicy").attributeValue(filter)));
         }
         return queueUrl;
+    }
+
+    private String checkQueue(String base, String suffix, String topicArn, Collection<String> eventTypes) {
+        String queueUrl = existingQueue(base + suffix), dlqUrl = existingQueue(base + "-dlq" + suffix);
+        var attrs = sqs.getQueueAttributes(b -> b.queueUrl(queueUrl).attributeNames(QueueAttributeName.QUEUE_ARN, QueueAttributeName.REDRIVE_POLICY)).attributes();
+        String arn = attrs.get(QueueAttributeName.QUEUE_ARN);
+        if (!attrs.getOrDefault(QueueAttributeName.REDRIVE_POLICY, "").contains(base + "-dlq" + suffix)) throw new Missing("redrive of " + base + suffix + " to its DLQ");
+        var sub = sns.listSubscriptionsByTopicPaginator(b -> b.topicArn(topicArn)).subscriptions().stream()
+                .filter(s -> arn.equals(s.endpoint())).findFirst().orElseThrow(() -> new Missing("subscription of " + base + suffix + " to " + topicArn));
+        String filter = sns.getSubscriptionAttributes(b -> b.subscriptionArn(sub.subscriptionArn())).attributes().getOrDefault("FilterPolicy", "{}");
+        try {
+            java.util.Set<String> delivered = new java.util.HashSet<>();
+            json.readTree(filter).path("event_type").forEach(n -> delivered.add(n.asText()));
+            List<String> lost = eventTypes.stream().filter(t -> !delivered.contains(t)).sorted().toList();
+            // Extra types are harmless (the consumer ignores them); a missing one would be lost silently.
+            if (!lost.isEmpty()) throw new Missing("filter policy of " + base + suffix + " for " + lost);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new Missing("a readable filter policy on " + base + suffix);
+        }
+        dlqs.put(dlqUrl, queueUrl);
+        return queueUrl;
+    }
+
+    private String existingQueue(String name) {
+        try {
+            return sqs.getQueueUrl(b -> b.queueName(name)).queueUrl();
+        } catch (software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException e) {
+            throw new Missing("SQS queue " + name);
+        }
     }
 
     private String write(Object o) {

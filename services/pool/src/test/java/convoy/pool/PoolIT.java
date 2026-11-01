@@ -46,6 +46,7 @@ class PoolIT extends ServiceTest {
     static final UUID DEALERSHIP = UUID.fromString("0190f3a0-0000-7000-8000-00000000d001");
     static final UUID VARIANT = UUID.fromString("11111111-1111-7111-8111-111111111111");
     static final UUID SLOW_BUYER = UUID.randomUUID();
+    static final List<String> ELIGIBILITY_QUERIES = new java.util.concurrent.CopyOnWriteArrayList<>();
     static final StubServer STUB = new StubServer()
             .on("/internal/models/.*", r -> StubServer.Reply.json("{\"id\":\"22222222-2222-7222-8222-222222222222\",\"slug\":\"maruti-swift\",\"brand\":\"Maruti Suzuki\","
                     + "\"variant_ids\":[\"" + VARIANT + "\"],\"variants\":[{\"id\":\"" + VARIANT + "\",\"code\":\"swift-lxi-mt\",\"name\":\"LXi MT\",\"fuel\":\"PETROL\",\"engine_cc\":1197}]}"))
@@ -55,7 +56,7 @@ class PoolIT extends ServiceTest {
                 return new StubServer.Reply(200, "{\"payment_id\":\"" + UUID.nameUUIDFromBytes(key.getBytes()) + "\",\"state\":\"INITIATED\",\"amount_paise\":99900,"
                         + "\"razorpay_order_id\":\"order_test\",\"razorpay_key_id\":\"rzp_test_fake\",\"test_mode\":true}", delay);
             })
-            .on("/internal/eligibility", r -> StubServer.Reply.json("{\"dealership_ids\":[\"" + DEALERSHIP + "\"],\"count\":1}"))
+            .on("/internal/eligibility", r -> { ELIGIBILITY_QUERIES.add(String.valueOf(r.query())); return StubServer.Reply.json("{\"dealership_ids\":[\"" + DEALERSHIP + "\"],\"count\":1}"); })
             .on("/internal/rounds/.*/summary", r -> StubServer.Reply.json("{\"round_id\":\"x\",\"kind\":\"SEALED\",\"valid_count\":0,\"final_count\":0,\"quotes\":[]}"));
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -86,6 +87,34 @@ class PoolIT extends ServiceTest {
         UUID id = UUID.fromString(JSON.readTree(r.body()).at("/pool/id").asText());
         // Each test gets its own pool: close the shared open one so the next create makes a new pool.
         return id;
+    }
+
+    /** P6.B: a demo visitor's pool is their own: never shared, never suggested, only their demo dealership is asked for. */
+    @Test
+    void demoVisitorsGetTheirOwnPoolAndRealBuyersNeverSeeIt() throws Exception {
+        UUID a = UUID.randomUUID(), b = UUID.randomUUID(), real = UUID.randomUUID();
+        String month = java.time.YearMonth.now(Pools.IST).toString();
+        String body = "{\"model_slug\":\"maruti-swift\",\"city\":\"Pune\",\"purchase_month\":\"" + month + "\"}";
+        java.util.function.Function<String, UUID> create = token -> {
+            try {
+                Resp r = send("POST", "/pools", token, body, Map.of("Idempotency-Key", UUID.randomUUID().toString()));
+                assertThat(r.status()).as(r.body()).isIn(200, 201);
+                return UUID.fromString(JSON.readTree(r.body()).at("/pool/id").asText());
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        };
+        String demoA = TestTokens.user("pool", a, List.of("buyer", "demo"), null), demoB = TestTokens.user("pool", b, List.of("buyer", "demo"), null);
+        UUID poolA = create.apply(demoA), poolB = create.apply(demoB), shared = create.apply(buyer(real));
+        assertThat(poolA).isNotEqualTo(poolB).isNotEqualTo(shared);
+        assertThat(create.apply(demoA)).isEqualTo(poolA); // the same visitor finds their own pool again
+        assertThat(create.apply(buyer(UUID.randomUUID()))).isEqualTo(shared); // real buyers keep sharing theirs
+        jdbc.update("insert into preferences(buyer_id, city, purchase_month) values (?, 'Pune', ?) on conflict (buyer_id) do update set city = 'Pune', purchase_month = excluded.purchase_month", real, month);
+        assertThat(get("/me/pool-suggestions?model=maruti-swift", buyer(real)).body()).doesNotContain(poolA.toString()).doesNotContain(poolB.toString());
+        jdbc.update("update pools set state = 'READY_FOR_QUOTES' where id = ?", poolA);
+        sweeper.openSealedRound(poolA);
+        assertThat(ELIGIBILITY_QUERIES).anyMatch(q -> q.contains("owner=" + a));
+        for (UUID p : List.of(poolA, poolB)) jdbc.update("update pools set purchase_month = 'test-' || id::text where id = ?", p);
     }
 
     UUID freshPool() throws Exception {

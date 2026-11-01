@@ -16,3 +16,20 @@ reports/p1-media/
 .lighthouseci/
 tools/load/.out/
 reports/p3/failures/
+# Terraform: state and plans hold secrets; provider caches are local
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+*.tfvars
+run.auto.tfvars.json
+plan.txt
+deploy/lite/convoy.env
+apply.txt
+apply2.txt
+verify.txt
+verify2.txt
+apply3.txt
+retry.tfplan
+retry-plan.txt
+.run/

@@ -1,0 +1,26 @@
+# Laptop measurement only (P6.A): the lite stack against LocalStack + Mailpit under the local profile, so the
+# journey can run without AWS. Never used on the host. scripts/lite-measure.sh drives it.
+services:
+  localstack:
+    image: localstack/localstack:4.14.0
+    environment: { SERVICES: "sns,sqs,s3", AWS_DEFAULT_REGION: ap-south-1 }
+    healthcheck: { test: ["CMD-SHELL", "curl -sf localhost:4566/_localstack/health | grep -q '\"sqs\": \"\\(running\\|available\\)\"'"], interval: 3s, retries: 40 }
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports: ["127.0.0.1:8025:8025"]
+  postgres:
+    ports: ["127.0.0.1:5432:5432"] # the journey's ledger and verify-chain checks read the database
+  identity:
+    volumes: ["../local/seed/users.json:/seed/users.json:ro"]
+    depends_on: { localstack: { condition: service_healthy } }
+  catalog: { depends_on: { localstack: { condition: service_healthy } } }
+  dealer: { depends_on: { localstack: { condition: service_healthy } } }
+  pool: { depends_on: { localstack: { condition: service_healthy } } }
+  quote: { depends_on: { localstack: { condition: service_healthy } } }
+  order: { depends_on: { localstack: { condition: service_healthy } } }
+  payment: { depends_on: { localstack: { condition: service_healthy } } }
+  realtime-1: { depends_on: { localstack: { condition: service_healthy } } }
+  notification: { depends_on: { localstack: { condition: service_healthy } } }
+  audit: { depends_on: { localstack: { condition: service_healthy } } }
+  razorpay-fake:
+    ports: ["127.0.0.1:9090:9090"]

@@ -10,7 +10,7 @@ import { useSnapshot } from '@/lib/use-snapshot';
 type Dist = { n: number; p25_paise: number | null; median_paise: number | null; p75_paise: number | null;
   items: { pool_id: string; quote_id: string; variant_id: string; value_paise: number; ruleset_version: string; snapshot_sha256: string[] }[] };
 type Pct = { n: number; p50: number | null; p95: number | null };
-type Analytics = {
+export type Analytics = {
   simulated: boolean;
   fill: { week: string; created: number; filled: number; median_hours_to_fill: number | null }[];
   dealer_response: { rounds: number; invited: number; responded: number };
@@ -31,6 +31,12 @@ export function AnalyticsView() {
   const snap = useSnapshot(() => call(api.GET('/admin/analytics')), [], 60_000);
   const a = snap.data as Analytics | undefined; // E169 returns a free-form object (Map) in its OpenAPI document
   if (!a) return <Skeleton className="h-32" label={t('loading')} />;
+  return <AnalyticsFigures a={a} />;
+}
+
+/** The figures alone: live (above) or the public demo's read-only admin view with synthetic data (P6.B). */
+export function AnalyticsFigures({ a }: { a: Analytics }) {
+  const t = useTranslations('admin.analytics');
   const sim = a.simulated ? <Badge tone="warning">{t('simulated')}</Badge> : null;
   const rate = (num: number, den: number) => (den === 0 ? '—' : `${((100 * num) / den).toFixed(1)}%`);
   const row = (label: string, num: number, den: number) => (

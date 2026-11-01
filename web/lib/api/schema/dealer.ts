@@ -292,6 +292,7 @@ export interface operations {
             query: {
                 brand: string;
                 city: string;
+                owner?: string;
             };
             header?: never;
             path?: never;

@@ -1,0 +1,29 @@
+name: infra
+
+# P6: Terraform formatting and validation (no credentials, no state, no plan): shared, oci, full.
+on:
+  push:
+    branches: [main, "p*/**"]
+    paths: ['infra/**', 'deploy/local/**', '.github/workflows/infra.yml']
+  pull_request:
+    paths: ['infra/**', 'deploy/local/**']
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        dir: [infra/aws/shared, infra/oci, infra/aws/full]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.10.5 }
+      - run: terraform fmt -check -recursive
+        working-directory: ${{ matrix.dir }}
+      - run: terraform init -backend=false -input=false && terraform validate
+        working-directory: ${{ matrix.dir }}
+      - name: Shell scripts parse
+        run: for f in deploy/lite/*.sh scripts/full.sh infra/oci/retry-apply.sh; do bash -n "$f"; done

@@ -139,6 +139,9 @@ Conventions (apply to every row, not repeated):
 | E141 | audit | POST | /admin/audit/verify-chain | platform_admin | no | no | - | P5 | AZ-E141-A, AZ-E141-D |
 | E142 | audit | GET | /admin/metrics | platform_admin | no | no | - | P5 | AZ-E142-A, AZ-E142-D |
 | E150 | gateway | GET | /.well-known/jwks.json | anonymous | no | no | - | P1 | AZ-E150-A |
+| E170 | identity | POST | /auth/demo | anonymous | no | no | demo-capacity-reached | P6 | AZ-E170-A |
+| E171 | identity | POST | /internal/demo/sessions | service:demo-bots | no | no | not-found | P6 | AZ-E171-A, AZ-E171-D |
+| E172 | dealer | POST | /internal/demo/dealerships | service:identity | no | no | - | P6 | AZ-E172-A, AZ-E172-D |
 
 ## Notes per group
 - **Pool snapshot (E033)** returns counts, state, deadlines, accepted variants, own membership (buyer) — never member identities (AZ-T1). Dealers of invited dealerships see counts only.
@@ -147,3 +150,4 @@ Conventions (apply to every row, not repeated):
 - **Price preview (E074)** runs the Java engine on a draft without persisting; the quote builder normally runs the TypeScript engine locally and calls E074 on submit-review to cross-check (mismatch → blocking error and alarm).
 - Pagination: cursor-based (`?cursor=&limit=`, limit ≤ 100) on all list endpoints.
 - **E030** takes the saved model slugs as repeated `?model=` (from catalog E024), so pool needs no call to catalog. **E043-E045** were added in P2 (SPEC §6, contract additions in P2).
+- **Public demo (E170-E172, P6.B)** exist only where `DEMO_SCENARIOS=true` (the lite deploy). E170 is capped at the gateway (20 per IP and 200 in total per day; the total returns `demo-capacity-reached` 503). E171 opens sessions only for the simulated dealers' users. E055 takes an optional `owner`: a demo dealership is eligible only for its owner's pools. `/auth/otp/start` returns `email-sign-in-disabled` (503) when `EMAIL_SIGN_IN=false`.

@@ -1,0 +1,21 @@
+name: eol
+
+# P6: a carriage return in a shell script breaks it on Linux (and once reached the reaper's task definition).
+# Fails if any committed *.sh file or anything under scripts/ contains one. .gitattributes forces LF for these.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  no-carriage-returns:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell scripts are LF only
+        run: |
+          bad=$(git ls-files -z -- '*.sh' 'scripts/**' | xargs -0 -r grep -lI $'\r' || true)
+          if [ -n "$bad" ]; then echo "carriage returns in:"; echo "$bad"; exit 1; fi
+          echo "checked $(git ls-files -- '*.sh' 'scripts/**' | wc -l) files: no carriage returns"

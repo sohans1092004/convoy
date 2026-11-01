@@ -113,6 +113,9 @@ public class Pools {
                 .with("aggregate", Map.of("type", "pool", "id", pool.get("id").toString()));
     }
 
+    /** P6.B: the owner of a demo visitor's pools (the scenario buyer), null for everyone else. */
+    static UUID demoOwner(Caller c) { return c.has("demo") ? c.userId() : null; }
+
     static Caller buyer() {
         Caller c = Caller.current().require("buyer");
         if (c.has("dealer_staff") || c.has("dealer_admin")) throw ApiProblem.of(ProblemType.FORBIDDEN, "Dealer staff cannot join pools.");
@@ -135,8 +138,9 @@ public class Pools {
         }
         YearMonth now = YearMonth.now(IST);
         if (month.isBefore(now) || month.isAfter(now.plusMonths(6))) throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "Choose this month or one of the next six.");
+        UUID owner = demoOwner(c); // P6.B: a demo visitor's own pool; never anyone else's, and real buyers never see demo pools
         List<Map<String, Object>> open = jdbc.queryForList("select id from pools where model_slug = ? and city = ? and purchase_month = ? "
-                + "and state in ('FORMING', 'READY_FOR_QUOTES') order by created_at limit 1", modelSlug, city, purchaseMonth);
+                + "and demo_owner is not distinct from ? and state in ('FORMING', 'READY_FOR_QUOTES') order by created_at limit 1", modelSlug, city, purchaseMonth, owner);
         if (!open.isEmpty()) return Map.of("created", false, "pool", snapshot((UUID) open.get(0).get("id"), c));
 
         Map<String, Object> model;
@@ -154,15 +158,15 @@ public class Pools {
         // A concurrent create for the same key waits on one_forming_pool, then finds the winner's pool.
         List<Map<String, Object>> inserted = jdbc.queryForList("""
                 insert into pools(id, model_id, model_slug, brand, city, state_code, accepted_variant_ids, variants, min_members, state, purchase_month,
-                                  forming_deadline, dealer_wait_deadline, purchase_window_end, created_by)
-                values (?, ?, ?, ?, ?, ?, ?::uuid[], ?::jsonb, ?, 'FORMING', ?, clock_timestamp() + ?::interval, clock_timestamp() + ?::interval + ?::interval, ?, ?)
-                on conflict (model_slug, city, purchase_month) where state = 'FORMING' do nothing
+                                  forming_deadline, dealer_wait_deadline, purchase_window_end, created_by, demo_owner)
+                values (?, ?, ?, ?, ?, ?, ?::uuid[], ?::jsonb, ?, 'FORMING', ?, clock_timestamp() + ?::interval, clock_timestamp() + ?::interval + ?::interval, ?, ?, ?)
+                on conflict (model_slug, city, purchase_month, coalesce(demo_owner, '00000000-0000-0000-0000-000000000000'::uuid)) where state = 'FORMING' do nothing
                 returning forming_deadline""", id, UUID.fromString((String) model.get("id")), modelSlug, model.get("brand"), city, state,
                 "{" + String.join(",", variants) + "}", json(model.get("variants")), settings.minMembers(), purchaseMonth, interval(settings.durations().forming()),
-                interval(settings.durations().forming()), interval(settings.durations().dealerWait()), Timestamp.from(windowEnd.toInstant()), c.userId());
+                interval(settings.durations().forming()), interval(settings.durations().dealerWait()), Timestamp.from(windowEnd.toInstant()), c.userId(), owner);
         if (inserted.isEmpty()) {
-            UUID winner = jdbc.queryForObject("select id from pools where model_slug = ? and city = ? and purchase_month = ? and state = 'FORMING'",
-                    UUID.class, modelSlug, city, purchaseMonth);
+            UUID winner = jdbc.queryForObject("select id from pools where model_slug = ? and city = ? and purchase_month = ? and state = 'FORMING' "
+                    + "and demo_owner is not distinct from ?", UUID.class, modelSlug, city, purchaseMonth, owner);
             return Map.of("created", false, "pool", snapshot(winner, c));
         }
         Map<String, Object> row = inserted.get(0);
@@ -604,7 +608,8 @@ public class Pools {
                        p.min_members, p.committed_count, p.interested_count,
                        case p.state when 'FORMING' then p.forming_deadline when 'QUOTE_OPEN' then r.deadline end as join_deadline
                 from pools p left join rounds r on r.pool_id = p.id and r.round_set = p.round_set and r.round_no = 1
-                where p.model_slug = any(?::text[]) and p.city = ? and p.purchase_month = ? and p.state in ('FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN')""",
+                where p.model_slug = any(?::text[]) and p.city = ? and p.purchase_month = ? and p.state in ('FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN')
+                  and p.demo_owner is not distinct from ?""",
                 (rs, i) -> {
                     Set<String> accepted = Set.of((String[]) rs.getArray("accepted").getArray());
                     List<Matching.Variant> variants = new ArrayList<>();
@@ -620,7 +625,7 @@ public class Pools {
                     Timestamp d = rs.getTimestamp("join_deadline");
                     return new Matching.Pool(rs.getString("id"), rs.getString("model_slug"), rs.getString("city"), rs.getString("purchase_month"), rs.getString("state"),
                             variants, rs.getInt("min_members"), rs.getInt("committed_count"), rs.getInt("interested_count"), d == null ? null : d.toInstant());
-                }, pgArray(wanted), p.city(), p.purchaseMonth());
+                }, pgArray(wanted), p.city(), p.purchaseMonth(), demoOwner(Caller.current()));
         return new Api.Suggestions(wanted.stream().map(m -> Matching.suggest(m, prefs, candidates, now)).toList(), now.toString());
     }
 

@@ -50,6 +50,7 @@ convoy:
     region: ${AWS_REGION:ap-south-1}
 notification:
   mail-from: ${MAIL_FROM:no-reply@convoy.test}
+  web-url: ${WEB_URL:http://localhost:3000} # links in emails
   # Email retries: 5 s, 10 s, 20 s ... capped at 10 min; DEAD after 8 attempts (about 25 min).
   max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:8}
   base-backoff: ${NOTIFICATION_BASE_BACKOFF:5s}

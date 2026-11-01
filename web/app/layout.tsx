@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Toaster } from '@/components/ui/toast';
 import { LocaleSwitch } from '@/components/locale-switch';
 import { SignOutButton } from '@/components/sign-out';
+import { DemoSwitch } from '@/components/demo';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { QueryProvider } from '@/lib/query';
 import { gatewayGet } from '@/lib/gateway';
@@ -21,6 +22,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const signedIn = Boolean(jar.get('cv_sid'));
   const roles = (jar.get('cv_roles')?.value ?? '').split(',');
   const dealer = roles.some((r) => r.startsWith('dealer'));
+  const demo = Boolean(jar.get('cv_demo_alt')); // P6.B: a visitor's scenario has a buyer and a dealer view
   // Bell (P5.A): unread count from notification; when that service is down the bell shows no count and nothing else changes.
   const unread = signedIn ? (await gatewayGet<{ unread_count: number }>('/me/notifications?limit=1')).data?.unread_count : undefined;
   return (
@@ -51,6 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       {unread ? <span className="absolute -right-3 -top-2 rounded-full bg-primary px-1.5 text-xs font-bold text-primary-fg">{unread > 99 ? '99+' : unread}</span> : null}
                     </Link>
                   ) : null}
+                  {demo ? <DemoSwitch dealer={dealer} /> : null}
                   <LocaleSwitch />{signedIn ? <SignOutButton label={t('signOut')} /> : <Link href="/sign-in" className="text-sm font-semibold text-primary">{t('signIn')}</Link>}</span>
               </nav>
             </header>

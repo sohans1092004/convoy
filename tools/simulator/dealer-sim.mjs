@@ -73,7 +73,7 @@ function hash(s) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Runs one simulated dealer against one pool through the gateway. Returns what it did and the ranks it was shown. */
-export async function runDealer(dealer, poolId, { seed = 1, gateway = 'http://localhost:8080', mailpit = 'http://localhost:8025', timeoutMs = 600_000 } = {}) {
+export async function runDealer(dealer, poolId, { seed = 1, gateway = 'http://localhost:8080', mailpit = 'http://localhost:8025', timeoutMs = 600_000, signIn } = {}) {
   const log = [];
   const ip = `10.250.${hash(dealer.email) % 250}.${(hash(dealer.email) >> 8) % 250}`;
   const call = async (method, path, { session, body, headers = {} } = {}) => {
@@ -82,7 +82,9 @@ export async function runDealer(dealer, poolId, { seed = 1, gateway = 'http://lo
     const text = await res.text();
     return { status: res.status, etag: res.headers.get('etag'), json: text ? JSON.parse(text) : null };
   };
-  // Email sign-in, exactly as a dealer would (the code arrives in Mailpit locally).
+  // Email sign-in, exactly as a dealer would (the code arrives in Mailpit locally); the public demo passes signIn (E171) instead.
+  const session = signIn ? await signIn() : await otpSignIn();
+  async function otpSignIn() {
   const before = Date.now();
   await call('POST', '/api/auth/otp/start', { body: { email: dealer.email } });
   let code = null;
@@ -92,7 +94,8 @@ export async function runDealer(dealer, poolId, { seed = 1, gateway = 'http://lo
     if (m && Date.parse(m.Created) >= before - 2000) code = m.Snippet.match(/\b(\d{6})\b/)?.[1];
   }
   if (!code) throw new Error(`${dealer.email}: no sign-in code`);
-  const session = (await call('POST', '/api/auth/otp/verify', { body: { email: dealer.email, code } })).json.session_id;
+  return (await call('POST', '/api/auth/otp/verify', { body: { email: dealer.email, code } })).json.session_id;
+  }
   const request = async (kind) => {
     const inbox = await call('GET', '/api/dealer/inbox', { session });
     return inbox.json?.requests?.find((x) => x.pool_id === poolId && x.state === 'OPEN' && (!kind || x.kind === kind));

@@ -5,4 +5,4 @@ export interface SimResult { dealer: string; quoteId?: string; skipped?: string;
 export const DEALERS: SimDealer[];
 export function rng(seed: number): () => number;
 export function plan(dealer: SimDealer, variants: unknown[], seed: number, now?: number): unknown;
-export function runDealer(dealer: SimDealer, poolId: string, opts?: { seed?: number; gateway?: string; mailpit?: string; timeoutMs?: number }): Promise<SimResult>;
+export function runDealer(dealer: SimDealer, poolId: string, opts?: { seed?: number; gateway?: string; mailpit?: string; timeoutMs?: number; signIn?: () => Promise<string> }): Promise<SimResult>;

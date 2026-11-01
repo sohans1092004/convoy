@@ -12,6 +12,7 @@ DO \$\$ BEGIN
     CREATE ROLE audit LOGIN PASSWORD '$DB_PASSWORD_AUDIT' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
   END IF;
 END \$\$;
+GRANT audit_owner TO CURRENT_USER; -- RDS: needed to make it the schema owner (see 01-schemas.sh)
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION audit_owner;
 ALTER ROLE audit_owner SET search_path = audit;
 ALTER ROLE audit SET search_path = audit;

@@ -49,6 +49,11 @@ public class IdentityApplication {
     Object serviceClientSync(JdbcTemplate jdbc, IdentitySettings s, ObjectMapper json, ConvoyProperties p) throws Exception {
         if (s.clients() != null) {
             for (var e : s.clients().entrySet()) {
+                // An optional client (demo-bots) with no secret configured must not exist: sha256("") would be a valid secret.
+                if (e.getValue().secret() == null || e.getValue().secret().isBlank()) {
+                    jdbc.update("delete from service_clients where client_id = ?", e.getKey());
+                    continue;
+                }
                 jdbc.update("insert into service_clients(client_id, secret_hash, scopes) values (?, ?, ?::jsonb) "
                                 + "on conflict (client_id) do update set secret_hash = excluded.secret_hash, scopes = excluded.scopes",
                         e.getKey(), Crypto.sha256(e.getValue().secret()), json.writeValueAsString(e.getValue().scopes()));

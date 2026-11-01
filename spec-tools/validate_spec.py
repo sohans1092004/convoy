@@ -207,7 +207,7 @@ def _(errs):
 
 def parse_roles():
     sec = authz_md.split('## Roles', 1)[1].split('##', 1)[0]
-    return set(re.findall(r'^\| ([a-z_]+) \|', sec, re.M)) - {'role'}
+    return set(re.findall(r'^\| ([a-z_:-]+) \|', sec, re.M)) - {'role'}
 
 
 def parse_named_tests():

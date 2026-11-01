@@ -40,3 +40,4 @@ dealer:
   # Demo seed (P4.0): synthetic dealerships only when DEMO=true and the seed file is mounted (never in migrations).
   demo: ${DEMO:false}
   demo-seed-file: ${DEMO_SEED_DEALERSHIPS:}
+  demo-scenarios: ${DEMO_SCENARIOS:false} # P6.B: visitors get their own demo dealership (E172)

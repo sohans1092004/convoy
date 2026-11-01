@@ -1,0 +1,51 @@
+name: deploy-lite
+
+# P6.D: deploy a commit to the lite host after its images are built. The host's `deploy` key can only run
+# deploy-ssh.sh ("deploy <sha>", images.env on stdin, digests only); deploy.sh backs up, rolls out one service at a time,
+# smoke-tests and rolls back on failure. Secrets live in the GitHub environment `lite`:
+#   LITE_HOST, LITE_SSH_KEY (private key of the deploy user), LITE_KNOWN_HOSTS (ssh-keyscan of the host, checked once by you)
+on:
+  workflow_run:
+    workflows: [images]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: images workflow run id whose images.env to deploy (its commit is deployed)
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-lite
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    environment: lite
+    steps:
+      - name: images.env of that run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+        run: |
+          sha=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID --jq .head_sha)
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n "images-$sha"
+          echo "SHA=$sha" >> "$GITHUB_ENV"
+          cat images.env
+      - name: Deploy over SSH (forced command)
+        env:
+          KEY: ${{ secrets.LITE_SSH_KEY }}
+          KNOWN: ${{ secrets.LITE_KNOWN_HOSTS }}
+          HOST: ${{ secrets.LITE_HOST }}
+        run: |
+          install -m 600 /dev/null key && printf '%s\n' "$KEY" > key
+          printf '%s\n' "$KNOWN" > known_hosts
+          ssh -i key -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes "deploy@$HOST" "deploy $SHA" < images.env
+      - name: Public smoke test (from outside, over TLS)
+        run: curl -fsS --max-time 15 "https://${{ vars.LITE_SITE }}/" -o /dev/null

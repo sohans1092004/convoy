@@ -1,0 +1,274 @@
+# Convoy lite (P6.A): the always-on demo on one small ARM host. Same images as everywhere, pulled by digest.
+#   docker compose --env-file /opt/convoy/convoy.env --env-file images.env -f deploy/lite/compose.yml up -d
+# convoy.env (git-ignored, on the host): secrets + AWS. images.env: IMAGE_<NAME>=ghcr.io/...@sha256:... (written by CI).
+# Real SNS/SQS/S3 (topology applied by infra/aws/shared, only checked here) and SES SMTP. No LocalStack, Mailpit,
+# Jaeger or collector; one realtime. Every container has a memory limit (measured: reports/p6/memory-laptop.md).
+name: convoy-lite
+
+x-jvm: &jvm
+  # No OTel agent (no collector on lite); SerialGC, small stacks, C1 only: many JVMs on one host (P0 risk 5).
+  JAVA_TOOL_OPTIONS: -XX:+UseSerialGC -Xss512k -XX:MaxRAMPercentage=65 -XX:ReservedCodeCacheSize=32m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+  AWS_REGION: ${AWS_REGION:-ap-southeast-2}
+  AWS_ENDPOINT: ${AWS_ENDPOINT:-}
+  CONVOY_AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID:-}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+
+x-service: &service
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+  mem_limit: 384m
+  healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/actuator/health/readiness"], interval: 10s, timeout: 3s, retries: 30, start_period: 60s }
+
+x-service-env: &service-env
+  <<: *jvm
+  DB_URL: jdbc:postgresql://postgres:5432/convoy
+  # Connection budget: 10 services x 4 = 40 (+ Flyway, pg_dump) under max_connections 100, so no PgBouncer (deployment-profiles.md).
+  DB_POOL_SIZE: "4"
+  GATEWAY_JWKS: http://gateway:8080/.well-known/jwks.json
+  IDENTITY_JWKS: http://identity:8080/.well-known/jwks.json
+  IDENTITY_URL: http://identity:8080
+  DEMO: ${DEMO:-true} # the public demo (P6.B): synthetic dealers, figures labelled simulated
+  # Every empty long poll is a billed SQS request (docs/cost/aws-cost-estimate.md): 1 poller per queue, 20 s waits,
+  # DLQ depth read every 15 min (CloudWatch alarms on the DLQs are the real alert).
+  CONVOY_MESSAGING_POLLERS: "1"
+  CONVOY_MESSAGING_WAIT_SECONDS: "20"
+  CONVOY_MESSAGING_DLQ_CHECK_INTERVAL: 15m
+
+x-mail-env: &mail-env
+  SMTP_HOST: ${SMTP_HOST:?SES SMTP endpoint}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_AUTH: ${SMTP_AUTH:-true}
+  SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+  MAIL_FROM: ${MAIL_FROM:?verified SES sender}
+
+services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?e.g. convoy-demo.duckdns.org}
+    ports: ["80:80", "443:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy-data:/data"]
+    depends_on: [web]
+    mem_limit: 64m
+
+  postgres:
+    image: postgres:16.15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: convoy
+      POSTGRES_USER: convoy_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      DB_PASSWORD_IDENTITY: ${DB_PASSWORD_IDENTITY:?}
+      DB_PASSWORD_CATALOG: ${DB_PASSWORD_CATALOG:?}
+      DB_PASSWORD_POOL: ${DB_PASSWORD_POOL:?}
+      DB_PASSWORD_DEALER: ${DB_PASSWORD_DEALER:?}
+      DB_PASSWORD_QUOTE: ${DB_PASSWORD_QUOTE:?}
+      DB_PASSWORD_ORDER: ${DB_PASSWORD_ORDER:?}
+      DB_PASSWORD_PAYMENT: ${DB_PASSWORD_PAYMENT:?}
+      DB_PASSWORD_REALTIME: ${DB_PASSWORD_REALTIME:?}
+      DB_PASSWORD_NOTIFICATION: ${DB_PASSWORD_NOTIFICATION:?}
+      DB_PASSWORD_AUDIT: ${DB_PASSWORD_AUDIT:?}
+      DB_PASSWORD_AUDIT_OWNER: ${DB_PASSWORD_AUDIT_OWNER:?}
+      TZ: UTC
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=100"]
+    volumes:
+      - ../local/postgres:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U convoy_admin -d convoy"], interval: 3s, retries: 30 }
+    mem_limit: 512m
+
+  redis:
+    image: redis:8.8.3-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "48mb"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 3s, retries: 20 }
+    mem_limit: 80m
+
+  # Simulated payments for the public demo (P6.B), clearly labelled. Only checkout.js and /fake/pay are public (Caddyfile).
+  razorpay-fake:
+    image: ${IMAGE_RAZORPAY_FAKE:?}
+    restart: unless-stopped
+    environment:
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:?}
+      WEBHOOK_URL: http://gateway:8080/webhooks/razorpay
+      PUBLIC_URL: ${PUBLIC_URL:?https://<site>}/pay
+    mem_limit: 64m
+
+  # P6.B: simulated dealers that quote in every visitor's sealed round (tools/simulator/demo-bots.mjs)
+  demo-bots:
+    image: ${IMAGE_DEMO_BOTS:?}
+    restart: unless-stopped
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      IDENTITY_URL: http://identity:8080
+      CLIENT_SECRET_DEMO_BOTS: ${CLIENT_SECRET_DEMO_BOTS}
+    depends_on:
+      gateway: { condition: service_healthy }
+    mem_limit: 64m
+
+  identity:
+    <<: *service
+    image: ${IMAGE_IDENTITY:?}
+    environment:
+      <<: [*service-env, *mail-env]
+      DB_PASSWORD: ${DB_PASSWORD_IDENTITY}
+      IDENTITY_DATA_KEY: ${IDENTITY_DATA_KEY:?}
+      CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY:?}
+      CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME:?}
+      CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL:?}
+      CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER:?}
+      CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION:?}
+      CLIENT_SECRET_CATALOG: ${CLIENT_SECRET_CATALOG:?}
+      CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER:?}
+      CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE:?}
+      CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT:?}
+      EXPORT_BUCKET: ${EXPORT_BUCKET:?infra/aws/shared output export_bucket}
+      EXPORT_PUBLIC_ENDPOINT: ${EXPORT_PUBLIC_ENDPOINT:-}
+      WEB_URL: ${PUBLIC_URL}
+      PASSKEY_RP_ID: ${SITE_ADDRESS}
+      PASSKEY_ORIGINS: ${PUBLIC_URL}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      SEED_USERS_FILE: ${SEED_USERS_FILE:-} # local-only (ProdGuard rejects it under prod)
+      # P6.B public demo: visitor scenarios, the simulated dealers' users, email sign-in only with SES production access
+      DEMO_SCENARIOS: "true"
+      DEMO_BOTS_FILE: /demo/dealers.json
+      EMAIL_SIGN_IN: ${EMAIL_SIGN_IN:-false}
+      CLIENT_SECRET_DEMO_BOTS: ${CLIENT_SECRET_DEMO_BOTS:?}
+    volumes: ["../../tools/simulator/dealers.json:/demo/dealers.json:ro"]
+
+  gateway:
+    <<: *service
+    image: ${IMAGE_GATEWAY:?}
+    environment:
+      <<: *jvm
+      REDIS_HOST: redis
+      CLIENT_SECRET_GATEWAY: ${CLIENT_SECRET_GATEWAY}
+      GATEWAY_KEY_DIR: /keys
+      REALTIME_1_URL: http://realtime-1:8080 # one realtime on lite: both balancer entries point at it
+      REALTIME_2_URL: http://realtime-1:8080
+    volumes: ["gateway-keys:/keys"]
+    depends_on:
+      redis: { condition: service_healthy }
+      identity: { condition: service_healthy }
+
+  catalog:
+    <<: *service
+    image: ${IMAGE_CATALOG:?}
+    environment:
+      <<: *service-env
+      CLIENT_SECRET_CATALOG: ${CLIENT_SECRET_CATALOG}
+      DB_PASSWORD: ${DB_PASSWORD_CATALOG}
+
+  dealer:
+    <<: *service
+    image: ${IMAGE_DEALER:?}
+    environment:
+      <<: *service-env
+      CLIENT_SECRET_DEALER: ${CLIENT_SECRET_DEALER}
+      DB_PASSWORD: ${DB_PASSWORD_DEALER}
+      DEMO_SEED_DEALERSHIPS: /seed/dealerships.sql
+      DEMO_SCENARIOS: "true" # P6.B: each visitor gets a demo dealership (E172), invited only to their own pools
+    volumes: ["../local/seed/dealerships.sql:/seed/dealerships.sql:ro"]
+
+  pool:
+    <<: *service
+    image: ${IMAGE_POOL:?}
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${DB_PASSWORD_POOL}
+      CLIENT_SECRET_POOL: ${CLIENT_SECRET_POOL}
+      DEMO_SEALED_ROUND_SECONDS: ${DEMO_SEALED_ROUND_SECONDS:-90}
+      DEMO_FINAL_ROUND_SECONDS: ${DEMO_FINAL_ROUND_SECONDS:-20}
+      DEMO_DECISION_SECONDS: ${DEMO_DECISION_SECONDS:-60}
+      DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS:-60}
+      POOL_MIN_MEMBERS: ${POOL_MIN_MEMBERS:-1}
+
+  realtime-1: # named as in the local stack: the journey checks it by this name
+    <<: *service
+    image: ${IMAGE_REALTIME:?}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      REALTIME_INSTANCE: realtime-1
+      DB_PASSWORD: ${DB_PASSWORD_REALTIME}
+      CLIENT_SECRET_REALTIME: ${CLIENT_SECRET_REALTIME}
+      REDIS_HOST: redis
+
+  quote:
+    <<: *service
+    image: ${IMAGE_QUOTE:?}
+    environment:
+      <<: *service-env
+      CLIENT_SECRET_QUOTE: ${CLIENT_SECRET_QUOTE}
+      DB_PASSWORD: ${DB_PASSWORD_QUOTE}
+
+  order:
+    <<: *service
+    image: ${IMAGE_ORDER:?}
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${DB_PASSWORD_ORDER}
+      CLIENT_SECRET_ORDER: ${CLIENT_SECRET_ORDER}
+      EVIDENCE_PUBLIC_ENDPOINT: ${EVIDENCE_PUBLIC_ENDPOINT:-}
+      EVIDENCE_BUCKET: ${EVIDENCE_BUCKET:?infra/aws/shared output evidence_bucket}
+
+  payment:
+    <<: *service
+    image: ${IMAGE_PAYMENT:?}
+    environment:
+      <<: *service-env
+      CLIENT_SECRET_PAYMENT: ${CLIENT_SECRET_PAYMENT}
+      DB_PASSWORD: ${DB_PASSWORD_PAYMENT}
+      RAZORPAY_BASE_URL: http://razorpay-fake:9090
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+
+  notification:
+    <<: *service
+    image: ${IMAGE_NOTIFICATION:?}
+    environment:
+      <<: [*service-env, *mail-env]
+      DB_PASSWORD: ${DB_PASSWORD_NOTIFICATION}
+      CLIENT_SECRET_NOTIFICATION: ${CLIENT_SECRET_NOTIFICATION}
+      VAPID_SUBJECT: mailto:${MAIL_FROM}
+      WEB_URL: ${PUBLIC_URL}
+
+  audit:
+    <<: *service
+    image: ${IMAGE_AUDIT:?}
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${DB_PASSWORD_AUDIT}
+      DB_OWNER_PASSWORD: ${DB_PASSWORD_AUDIT_OWNER}
+
+  web:
+    image: ${IMAGE_WEB:?}
+    restart: unless-stopped
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_CHECKOUT_URL: ${PUBLIC_URL}/pay/checkout.js
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      NODE_OPTIONS: --max-old-space-size=160
+      DEMO_PUBLIC: "true" # P6.B: Try the demo + view as admin (read-only)
+      EMAIL_SIGN_IN: ${EMAIL_SIGN_IN:-false}
+    depends_on: [gateway]
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"], interval: 10s, timeout: 3s, retries: 30 }
+    mem_limit: 256m
+
+volumes:
+  pgdata: {}
+  gateway-keys: {}
+  caddy-data: {}

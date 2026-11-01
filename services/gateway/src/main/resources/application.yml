@@ -41,3 +41,5 @@ gateway:
   limits:
     otp: { max: "${RATE_OTP_MAX:10}", window: 10m }
     join: { max: "${RATE_JOIN_MAX:20}", window: 1m }
+    demo: { max: "${RATE_DEMO_IP_MAX:20}", window: 1d } # P6.B new demo scenarios per IP per day
+    demo-global: { max: "${RATE_DEMO_GLOBAL_MAX:200}", window: 1d } # and in total per day (then 503)

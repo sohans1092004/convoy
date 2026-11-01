@@ -124,6 +124,17 @@ public class OutboxRelay {
         }
     }
 
+    /** The topic kinds (fifo or not) this producer publishes to, from the catalogue. */
+    public java.util.Set<Boolean> topics() {
+        return EventTypes.ALL.keySet().stream().filter(t -> {
+            try {
+                return producer.equals(EventTypes.ALL.get(t).getField("PRODUCER").get(null));
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
+        }).map(OutboxRelay::isFifo).collect(java.util.stream.Collectors.toSet());
+    }
+
     static boolean isFifo(String type) {
         try {
             return EventTypes.ALL.get(type).getField("FIFO").getBoolean(null);

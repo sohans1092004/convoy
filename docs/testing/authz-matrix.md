@@ -15,6 +15,7 @@ All tests run in CI against real service boundaries (Testcontainers + the gatewa
 | platform_admin | Convoy admin | identity `user_roles` |
 | service | another Convoy service with a service token (`service:<name>` in api-outline) | identity `service_clients` |
 | razorpay | webhook caller authenticated by HMAC | payment |
+| service:demo-bots | the public demo's simulated-dealer runner (P6.B, tools/simulator/demo-bots.mjs; lite only) | identity `service_clients`, only when `CLIENT_SECRET_DEMO_BOTS` is set |
 
 A user cannot hold `buyer` together with `dealer_staff`/`dealer_admin` for pool commands (AZ-INT-02).
 

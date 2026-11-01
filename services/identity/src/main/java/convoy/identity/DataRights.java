@@ -272,12 +272,17 @@ public class DataRights {
     @Transactional
     public ErasureStatus requestErasure() {
         UUID me = MeController.human().userId();
-        List<UUID> open = jdbc.queryForList("select id from erasures where user_id = ? and state = 'PENDING'", UUID.class, me);
-        if (!open.isEmpty()) return erasure(open.get(0), me);
+        return erasure(startErasure(me), me);
+    }
+
+    /** E016's request, also used by the demo cleanup (P6.B) for expired scenario accounts. Call inside a transaction. */
+    UUID startErasure(UUID user) {
+        List<UUID> open = jdbc.queryForList("select id from erasures where user_id = ? and state = 'PENDING'", UUID.class, user);
+        if (!open.isEmpty()) return open.get(0);
         UUID id = Uuid7.next();
-        jdbc.update("insert into erasures(id, user_id) values (?, ?)", id, me);
-        outbox.append(me, Instant.now().toEpochMilli(), new ErasureRequested(id.toString(), me.toString(), Instant.now()));
-        return erasure(id, me);
+        jdbc.update("insert into erasures(id, user_id) values (?, ?)", id, user);
+        outbox.append(user, Instant.now().toEpochMilli(), new ErasureRequested(id.toString(), user.toString(), Instant.now()));
+        return id;
     }
 
     /** E166: which services have confirmed. */
