@@ -44,7 +44,8 @@ const middleware: Middleware = {
   },
 };
 
-export const api = createClient<paths>({ baseUrl: '/api' });
+// fetch is looked up per call, not captured at load: Storybook's page-state mocks replace window.fetch after this module loads.
+export const api = createClient<paths>({ baseUrl: '/api', fetch: (r) => globalThis.fetch(r) });
 api.use(middleware);
 
 /** Unwrap an openapi-fetch result: data (typed from the OpenAPI schema), or throw ApiError with the problem body. */

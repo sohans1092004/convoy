@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { applyDelta, backoffMs, decide, newer } from './use-live-snapshot';
+import { applyDelta, backoffMs, decide, newer, streamRefused } from './use-live-snapshot';
+
+describe('a refused stream stops retrying (P8.C: non-member looped on "Reconnecting…")', () => {
+  const answer = (status: number) => (async () => new Response(null, { status })) as unknown as typeof fetch;
+  it('401, 403 and 404 are refusals', async () => {
+    for (const s of [401, 403, 404]) expect(await streamRefused('/api/stream/pools/p', answer(s))).toBe(true);
+  });
+  it('a 5xx, a 200 or a network error keeps reconnecting', async () => {
+    for (const s of [200, 502, 503]) expect(await streamRefused('/api/stream/pools/p', answer(s))).toBe(false);
+    expect(await streamRefused('/api/stream/pools/p', (async () => { throw new TypeError('network'); }) as unknown as typeof fetch)).toBe(false);
+  });
+});
 
 describe('stream version rule (realtime-recovery.md §2)', () => {
   it('applies only the next version, ignores old ones and resyncs on a gap', () => {

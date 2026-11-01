@@ -33,6 +33,7 @@
 - Show the deployed commit: `/version` returning the short SHA, plus a small footer line.
 - Redeploy the lite host from `main`.
 - Re-run live Lighthouse afterwards (`DEMO=1 ... web/scripts/lighthouse.mjs`) and update docs/EVIDENCE.md §5 for the current build.
+- Fix: a non-member on a pool page loops on "Reconnecting…" (stream 404). Non-members must not open the stream; 401/403/404 stop retrying.
 
 ## P8.B README and architecture docs — done (2026-11-02)
 - README.md rewritten: problem/product, live demo + "Try the demo" steps, 6 live screenshots (docs/media, 360 px and
@@ -46,3 +47,21 @@
   keeps retrying). Realtime itself works (200 and "Live" after joining). Not fixed (no new features in P8).
 - Screenshots and the stream probe created 3 demo scenarios on the live host (expire in 24 h).
 - `scripts/up.sh` chains the four documented commands; syntax-checked, not run end to end here.
+
+## P8.C Polish and redeploy — in progress (2026-11-02)
+- CI was not stuck: every push triggered ci/spec/eol and they passed; "pending" was read seconds after each push. Repo is
+  public (Actions minutes not limited).
+- "Reconnecting…" fixed: non-members never open the pool stream ("Join to see live updates"); a stream that fails before
+  opening is probed once and 401/403/404 stop the retries (polling continues). Tests: `streamRefused` unit tests; Storybook
+  pool-empty (non-member) checked directly by Playwright (no EventSource, hint shown); both fail with the fix reverted.
+- **Found: the 24 page-state stories were vacuous.** `lib/api.ts` captured `fetch` at module load, so the Storybook mock never
+  reached the client and every story rendered its error state; the spec only looked for an error display Storybook 10 no
+  longer shows. Fixed (fetch looked up per call) and the spec now fails on console errors; 52/52 pass on the real states.
+- `/version` (`{sha, built_at}`) and a footer line "Build <sha> · <time> UTC"; the images workflow bakes both into web.
+- Deposit wording: the REFUND_DONE email/in-app text (also sent when a deposit is released after delivery) said "Your refund
+  is complete"; now "Your deposit has been returned". Checked in Mailpit after the lifecycle journey.
+- 360 px: the journey's per-screen check (catalogue, model, pool, dealer inbox, quote form, compare, orders, confirm, voucher)
+  now fails on horizontal scroll and on prices < 12 px or clipped; proved by injecting a wide element and a clipped price.
+- `scripts/up.sh` run end to end: exit 0 in 225 s, stack ready 54 s after compose up (laptop). First attempt failed: a second
+  checkout reuses the `convoy` Postgres volume, whose passwords belong to the first `.env`; README notes it.
+- Lifecycle journey at 360 px (laptop): PASS in 5.0 min, audit chain intact (183 rows).

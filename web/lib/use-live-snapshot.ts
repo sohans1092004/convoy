@@ -36,6 +36,23 @@ export function backoffMs(attempt: number, base = 500, cap = 30_000): number {
   return Math.random() * Math.min(cap, base * 2 ** attempt);
 }
 
+/**
+ * The stream answered with a refusal (401/403/404: not a member, signed out, no such pool). EventSource does not expose the
+ * status, so a stream that failed before it ever opened is probed once; a refusal stops the retries (the snapshot is still
+ * polled), anything else (network, 5xx) keeps reconnecting with backoff.
+ */
+export async function streamRefused(url: string, f: typeof fetch = fetch): Promise<boolean> {
+  const ac = new AbortController();
+  try {
+    const r = await f(url, { headers: { accept: 'text/event-stream' }, signal: ac.signal });
+    return r.status === 401 || r.status === 403 || r.status === 404;
+  } catch {
+    return false;
+  } finally {
+    ac.abort(); // only the status was needed; never read the stream
+  }
+}
+
 /** Never let an older snapshot replace a newer one (a slow refetch must not undo a delta already applied). */
 export function newer<T extends Versioned>(current: T | undefined, incoming: T): T {
   return current === undefined || incoming.version >= current.version ? incoming : current;
@@ -95,6 +112,8 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
       if (closed) return;
       es = new EventSource(streamUrl);
       lastEventAt = Date.now();
+      let opened = false;
+      es.addEventListener('open', () => { opened = true; });
       const seen = () => { lastEventAt = Date.now(); };
       // The backoff resets only once the stream proves healthy (a heartbeat or a message), not on connect: a stream
       // that connects and drops at once keeps backing off.
@@ -128,7 +147,17 @@ export function useLiveSnapshot<T extends Versioned>(key: readonly unknown[], lo
       reconnectNow = reconnect;
       es.addEventListener('overloaded', reconnect);
       es.addEventListener('closed', reconnect);
-      es.onerror = reconnect;
+      es.onerror = () => {
+        if (opened) return reconnect();
+        es?.close();
+        es = null;
+        void streamRefused(streamUrl).then((refused) => {
+          if (closed) return;
+          if (!refused) return reconnect();
+          clearTimeout(delayedTimer);
+          setStatus('delayed'); // refused: no retry loop; the snapshot is polled every 10 s
+        });
+      };
     };
     connect();
     return () => {

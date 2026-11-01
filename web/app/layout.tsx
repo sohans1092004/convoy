@@ -8,6 +8,7 @@ import { SignOutButton } from '@/components/sign-out';
 import { DemoSwitch } from '@/components/demo';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { gatewayGet } from '@/lib/gateway';
+import { build } from '@/lib/build';
 import './globals.css';
 
 export const metadata: Metadata = { title: 'Convoy', description: 'Group car buying with sealed, itemised dealer offers.' };
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </nav>
             </header>
             <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{children}</main>
+            <footer className="mx-auto max-w-5xl px-4 pb-6 text-xs text-muted">{t('build', { sha: build().sha })}{build().built_at ? ` · ${build().built_at!.slice(0, 16).replace('T', ' ')} UTC` : ''}</footer>
         </NextIntlClientProvider>
       </body>
     </html>

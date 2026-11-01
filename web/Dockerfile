@@ -14,6 +14,10 @@ RUN pnpm --filter @convoy/web build
 
 FROM node:22.23.4-alpine
 WORKDIR /app
+# Shown at /version and in the footer (P8.C); set by the images workflow.
+ARG GIT_SHA=dev
+ARG BUILD_TIME=
+ENV GIT_SHA=$GIT_SHA BUILD_TIME=$BUILD_TIME
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build /repo/web/.next/standalone ./
 COPY --from=build /repo/web/.next/static ./web/.next/static

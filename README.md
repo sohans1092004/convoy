@@ -97,6 +97,10 @@ bash scripts/up.sh      # .env with random local secrets, service jars, compose 
 Web: http://localhost:3000. Sign in with a seeded user (e.g. `buyer1@convoy.test`); the code arrives in Mailpit,
 http://localhost:8025. More: [Development](#development).
 
+The database volume keeps the passwords of the `.env` that created it. If services fail with `password authentication
+failed` after `.env` was regenerated (or in a second checkout), reuse the old `.env`, or reset the local data with
+`docker compose down -v`.
+
 ## Scope and limits
 
 - **Synthetic dealers.** The dealerships are seeded and their quotes come from a dealer simulator. No real dealer has used it.

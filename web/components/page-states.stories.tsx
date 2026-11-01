@@ -124,10 +124,21 @@ export const JoinSuccess: Story = {
 // ---------------------------------------------------------------- pool page
 const snap = 'GET /api/pools/p1$';
 export const PoolLoading: Story = { render: poolPage({ [snap]: ['hang'] }) };
-export const PoolEmpty: Story = { name: 'Pool empty (no one joined yet)', render: poolPage({ [snap]: [ok(pool({ interested_count: 0, committed_count: 0 }))] }) };
+export const PoolEmpty: Story = {
+  name: 'Pool empty (no one joined yet)',
+  render: poolPage({ [snap]: [ok(pool({ interested_count: 0, committed_count: 0 }))] }, false, 'live'),
+  // A non-member never opens the members-only stream (it would answer 404 and loop on "Reconnecting…").
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement);
+    await expect(await c.findByText('Join to see live updates')).toBeVisible();
+    await new Promise((r) => setTimeout(r, 300));
+    await expect((window as unknown as { __streamsOpened: number }).__streamsOpened).toBe(0);
+    await expect(c.queryByText(/Reconnecting/)).toBeNull();
+  },
+};
 export const PoolError: Story = { render: poolPage({ [snap]: [problem(503, 'DEPENDENCY_UNAVAILABLE', 'Pools are unavailable right now.')] }) };
 export const PoolStale: Story = {
-  render: poolPage({ [snap]: [ok(pool()), problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] }, false, 'live'),
+  render: poolPage({ [snap]: [ok(pool({ my_membership: MEMBER })), problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] }, false, 'live'),
   play: async ({ canvasElement }) => { await expect(await within(canvasElement).findByText(/may be out of date/, {}, { timeout: 5000 })).toBeVisible(); },
 };
 export const PoolPending: Story = {

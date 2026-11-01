@@ -76,11 +76,16 @@ function loadScript(src: string) {
 export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl: string }) {
   const t = useTranslations('precommit');
   const tp = useTranslations('pool');
-  const snap = useLiveSnapshot(['pool', poolId], () => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), `/api/stream/pools/${poolId}`);
+  // E120 is for members only (any state but LEFT): a non-member never opens it, so no refused stream and no retry loop.
+  const [member, setMember] = React.useState(false);
+  const snap = useLiveSnapshot(['pool', poolId], () => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), member ? `/api/stream/pools/${poolId}` : null);
   const online = useOnline();
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
+  const isMember = !!me && me.state !== 'LEFT';
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- the stream URL follows the loaded membership
+  React.useEffect(() => { setMember(isMember); }, [isMember]);
   // E122: live quote count while dealers quote (never contents); the closing signal reloads the snapshot (compare link).
   const quoting = !!pool && ['QUOTE_OPEN', 'FINAL_ROUND'].includes(pool.state) && !!me && me.state !== 'LEFT';
   const quoteCount = useQuoteCount(poolId, quoting, () => { snap.refresh(); });
@@ -174,7 +179,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
       <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-2xl font-extrabold">{pool.brand} {pool.model_slug.split('-').slice(1).join(' ')} pool, {pool.city}</h1>
         <Badge tone="info">{STATES.includes(pool.state) ? tp(`state.${pool.state}`) : pool.state}</Badge>
-        <LiveIndicator status={online ? snap.status : 'delayed'} />
+        {isMember ? <LiveIndicator status={online ? snap.status : 'delayed'} /> : <span className="text-sm text-muted">{tp('live.membersOnly')}</span>}
       </div>
       {!online ? (
         <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">{tp('offline')}</p>

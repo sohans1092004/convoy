@@ -43,7 +43,7 @@ jobs:
           mkdir -p digests
           for name in $IMAGES; do
             case $name in
-              web) args="-f web/Dockerfile" ;;
+              web) args="-f web/Dockerfile --build-arg GIT_SHA=${GITHUB_SHA::7} --build-arg BUILD_TIME=$(date -u +%FT%TZ)" ;;
               razorpay-fake) args="-f tools/razorpay-fake/Dockerfile" ;;
               demo-bots) args="-f tools/simulator/Dockerfile" ;;
               *) args="-f deploy/docker/service.Dockerfile --build-arg SERVICE=$name" ;;

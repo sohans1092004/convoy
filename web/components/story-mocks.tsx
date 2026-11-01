@@ -14,11 +14,14 @@ export type Routes = Record<string, Reply[]>;
 
 class FakeEventSource extends EventTarget {
   static mode: 'live' | 'down' = 'down';
+  static opened = 0;
   readyState = 0;
   onerror: ((e: Event) => void) | null = null;
   static readonly OPEN = 1;
   constructor(public url: string) {
     super();
+    FakeEventSource.opened++;
+    (window as unknown as { __streamsOpened: number }).__streamsOpened = FakeEventSource.opened;
     setTimeout(() => {
       if (FakeEventSource.mode === 'live') {
         this.readyState = 1;
@@ -53,6 +56,8 @@ export function Mocked({ routes, offline = false, stream = 'down', children }: {
     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => !offline });
     const RealES = window.EventSource;
     FakeEventSource.mode = stream;
+    FakeEventSource.opened = 0;
+    (window as unknown as { __streamsOpened: number }).__streamsOpened = 0;
     window.EventSource = FakeEventSource as unknown as typeof EventSource;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Storybook-only mock installer: render the story after the fetch mock is in place
     setReady(true);
