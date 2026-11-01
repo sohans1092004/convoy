@@ -226,6 +226,20 @@ login (stale lock removed each time; four ALB entries already deleted were dropp
 **TEARDOWN VERIFIED 2026-11-01 ~13:10 UTC.** The app was not exercised. Lesson: a full run needs a stable connection
 for its whole length; the laptop is a single point of failure while the account's SCP denies the scheduled reaper.
 
+**smoke7–smoke9 (2026-11-01): Service Connect name resolution.**
+- smoke7 (13:14): `catalog` never started: `UnknownHostException: pgbouncer`. Aborted, TEARDOWN VERIFIED 13:59.
+- smoke8 (13:59): core services first (pgbouncer, adot, then the apps): 15/16 up, `identity` kept failing with the same
+  error. Its teardown was cut by the laptop's DNS (`lookup ...amazonaws.com: no such host`: single carrier resolver;
+  now 1.1.1.1/8.8.8.8); resumed after a state refresh, TEARDOWN VERIFIED 15:47 (the verifier's EC2 liveness check fixed).
+- smoke9 (15:48, 03292c4; + 90 s DB connect retry): **UP after 19 min, all services stable**, but the ALB answered 503
+  for 5 min: the `web` target failed its health check (`/` -> 503), `catalog` had dropped to 0/1 again. Saved logs:
+  tasks of most services keep failing to resolve Service Connect names (gateway/order/catalog/payment/audit -> `adot`,
+  identity/quote/realtime/notification/pool/audit/payment -> `pgbouncer`, 10–18 times each), well after both were running.
+  Journey failed. **Root cause not established**: Service Connect DNS is unreliable for these tasks in this setup
+  (not an application bug: the same images pass the laptop prod rehearsal and the live lite host).
+  Candidate fix (not built): replace Service Connect with a Cloud Map private DNS namespace (plain A records via the VPC
+  resolver) for service-to-service calls. smoke9 was the last approved attempt; no further full run without a decision.
+
 **AWS spend for full-profile runs in P6 (estimates):** smoke1 ≈ $0.18, canary1 ≈ $0.17, canary2 ≈ $0.10, smoke2 ≈ $0.35;
 total ≈ **$0.80**; smoke3 ≈ $0.35, smoke4 ≈ $0.40, smoke5 $0, smoke6 ≈ $1.20 (RDS, NAT, ElastiCache live ~4.5 h during the interrupted teardown) → ≈ **$2.75**. Plus `shared` ≈ $4.66/month always on.
 
