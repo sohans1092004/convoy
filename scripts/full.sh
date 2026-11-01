@@ -46,7 +46,7 @@ images['adot'] = digest('public.ecr.aws/aws-observability/aws-otel-collector:v0.
 images['python'] = digest('python:3.12.10-alpine')
 json.dump({'run_id': sys.argv[2], 'images': images, 'shared': json.loads(os.environ['SHARED_JSON']),
            'tasks_per_service': int(os.environ.get('TASKS_PER_SERVICE', '2')), 'max_tasks_per_service': int(os.environ.get('MAX_TASKS_PER_SERVICE', '6')),
-           'secrets': json.loads(os.environ['SECRETS_JSON']), 'loadgen_type': os.environ.get('LOADGEN_TYPE', ''), 'load_users': int(os.environ.get('LOAD_USERS', '0')), 'load_new_dealerships': int(os.environ.get('LOAD_NEW_DEALERSHIPS', '0')), 'sealed_round_seconds': int(os.environ.get('SEALED_ROUND_SECONDS', '90')),
+           'secrets': json.loads(os.environ['SECRETS_JSON']), 'loadgen_type': os.environ.get('LOADGEN_TYPE', ''), 'load_users': int(os.environ.get('LOAD_USERS', '0')), 'load_new_dealerships': int(os.environ.get('LOAD_NEW_DEALERSHIPS', '0')), 'sealed_round_seconds': int(os.environ.get('SEALED_ROUND_SECONDS', '90')), 'drills': os.environ.get('DRILLS', '') == 'true', 'multi_az': os.environ.get('MULTI_AZ', '') == 'true',
            'load_dealerships': [d for d in os.environ.get('LOAD_DEALERSHIPS', '').split(',') if d]}, open('run.auto.tfvars.json', 'w'))
 PY
 }

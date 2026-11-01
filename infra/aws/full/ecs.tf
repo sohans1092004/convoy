@@ -422,3 +422,36 @@ resource "aws_ecs_task_definition" "loadseed" {
 }
 
 output "loadseed_task" { value = var.load_users > 0 ? aws_ecs_task_definition.loadseed[0].arn : "" }
+
+# P7.C drills: a toolbox task in the run's private subnets (psql + redis-cli) for counts, ledger checks and the Redis
+# flush. Exists only for a drill run (var.drills); scripts/p7-drill.sh runs it with a command override.
+variable "drills" {
+  description = "P7.C: create the drill toolbox task definition"
+  type        = bool
+  default     = false
+}
+
+resource "aws_ecs_task_definition" "toolbox" {
+  count                    = var.drills ? 1 : 0
+  family                   = "convoy-full-toolbox"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.exec.arn
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+  container_definitions = jsonencode([{
+    name             = "toolbox"
+    image            = lookup(var.images, "postgres", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
+    essential        = true
+    command          = ["sh", "-c", "echo override me"]
+    environment      = [{ name = "PGHOST", value = local.db_host }, { name = "PGDATABASE", value = "convoy" }, { name = "PGUSER", value = "convoy_admin" }, { name = "REDIS_HOST", value = local.redis_host }]
+    secrets          = [{ name = "PGPASSWORD", valueFrom = "${aws_secretsmanager_secret.app.arn}:POSTGRES_PASSWORD::" }]
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "toolbox" } }
+  }])
+}
+
+output "toolbox_task" { value = var.drills ? aws_ecs_task_definition.toolbox[0].arn : "" }
