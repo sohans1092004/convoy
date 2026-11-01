@@ -60,7 +60,9 @@ export async function call<D>(p: Promise<{ data?: D; error?: unknown; response: 
 /** ETag "<version>" -> version number for If-Match. */
 export function etagVersion(response: Response): number | undefined {
   const e = response.headers.get('etag');
-  return e ? Number(e.replace(/W\/|"/g, '')) : undefined;
+  // Caddy's `encode gzip` rewrites "7" to "7-gzip" (lite rehearsal: If-Match "NaN" -> 428); the version is the leading integer.
+  const v = e ? Number.parseInt(e.replace(/W\/|"/g, ''), 10) : NaN;
+  return Number.isNaN(v) ? undefined : v;
 }
 
 /** POST to a BFF route that is not in the services' OpenAPI documents (the public demo, P6.B): JSON in and out, problems thrown. */
