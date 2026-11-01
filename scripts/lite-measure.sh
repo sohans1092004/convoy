@@ -6,6 +6,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 sep=':'; case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) sep=';' ;; esac
 export COMPOSE_FILE="deploy/lite/compose.yml${sep}deploy/lite/measure.yml" COMPOSE_PATH_SEPARATOR="$sep"
+scripts/dev-env.sh >/dev/null   # random local secrets in .env, CLIENT_SECRET_DEMO_BOTS included
+[ -f deploy/lite/measure.env ] || cp deploy/lite/measure.env.example deploy/lite/measure.env
 export COMPOSE_ENV_FILES=.env,deploy/lite/measure.env COMPOSE_PROJECT_NAME=convoy-lite
 out=reports/p6/lite-measure-$(date -u +%Y%m%dT%H%M%SZ); mkdir -p "$out"
 stats() { docker stats --no-stream --format '{{.Name}},{{.MemUsage}},{{.CPUPerc}}' $(docker compose ps -q); }
