@@ -140,7 +140,7 @@ case $cmd in
     within() { local left=$(( deadline - $(date +%s) )); [ "$left" -gt 0 ] || return 124; timeout -s INT -k 180 "$left" "$@"; }
     abort() { echo "creation not finished by minute ${CREATE_MINUTES:-35} (or a step failed): destroying now"
       # keep the evidence: the destroy deletes the run's log group (smoke2 lost its startup errors this way)
-      aws logs filter-log-events --log-group-name "/convoy-full/$run" --filter-pattern '?ERROR ?Exception ?FATAL' --max-items 300         --query 'events[].[logStreamName,message]' --output text > "$root/.run/abort-$run.log" 2>&1 || true
+      MSYS_NO_PATHCONV=1 aws logs filter-log-events --log-group-name "/convoy-full/$run" --filter-pattern '?ERROR ?Exception ?FATAL' --max-items 300         --query 'events[].[logStreamName,message]' --output text > "$root/.run/abort-$run.log" 2>&1 || true
       bash "$root/scripts/full.sh" down "$run"; exit 3; }
     within terraform apply -input=false -auto-approve -var services_running=false || abort
     one_off "$(terraform output -raw db_init_task)" || abort
