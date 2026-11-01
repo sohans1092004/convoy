@@ -52,6 +52,8 @@ with psycopg.connect(host=os.environ['PGHOST'], dbname='convoy', user='identity'
             out.append({'session': tok, 'user_id': str(uid), 'role': role, 'dealership_id': dealership})
     db.commit()
 
+if os.environ['STATE_BUCKET'] == '-':  # local test (tools/load/provision_test.sh): print instead of uploading
+    open(os.environ['LOAD_OUT'], 'w').write(json.dumps(out)); raise SystemExit(0)
 boto3.client('s3').put_object(Bucket=os.environ['STATE_BUCKET'], Key=f'full/{RUN}/load-sessions.json', Body=json.dumps(out).encode(),
                               ServerSideEncryption='AES256', ContentType='application/json')
 print(f'provisioned {BUYERS} buyers and {len(accounts) - BUYERS} dealer staff for run {RUN}; sessions expire in {HOURS} h; '
