@@ -47,10 +47,10 @@ T=../../../tools/oci-shim/terraform                         # Terraform in Docke
 $T init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$(aws sts get-caller-identity --query Account --output text)"
 $T plan -target=aws_security_group.host -var "admin_cidr=<new IP>/32" -var "ssh_public_key=$(cat ~/.ssh/convoy-ec2.pub)" -out sg.tfplan
 ```
-**Always use `-target=aws_security_group.host`.** An untargeted plan wants to *replace the instance* (drift: the running
-instance has `associate_public_ip_address = true`, the config says `false`, which forces replacement): that would destroy
-the live host and its database. Check the plan says `0 to add, 1 to change, 0 to destroy` and changes only the SSH
-ingress CIDR, then `$T apply sg.tfplan`. Only one IP is ever allowed. (`ssh_public_key` must be `convoy-ec2.pub`.)
+Use `-target=aws_security_group.host` and check the plan says `0 to add, 1 to change, 0 to destroy` and changes only
+the SSH ingress CIDR, then `$T apply sg.tfplan`. (Until P8 an untargeted plan wanted to *replace the live host* because
+`associate_public_ip_address` drifted; the code now matches the host, `ami`/`user_data` changes are ignored, and the
+instance and Elastic IP have `prevent_destroy`, so such a plan fails instead.) Only one IP is ever allowed. (`ssh_public_key` must be `convoy-ec2.pub`.)
 
 ## Backups and restore
 Nightly 02:30 IST: `backup.sh` on the VM (pg_dumpall, gzip, `age` to the public key, upload). The VM holds only a

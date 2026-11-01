@@ -104,12 +104,14 @@ resource "aws_key_pair" "admin" {
 }
 
 resource "aws_instance" "host" {
-  ami                         = data.aws_ssm_parameter.ubuntu.value
-  instance_type               = "t4g.medium" # 2 vCPU, 4 GiB: the lite stack idles at ~2.3 GiB (reports/p6/memory-laptop.md)
-  subnet_id                   = aws_subnet.s.id
-  vpc_security_group_ids      = [aws_security_group.host.id]
-  key_name                    = aws_key_pair.admin.key_name
-  associate_public_ip_address = false # the Elastic IP below is the address DuckDNS points at (stable across reboots)
+  ami                    = data.aws_ssm_parameter.ubuntu.value
+  instance_type          = "t4g.medium" # 2 vCPU, 4 GiB: the lite stack idles at ~2.3 GiB (reports/p6/memory-laptop.md)
+  subnet_id              = aws_subnet.s.id
+  vpc_security_group_ids = [aws_security_group.host.id]
+  key_name               = aws_key_pair.admin.key_name
+  # The live host was launched with a public IP (true); the Elastic IP below is the address DuckDNS points at. Changing
+  # this forces replacement, so it matches what runs (P8: the plan wanted to replace the live host over it).
+  associate_public_ip_address = true
   root_block_device {
     volume_type = "gp3"
     volume_size = 30
@@ -117,12 +119,17 @@ resource "aws_instance" "host" {
   }
   metadata_options { http_tokens = "required" }
   tags = { Name = "convoy-lite" }
+  lifecycle {
+    prevent_destroy = true             # the live demo and its database: never destroyed by a plan
+    ignore_changes  = [ami, user_data] # a newer Ubuntu in the SSM parameter must not replace the running host
+  }
 }
 
 resource "aws_eip" "ip" {
   domain   = "vpc"
   instance = aws_instance.host.id
   tags     = { Name = "convoy-lite" }
+  lifecycle { prevent_destroy = true } # DuckDNS points at this address
 }
 
 output "public_ip" { value = aws_eip.ip.public_ip }
