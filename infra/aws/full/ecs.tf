@@ -126,6 +126,8 @@ resource "aws_iam_role_policy" "task" {
       { Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"], Resource = "arn:aws:sqs:${var.region}:${local.account}:convoy-*" },
       { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], Resource = ["arn:aws:s3:::${var.shared["export_bucket"]}/*", "arn:aws:s3:::${var.shared["evidence_bucket"]}/*"] },
       { Effect = "Allow", Action = ["s3:ListBucket"], Resource = ["arn:aws:s3:::${var.shared["export_bucket"]}", "arn:aws:s3:::${var.shared["evidence_bucket"]}"] },
+      # P7 load-test sessions (loadseed task): only this run's prefix in the encrypted state bucket
+      { Effect = "Allow", Action = ["s3:PutObject"], Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/*" },
       { Effect = "Allow", Action = ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets", "cloudwatch:PutMetricData", "logs:PutLogEvents", "logs:CreateLogStream", "logs:CreateLogGroup", "logs:DescribeLogStreams"], Resource = "*" },
     ]
   })
@@ -351,3 +353,51 @@ resource "aws_ecs_task_definition" "seed" {
     logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "seed" } }
   }])
 }
+
+# P7: load-test buyers and dealer staff with sessions, written straight into the identity schema (tools/load/provision.py).
+# Exists only when a run asks for it (var.load_users > 0); scripts/full.sh runs it once after the seed task.
+variable "load_users" {
+  description = "P7: number of load-test buyers to pre-provision (0 = none)"
+  type        = number
+  default     = 0
+}
+
+variable "load_dealerships" {
+  description = "P7: dealership ids that get load-test staff accounts (one each)"
+  type        = list(string)
+  default     = []
+}
+
+resource "aws_ecs_task_definition" "loadseed" {
+  count                    = var.load_users > 0 ? 1 : 0
+  family                   = "convoy-full-loadseed"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.exec.arn
+  task_role_arn            = aws_iam_role.task.arn
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+  container_definitions = jsonencode([{
+    name      = "loadseed"
+    image     = lookup(var.images, "python", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
+    essential = true
+    command = ["sh", "-c", "pip install -q --no-cache-dir 'cryptography==44.0.2' 'psycopg[binary]==3.2.6' 'boto3==1.37.30' && echo \"$PY\" | base64 -d > /tmp/p.py && python /tmp/p.py"]
+    environment = [
+      { name = "PY", value = base64encode(file("${path.module}/../../../tools/load/provision.py")) },
+      { name = "PGHOST", value = local.db_host }, { name = "RUN_ID", value = var.run_id }, { name = "LOAD_USERS", value = tostring(var.load_users) },
+      { name = "LOAD_DEALERSHIPS", value = join(",", var.load_dealerships) }, { name = "STATE_BUCKET", value = "convoy-tfstate-${local.account}" },
+      { name = "AWS_REGION", value = var.region },
+    ]
+    secrets = [
+      { name = "PGPASSWORD", valueFrom = "${aws_secretsmanager_secret.app.arn}:DB_PASSWORD_IDENTITY::" },
+      { name = "IDENTITY_DATA_KEY", valueFrom = "${aws_secretsmanager_secret.app.arn}:IDENTITY_DATA_KEY::" },
+    ]
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "loadseed" } }
+  }])
+}
+
+output "loadseed_task" { value = var.load_users > 0 ? aws_ecs_task_definition.loadseed[0].arn : "" }

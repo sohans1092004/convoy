@@ -29,6 +29,7 @@ terraform -chdir="$dir" init -input=false -reconfigure -backend-config="bucket=c
   terraform -chdir="$dir" destroy -input=false -auto-approve -no-color -lock-timeout=10m -refresh=false 2>&1 | tee "$out"
 destroyed=${PIPESTATUS[0]:-1}
 rm -f "$dir/reap.auto.tfvars.json"
+aws s3 rm "s3://convoy-tfstate-$account/full/$run/" --recursive >/dev/null 2>&1 || true # P7 load-test sessions of this run
 if grep -q "Error acquiring the state lock" "$out"; then
   msg="REAPER STOPPED: $dir run $run. The state stayed locked for 10 min (another terraform run holds it); nothing destroyed. Check that run, then make full-down RUN=$run."
   log "$msg"

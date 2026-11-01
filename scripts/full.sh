@@ -43,9 +43,11 @@ def digest(ref):  # third-party images are pinned by the digest their tag has to
 images['pgbouncer'] = digest('alpine:3.22.2')
 images['postgres'] = digest('postgres:16.15-alpine')
 images['adot'] = digest('public.ecr.aws/aws-observability/aws-otel-collector:v0.43.3')
+images['python'] = digest('python:3.12.10-alpine')
 json.dump({'run_id': sys.argv[2], 'images': images, 'shared': json.loads(os.environ['SHARED_JSON']),
            'tasks_per_service': int(os.environ.get('TASKS_PER_SERVICE', '2')), 'max_tasks_per_service': int(os.environ.get('MAX_TASKS_PER_SERVICE', '6')),
-           'secrets': json.loads(os.environ['SECRETS_JSON']), 'loadgen_type': os.environ.get('LOADGEN_TYPE', '')}, open('run.auto.tfvars.json', 'w'))
+           'secrets': json.loads(os.environ['SECRETS_JSON']), 'loadgen_type': os.environ.get('LOADGEN_TYPE', ''), 'load_users': int(os.environ.get('LOAD_USERS', '0')),
+           'load_dealerships': [d for d in os.environ.get('LOAD_DEALERSHIPS', '').split(',') if d]}, open('run.auto.tfvars.json', 'w'))
 PY
 }
 
@@ -107,6 +109,7 @@ case $cmd in
     headroom
     terraform apply -input=false -auto-approve -no-color -var canary=true -var services_running=false | grep -E "Apply complete|Error" || true
     rm -f run.auto.tfvars.json
+    aws s3 rm "s3://convoy-tfstate-$(aws sts get-caller-identity --query Account --output text)/full/$run/" --recursive >/dev/null 2>&1 || true # P7 load-test sessions
     echo "applied (state: $(terraform state list 2>/dev/null | wc -l) resources); waiting for the reaper, which alone destroys it"
     until task=$(aws ecs list-tasks --cluster convoy-reaper --started-by "$run" --desired-status STOPPED --query 'taskArns[0]' --output text) && [ "$task" != None ]; do
       [ $(( $(date +%s) - started )) -gt $(( (${CANARY_MINUTES:-20} + 45) * 60 )) ] && { echo "CANARY FAILED: no finished reaper task"; exit 1; }
@@ -151,6 +154,7 @@ case $cmd in
       within aws ecs wait services-stable --region $REGION --cluster "$cluster" --services ${chunk//,/ } || abort
     done
     one_off "$(terraform output -raw seed_task)" || abort
+    [ "${LOAD_USERS:-0}" -gt 0 ] && { one_off "$(terraform output -raw loadseed_task)" || abort; } # P7 load-test accounts
     echo "UP after $(( ($(date +%s) - started) / 60 )) min: $(terraform output -raw url)"
     ;;
   down)
