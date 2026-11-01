@@ -98,3 +98,12 @@
   performance 98 / 97 / 94, LCP 1,090 / 1,162 / 1,822 ms; two earlier runs missed TBT (recorded, cause not established).
 - **Laptop numbers:** lifecycle journey at 360 px PASS in 5.0 min; `up.sh` 225 s; A/B shows no page-speed regression.
 - **Open:** CI does not validate `infra/aws/lite-ec2` (only full, shared, oci); live TBT varies run to run.
+
+## P8.D–F and close (2026-11-02)
+- P8.D: docs/demo-script.md; `web/scripts/record-demo.mjs` recorded the live site (attempt 2; attempt 1 navigated during
+  the buyer-view redirect). Video 3 min 30 s, 1280×720 H.264, waits sped up 8× and labelled; kept out of git. Encoded
+  with imageio-ffmpeg in a throwaway venv. 2 demo scenarios created on the live site (24 h expiry).
+- P8.E: docs/how-it-was-built.md, docs/interview-guide.md (18 questions), docs/postmortems/INDEX.md (links to every
+  write-up; the AWS drills of P7.C never ran).
+- P8.F: reports/p8/resume-bullets.md (14 candidates; numbers from EVIDENCE.md only, except #11 which has none).
+- reports/P8_REPORT.md.
