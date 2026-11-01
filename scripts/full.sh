@@ -153,6 +153,10 @@ case $cmd in
       bash "$root/scripts/full.sh" down "$run"; exit 3; }
     within terraform apply -input=false -auto-approve -var services_running=false || abort
     one_off "$(terraform output -raw db_init_task)" || abort
+    # The database proxy and the collector first: a Service Connect name resolves only once its service has a running
+    # task, and the apps fail at startup without pgbouncer (smoke7: UnknownHostException: pgbouncer, catalog never came up).
+    for core in pgbouncer adot; do aws ecs update-service --region $REGION --cluster "$(terraform output -raw cluster)" --service $core --desired-count 1 >/dev/null || abort; done
+    within aws ecs wait services-stable --region $REGION --cluster "$(terraform output -raw cluster)" --services pgbouncer adot || abort
     within terraform apply -input=false -auto-approve -var services_running=true || abort
     # services-stable takes at most 10 services per call
     cluster=$(terraform output -raw cluster)

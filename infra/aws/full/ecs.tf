@@ -7,27 +7,30 @@ locals {
   redis_host = var.canary ? "canary-no-redis" : aws_elasticache_cluster.redis[0].cache_nodes[0].address
 
   common_env = {
-    SPRING_PROFILES_ACTIVE                  = "prod"
-    AWS_REGION                              = var.region
-    CONVOY_AWS_ACCOUNT_ID                   = local.account
-    DB_URL                                  = "jdbc:postgresql://pgbouncer:5432/convoy?prepareThreshold=0"
-    SPRING_FLYWAY_URL                       = "jdbc:postgresql://${local.db_host}:5432/convoy" # migrations bypass PgBouncer (session advisory lock)
-    DB_POOL_SIZE                            = "8"
-    GATEWAY_JWKS                            = "http://gateway:8080/.well-known/jwks.json"
-    IDENTITY_JWKS                           = "http://identity:8080/.well-known/jwks.json"
-    IDENTITY_URL                            = "http://identity:8080"
-    DEMO                                    = "true"
-    CONVOY_MESSAGING_POLLERS                = "2"
-    CONVOY_MESSAGING_WAIT_SECONDS           = "20"
-    CONVOY_MESSAGING_DLQ_CHECK_INTERVAL     = "5m"
-    OTEL_EXPORTER_OTLP_ENDPOINT             = "http://adot:4318"
-    OTEL_EXPORTER_OTLP_PROTOCOL             = "http/protobuf"
-    OTEL_TRACES_SAMPLER                     = "parentbased_traceidratio"
-    OTEL_TRACES_SAMPLER_ARG                 = tostring(var.trace_sample_ratio)
-    OTEL_METRICS_EXPORTER                   = "otlp"
-    OTEL_INSTRUMENTATION_MICROMETER_ENABLED = "true" # realtime.connections reaches CloudWatch (EMF) for autoscaling
-    OTEL_LOGS_EXPORTER                      = "none"
-    JAVA_TOOL_OPTIONS                       = "-javaagent:/opt/otel-agent.jar -XX:+UseSerialGC -XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
+    SPRING_PROFILES_ACTIVE = "prod"
+    AWS_REGION             = var.region
+    CONVOY_AWS_ACCOUNT_ID  = local.account
+    DB_URL                 = "jdbc:postgresql://pgbouncer:5432/convoy?prepareThreshold=0"
+    SPRING_FLYWAY_URL      = "jdbc:postgresql://${local.db_host}:5432/convoy" # migrations bypass PgBouncer (session advisory lock)
+    DB_POOL_SIZE           = "8"
+    # A new task can fail to resolve Service Connect names (pgbouncer) for its first seconds (smoke7/8: UnknownHostException,
+    # the app exited and ECS backed off restarting it): the pool retries its first connection for up to 90 s instead.
+    SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT = "90000"
+    GATEWAY_JWKS                                         = "http://gateway:8080/.well-known/jwks.json"
+    IDENTITY_JWKS                                        = "http://identity:8080/.well-known/jwks.json"
+    IDENTITY_URL                                         = "http://identity:8080"
+    DEMO                                                 = "true"
+    CONVOY_MESSAGING_POLLERS                             = "2"
+    CONVOY_MESSAGING_WAIT_SECONDS                        = "20"
+    CONVOY_MESSAGING_DLQ_CHECK_INTERVAL                  = "5m"
+    OTEL_EXPORTER_OTLP_ENDPOINT                          = "http://adot:4318"
+    OTEL_EXPORTER_OTLP_PROTOCOL                          = "http/protobuf"
+    OTEL_TRACES_SAMPLER                                  = "parentbased_traceidratio"
+    OTEL_TRACES_SAMPLER_ARG                              = tostring(var.trace_sample_ratio)
+    OTEL_METRICS_EXPORTER                                = "otlp"
+    OTEL_INSTRUMENTATION_MICROMETER_ENABLED              = "true" # realtime.connections reaches CloudWatch (EMF) for autoscaling
+    OTEL_LOGS_EXPORTER                                   = "none"
+    JAVA_TOOL_OPTIONS                                    = "-javaagent:/opt/otel-agent.jar -XX:+UseSerialGC -XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
   }
   mail_env = {
     SMTP_HOST     = var.shared["smtp_host"], SMTP_PORT = "587", SMTP_USERNAME = var.shared["smtp_username"], SMTP_AUTH = "true"
