@@ -71,14 +71,14 @@ resource "aws_iam_user_policy" "smtp" {
 resource "aws_budgets_budget" "monthly" {
   name         = "concord-account-monthly"
   budget_type  = "COST"
-  limit_amount = "30"
+  limit_amount = "55"
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
   # Account-wide (Concord + Convoy): a linked account cannot activate cost allocation tags, so a tag-filtered budget
-  # never sees any spend. Concord's baseline is ~$6.50/month, so $12 means Convoy is spending noticeably.
+  # never sees any spend. Expected ~$44/month: Concord ~$6.50 + the interim EC2 lite host ~$37.50.
   dynamic "notification" {
-    for_each = [{ t = 12, kind = "ACTUAL" }, { t = 30, kind = "ACTUAL" }, { t = 30, kind = "FORECASTED" }]
+    for_each = [{ t = 30, kind = "ACTUAL" }, { t = 50, kind = "ACTUAL" }, { t = 55, kind = "FORECASTED" }] # 30 = halfway notice; expected ~$44 with the EC2 lite host
     content {
       comparison_operator        = "GREATER_THAN"
       threshold                  = notification.value.t
