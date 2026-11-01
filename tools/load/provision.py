@@ -32,6 +32,20 @@ def email_enc(e):
 def token(): return base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode()
 
 
+# W4: synthetic verified dealerships written exactly like the demo seed (deploy/local/seed/dealerships.sql), as the dealer role
+NEW_DEALERSHIPS = int(os.environ.get('LOAD_NEW_DEALERSHIPS', '0'))
+if NEW_DEALERSHIPS:
+    with psycopg.connect(host=os.environ['PGHOST'], dbname='convoy', user='dealer', password=os.environ['PGPASSWORD_DEALER'],
+                         sslmode=os.environ.get('PGSSLMODE', 'require'), options='-c search_path=dealer') as ddb:
+        with ddb.cursor() as c:
+            for n in range(NEW_DEALERSHIPS):
+                d = str(uuid7())
+                c.execute("insert into dealerships(id, trade_name, legal_name, gstin, city, state_code, brands, status, synthetic, active_staff_count, verified_at) "
+                          "values (%s, %s, 'Synthetic load-test dealership - not a real business', null, %s, 'MH', array['Maruti Suzuki'], 'VERIFIED', true, %s, clock_timestamp())",
+                          (d, f'Load Motors {n + 1}, {os.environ.get("LOAD_DEALER_CITY", "Pune")} (synthetic, {RUN})', os.environ.get('LOAD_DEALER_CITY', 'Pune'), STAFF_PER))
+                DEALERSHIPS.append(d)
+        ddb.commit()
+
 accounts = [('buyer', None, i) for i in range(BUYERS)] + [('dealer_staff', d, j) for d in DEALERSHIPS for j in range(STAFF_PER)]
 out = []
 with psycopg.connect(host=os.environ['PGHOST'], dbname='convoy', user='identity', password=os.environ['PGPASSWORD'],

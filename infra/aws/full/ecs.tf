@@ -370,6 +370,12 @@ variable "load_users" {
   default     = 0
 }
 
+variable "load_new_dealerships" {
+  description = "P7 W4: synthetic verified dealerships to create for the run (each gets one load-test staff account)"
+  type        = number
+  default     = 0
+}
+
 variable "load_dealerships" {
   description = "P7: dealership ids that get load-test staff accounts (one each)"
   type        = list(string)
@@ -398,11 +404,12 @@ resource "aws_ecs_task_definition" "loadseed" {
       { name = "PY", value = base64encode(file("${path.module}/../../../tools/load/provision.py")) },
       { name = "PGHOST", value = local.db_host }, { name = "RUN_ID", value = var.run_id }, { name = "LOAD_USERS", value = tostring(var.load_users) },
       { name = "LOAD_DEALERSHIPS", value = join(",", var.load_dealerships) }, { name = "STATE_BUCKET", value = "convoy-tfstate-${local.account}" },
-      { name = "AWS_REGION", value = var.region },
+      { name = "AWS_REGION", value = var.region }, { name = "LOAD_NEW_DEALERSHIPS", value = tostring(var.load_new_dealerships) },
     ]
     secrets = [
       { name = "PGPASSWORD", valueFrom = "${aws_secretsmanager_secret.app.arn}:DB_PASSWORD_IDENTITY::" },
       { name = "IDENTITY_DATA_KEY", valueFrom = "${aws_secretsmanager_secret.app.arn}:IDENTITY_DATA_KEY::" },
+      { name = "PGPASSWORD_DEALER", valueFrom = "${aws_secretsmanager_secret.app.arn}:DB_PASSWORD_DEALER::" },
     ]
     logConfiguration = { logDriver = "awslogs", options = { awslogs-group = local.log_group, awslogs-region = var.region, awslogs-stream-prefix = "loadseed" } }
   }])
