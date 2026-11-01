@@ -5,12 +5,12 @@
 # (deploy-ssh.sh -> deploy.sh: backup, one service at a time, smoke test, automatic rollback). Then checks /version.
 set -euo pipefail
 sha=$(git rev-parse "${1:?usage: deploy-lite.sh <sha>}")
-host=${LITE_HOST:-52.64.115.0} key=${LITE_KEY:-$HOME/.ssh/convoy_deploy_ed25519} site=${LITE_SITE:-convoy-main.duckdns.org}
+host=${LITE_HOST:-52.64.115.0} key=${LITE_KEY:-$HOME/.ssh/convoy-deploy} site=${LITE_SITE:-convoy-main.duckdns.org}
 run=$(gh run list --workflow images.yml --branch main --status success --limit 50 --json databaseId,headSha \
   --jq ".[] | select(.headSha==\"$sha\") | .databaseId" | head -1)
 [ -n "$run" ] || { echo "no successful images run on main for $sha" >&2; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 gh run download "$run" -n "images-$sha" -D "$tmp"
-ssh -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "deploy@$host" "deploy $sha" < "$tmp/images.env" \
+ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "deploy@$host" "deploy $sha" < "$tmp/images.env" \
   || { echo "deploy failed (deploy.sh rolls back by itself). SSH timeout? Your IP may have changed: see the runbook." >&2; exit 1; }
 curl -fsS --max-time 15 "https://$site/version"; echo

@@ -15,7 +15,7 @@ The always-on demo: one Oracle Cloud Always Free A1 VM (1 OCPU, 6 GB, Ubuntu 24.
    from the `shared` and `oci` outputs; random secrets with `openssl rand -base64 24`; `AGE_RECIPIENT` from
    `age-keygen -o convoy-backup.key` on your laptop (the private key never goes to the host).
 5. **GHCR**: make the `convoy-*` packages public (repo Packages settings), or `docker login ghcr.io` as `deploy` with a read-only token.
-6. **Deploy key** on the laptop: `~/.ssh/convoy_deploy_ed25519` (its public half is `DEPLOY_PUBKEY` above).
+6. **Deploy key** on the laptop: `~/.ssh/convoy-deploy` (its public half is `DEPLOY_PUBKEY` above).
 7. First deploy: `scripts/deploy-lite.sh <sha>` (below).
 
 ## Deploys (from the owner's laptop only)
@@ -24,7 +24,7 @@ The host accepts SSH only from the owner's IP (`admin_cidr`); port 22 is never o
 
 1. Merge to `main` and wait for the `images` workflow on that commit to succeed (multi-arch images by digest, and the
    web image carries the short SHA and build time shown at `/version` and in the footer).
-2. `scripts/deploy-lite.sh <sha>` (needs `gh` signed in and `~/.ssh/convoy_deploy_ed25519`). It downloads that run's
+2. `scripts/deploy-lite.sh <sha>` (needs `gh` signed in and `~/.ssh/convoy-deploy`). It downloads that run's
    `images.env` and runs `ssh deploy@host "deploy <sha>" < images.env`, then prints `/version` from the public site.
 3. Afterwards: the public demo journey
    (`cd web && WEB_URL=https://<site> pnpm exec playwright test e2e/demo.spec.ts --project=mobile-360`).
