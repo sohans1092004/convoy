@@ -37,7 +37,10 @@ roll_out() { # env file
   done
 }
 
-smoke() {
+smoke() { # up to 2 min: on a first deploy Caddy is still getting its Let's Encrypt certificate (EC2 first deploy)
+  local i; for i in $(seq 1 24); do smoke_once && return 0; sleep 5; done; return 1
+}
+smoke_once() {
   curl -fsS --max-time 10 "https://${SITE_ADDRESS}/" -o /dev/null &&
     curl -fsS --max-time 10 "https://${SITE_ADDRESS}/api/catalog/models?city=Pune" | grep -q '"slug"' &&
     [ "$(curl -s -o /dev/null -w '%{http_code}' "https://${SITE_ADDRESS}/actuator/health")" != 200 ]  # internals stay unreachable
