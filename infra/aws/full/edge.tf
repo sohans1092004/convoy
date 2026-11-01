@@ -45,6 +45,32 @@ resource "aws_lb_target_group" "web" {
   deregistration_delay = 30
 }
 
+# The simulated payment's browser-facing paths, exactly the two Caddy exposes on lite (deploy/lite/Caddyfile)
+resource "aws_lb_target_group" "pay" {
+  name        = "${local.name}-pay-${var.run_id}"
+  port        = 9090
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.v.id
+  target_type = "ip"
+  health_check {
+    path    = "/pay/checkout.js"
+    matcher = "200"
+  }
+  deregistration_delay = 30
+}
+
+resource "aws_lb_listener_rule" "pay" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+  condition {
+    path_pattern { values = ["/pay/checkout.js", "/pay/fake/pay"] }
+  }
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.pay.arn
+  }
+}
+
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 443

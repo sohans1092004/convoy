@@ -106,6 +106,13 @@ resource "aws_security_group" "tasks" {
     security_groups = [aws_security_group.alb.id]
   }
   ingress {
+    description     = "from the ALB: simulated payment checkout"
+    from_port       = 9090
+    to_port         = 9090
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+  ingress {
     description = "task to task (Service Connect, PgBouncer, ADOT)"
     from_port   = 0
     to_port     = 0

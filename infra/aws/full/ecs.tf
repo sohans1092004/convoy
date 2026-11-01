@@ -194,11 +194,11 @@ resource "aws_ecs_service" "s" {
     }
   }
   dynamic "load_balancer" {
-    for_each = each.key == "web" ? [1] : []
+    for_each = contains(["web", "razorpay-fake"], each.key) ? [1] : []
     content {
-      target_group_arn = aws_lb_target_group.web.arn
-      container_name   = "web"
-      container_port   = 3000
+      target_group_arn = each.key == "web" ? aws_lb_target_group.web.arn : aws_lb_target_group.pay.arn
+      container_name   = each.key
+      container_port   = each.key == "web" ? 3000 : 9090
     }
   }
   lifecycle {

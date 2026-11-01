@@ -119,6 +119,7 @@ function checkoutJs() {
 
 export const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname.startsWith('/pay/')) url.pathname = url.pathname.slice(4); // full profile: the ALB cannot strip /pay like Caddy does
   const p = url.pathname;
   try {
     if (req.method === 'OPTIONS') return json(res, 204, {}, { 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' });
