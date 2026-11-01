@@ -96,7 +96,8 @@ TBT 92 / 136 / 129 ms. Laptop and live numbers are different setups and are not 
 | Found by the laptop prod rehearsal (before the VM) | blank `AWS_ENDPOINT` → empty SNS/SQS override; local-only `VAPID_SUBJECT`; no ALB route to the payment sim; missing `sns:GetSubscriptionAttributes`; Caddy gzip ETag → `If-Match: "NaN"` → 428 | laptop | 2026-11-01 | — | reports/P6_REPORT.md §5 |
 | Found while deploying the lite host | iptables step assumed Oracle's REJECT rule; smoke check before Caddy's first certificate; placeholder `AGE_RECIPIENT` | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Reaper canaries | canary1 FAIL (provider lock hashes, pre-destroy refresh reading the secret, `SetWebACL` denied twice, stale state lock), canary2 FAIL (`ecs:DeregisterTaskDefinition` denied); last fix applied, **unproven**; reaper schedule now denied by an org SCP | AWS | 2026-10-31 | d226b83 | reports/P6_REPORT.md §5 |
-| AWS spend, full-profile runs | smoke1–smoke6 + canaries ≈ $2.75 (**estimate**; smoke7–9 not estimated; no Cost Explorer figure recorded) | estimate | 2026-11-01 | — | reports/P6_REPORT.md §5 |
+| AWS bill to date | gross $3.18 for the account (shared with Concord), ≈ $2.33 of it Convoy; all covered by credits, **$0 billed** | AWS Billing, read by the owner | 2026-11-01 | — | owner's Billing figures (reported in the P8 session, not re-queried) |
+| AWS spend, full-profile runs (per-run arithmetic) | smoke1–smoke6 + canaries ≈ $2.75 (**estimate**; smoke7–9 not estimated) | estimate | 2026-11-01 | — | reports/P6_REPORT.md §5 |
 | AWS always-on costs | `shared` ≈ $4.66/month; interim lite EC2 ≈ $37.50/month (**estimates**) | estimate | 2026-11-01 | — | reports/P6_REPORT.md §1, §4 |
 | Full profile | **PARKED** after smoke9: applies end to end (107 resources), all 16 services stable once, journey never passed; every run TEARDOWN VERIFIED | AWS | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §5 |
 | Real Razorpay test mode | capture passed against api.razorpay.com (`payment.captured` 0.70 s after authorized); refund blocked (refunds disabled on the account) | Razorpay test mode | 2026-10-25 | e5f62d4 | reports/P2_REPORT.md §2 item 1, reports/p2/razorpay-real-run.md |
@@ -123,4 +124,4 @@ TBT 92 / 136 / 129 ms. Laptop and live numbers are different setups and are not 
 | RUM p75 LCP / INP / CLS from real users | **Not measured** (no real-user traffic collected). |
 | Reaper end-to-end destroy | **Unproven:** last canary failed; fix applied without a re-run. |
 | Real Razorpay refund | **Not run** (refunds disabled on the test account). |
-| Actual AWS bill | **Not measured** here; only estimates (§6). |
+| AWS bill after 2026-11-01 | **Not measured** here; the Nov 1 figures are in §6 (owner checks the Billing page). |

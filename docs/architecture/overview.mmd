@@ -1,0 +1,16 @@
+flowchart TB
+  B["Browser (mobile first)"] -->|HTTPS| E["Edge: Caddy (lite) or ALB (full)"]
+  E --> W["web: Next.js BFF"]
+  W -->|"opaque session"| G["gateway: session check, rate limits, internal JWT"]
+  B -.->|"SSE streams"| G
+  G --> S["Domain services (Spring Boot), one PostgreSQL schema + DB user each:<br/>identity · catalog · pool · dealer · quote · order (saga) · payment · notification · audit"]
+  G -->|"members only"| RT["realtime: SSE fan-out, no business state"]
+  RT <--> R
+  S -->|"business change + outbox row, one transaction"| PG[("PostgreSQL 16")]
+  PG -->|"outbox relay"| SNS["SNS topics"]
+  SNS --> SQS["SQS queues + DLQs"]
+  SQS -->|"inbox dedupe"| S
+  SQS --> RT
+  S <--> R[("Redis: caches, Pub/Sub, never authoritative")]
+  S <-->|payment| RZ[("Razorpay test mode or simulated")]
+  S -->|notification| SM[("SMTP")]
