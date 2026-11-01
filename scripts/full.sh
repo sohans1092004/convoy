@@ -45,7 +45,7 @@ images['postgres'] = digest('postgres:16.15-alpine')
 images['adot'] = digest('public.ecr.aws/aws-observability/aws-otel-collector:v0.43.3')
 json.dump({'run_id': sys.argv[2], 'images': images, 'shared': json.loads(os.environ['SHARED_JSON']),
            'tasks_per_service': int(os.environ.get('TASKS_PER_SERVICE', '2')), 'max_tasks_per_service': int(os.environ.get('MAX_TASKS_PER_SERVICE', '6')),
-           'secrets': json.loads(os.environ['SECRETS_JSON'])}, open('run.auto.tfvars.json', 'w'))
+           'secrets': json.loads(os.environ['SECRETS_JSON']), 'loadgen_type': os.environ.get('LOADGEN_TYPE', '')}, open('run.auto.tfvars.json', 'w'))
 PY
 }
 
