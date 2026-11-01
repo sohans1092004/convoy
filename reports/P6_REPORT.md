@@ -6,7 +6,7 @@
 > torn down, TEARDOWN VERIFIED. Every AWS run of this phase was destroyed and verified.
 
 ## 1. Summary
-- **Live demo URL:** pending (`https://convoy-demo.duckdns.org` once the VM, DuckDNS name and first deploy exist).
+- **Live demo URL:** **https://convoy-main.duckdns.org** (interim EC2 host; moves to the Oracle VM if A1 capacity appears).
 - Convoy now has a production configuration (`prod` profile validated at startup, topology checked not created),
   multi-arch images by digest, a public demo mode safe for strangers, Terraform for the AWS resources the demo uses,
   for the Oracle Always Free VM, and for the on-demand full AWS stack, plus the host scripts and workflows that deploy,
@@ -90,10 +90,26 @@
 - Notification email links now use `WEB_URL` instead of a hard-coded `https://convoy.test`.
 - `d001` (the P1 journey dealership) is seeded on lite too; with no staff user there it is invited but never quotes.
 
-## 4. Memory and CPU on the VM
-Pending (VM). Laptop numbers, reported separately (`reports/p6/memory-laptop.md`): cold start 56 s; idle 2,377 MiB
-for all lite containers, JVMs 175–234 MiB each against 384 MiB limits; journey peak not measured on the laptop (too
-little free memory), to be measured on the VM.
+## 4. The lite host, live (interim EC2, 2026-11-01). VM numbers, not laptop numbers.
+Oracle A1 is still out of capacity (Hyderabad, single AD; the retry loop continues). The demo runs on
+`infra/aws/lite-ec2` (own state and VPC): one **t4g.medium** (2 vCPU, 4 GiB, Ubuntu 24.04 arm64), Elastic IP
+52.64.115.0, DuckDNS `convoy-main.duckdns.org`, `deploy/lite/compose.yml` unchanged, deployed at 03292c4 with the images
+that passed the laptop prod rehearsal. ≈ $37.50/month; account budget alerts at $30/$50 actual and $55 forecast.
+
+| Check | Result |
+|---|---|
+| Demo journey on the public URL (real TLS, mobile-360) | **PASS**, 4.5 min: scenario, deposit, 3 dealer offers, booked + voucher, dealer view, admin view |
+| TLS | Let's Encrypt (YE1), valid to 2027-01-30; http -> https 308 |
+| Outside port scan (25 TCP ports) | open: 22, 80, 443 only; 22 accepts only the admin IP (security group) |
+| `/metrics`, `/actuator/*`, gateway and payment internals | 404 from outside |
+| Memory, idle after the journey | host 3,031 of 3,824 MiB used, 792 MiB available (+2 GiB swap); containers 2,432 MiB |
+| Reboot | catalog API back after **120 s**, all 17 containers up/healthy after **157 s** |
+| Backup -> restore drill | backup 68,639 bytes (age-encrypted, OCI bucket via write-only PAR); restored 125 tables / 616 rows; every differing table has more rows live than in the backup (35 of 35, written since), none fewer; 10 restore errors, all `permission denied to grant privileges as role "convoy_admin"` (role-membership grants of the RDS-like setup), no data |
+
+Found while deploying: bootstrap's iptables step assumed Oracle's REJECT rule; `deploy.sh`'s smoke check ran before
+Caddy had its first certificate (now waits up to 2 min); the host had checked out `main` (P6 not merged yet);
+`AGE_RECIPIENT` was a placeholder (age key generated, private key on the laptop only).
+Headroom is thin (792 MiB available): fine for the demo, no room for more services on this size.
 
 ## 5. The full-profile smoke run, with its cost
 **Attempt `smoke1` (2026-10-31 18:12–18:29 UTC): stopped before the journey, torn down, TEARDOWN VERIFIED.**

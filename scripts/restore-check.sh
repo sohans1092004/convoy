@@ -60,6 +60,7 @@ ssh -o BatchMode=yes "ubuntu@$vm" "sudo docker exec -i \$(sudo docker ps -qf nam
 tables=$(wc -l < "$work/restored.txt")
 rows=$(awk -F'|' '{s+=$3} END {print s+0}' "$work/restored.txt")
 echo "tables restored: $tables ($rows rows); restore errors: $(grep -c ERROR "$work/restore.log" || true)"
+grep ERROR "$work/restore.log" | sed -E 's/^psql:[^:]*:[0-9]+: //' | sort | uniq -c | sed 's/^/  /' || true # each distinct restore error, so a drill can tell expected ones from real ones
 if diff "$work/live.txt" "$work/restored.txt" > "$work/diff.txt"; then
   echo "row counts: identical in all $tables tables"
 else
