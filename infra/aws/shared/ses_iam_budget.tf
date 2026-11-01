@@ -35,7 +35,7 @@ resource "aws_iam_user_policy" "host" {
     Statement = [
       { Sid = "Publish", Effect = "Allow", Action = ["sns:Publish", "sns:GetTopicAttributes", "sns:ListSubscriptionsByTopic"], Resource = local.topic_arns },
       # Subscription ARNs are <topic arn>:<uuid>: scoped to Convoy's topics
-      { Sid = "CheckSubscriptions", Effect = "Allow", Action = ["sns:GetSubscriptionAttributes"], Resource = ["arn:aws:sns:${var.region}:${local.account}:convoy-*-events*:*"] },
+      { Sid = "CheckSubscriptions", Effect = "Allow", Action = ["sns:GetSubscriptionAttributes"], Resource = concat(local.topic_arns, ["arn:aws:sns:${var.region}:${local.account}:convoy-*-events*:*"]) }, # SNS authorizes this on the topic ARN (lite rehearsal)
       {
         Sid    = "Consume", Effect = "Allow", Resource = local.queue_arns
         Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"]
