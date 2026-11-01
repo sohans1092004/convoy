@@ -130,7 +130,13 @@ case $cmd in
     # The destroy code is pinned to the commit this run is applied from: no uncommitted infra or script changes allowed.
     [ -z "$(git -C "$root" status --porcelain -- infra scripts)" ] || { echo "refused: commit infra/ and scripts/ first (the reaper runs that exact commit)"; exit 2; }
     sha=$(git -C "$root" rev-parse HEAD)
-    (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") # first: the deadline holds whatever happens next
+    if [ "${REAPER:-on}" = off ]; then
+      # Only with an explicit REAPER=off for this run (the account's SCP can deny EventBridge Scheduler). The caller
+      # must arm an independent deadline instead (scripts/watchdog.ps1 arm <run>); without one nothing destroys this run.
+      echo "WARNING: REAPER=off: no scheduled destroy for run $run; the independent watchdog is the only backstop" >&2
+    else
+      (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") || { echo "refused: could not schedule the reaper (set REAPER=off only with an independent watchdog armed)"; exit 2; }
+    fi
     tf_init
     tfvars "$3"
     headroom
