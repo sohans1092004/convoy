@@ -65,3 +65,17 @@
 - `scripts/up.sh` run end to end: exit 0 in 225 s, stack ready 54 s after compose up (laptop). First attempt failed: a second
   checkout reuses the `convoy` Postgres volume, whose passwords belong to the first `.env`; README notes it.
 - Lifecycle journey at 360 px (laptop): PASS in 5.0 min, audit chain intact (183 rows).
+- PR #10 merged (2278af4) after CI green (31 pass). The automatic `deploy-lite` runs after the #8/#9 merges had failed:
+  the GitHub `lite` secrets were never set. Owner's decision: deploys stay on the laptop; port 22 never opened to GitHub.
+  `deploy-lite` is now manual-only and refuses with a pointer to the runbook; `scripts/deploy-lite.sh <sha>` deploys.
+- SSH timed out: the laptop's public IP had changed. The untargeted lite-ec2 plan wanted to **replace the instance**
+  (drift: `associate_public_ip_address` true on the host, false in code); not applied. Targeted plan
+  (`-target=aws_security_group.host`: 0 add, 1 change, 0 destroy) applied on the owner's "apply". Drift left as is.
+  The lite-ec2 lock file lacked linux hashes (init failed in the Docker shim); added. Runbook documents both.
+- Deploy of 2278af4 with the owner-confirmed deploy key: 268 s, no rollback; live `/version`
+  `{"sha":"2278af4","built_at":"2026-11-01T19:56:00Z"}`, footer "Build 2278af4".
+- Public demo journey on the live site after the redeploy: PASS, 4.5 min (mobile-360).
+- Live Lighthouse on 2278af4: TBT 577 / 603 / 535 ms, performance 80 / 83 / 81 (laptop idle); a run 4 min earlier with the
+  local stack running gave TBT 630 / 479 / 534. TBT and performance gates missed on all three pages; LCP and CLS met.
+  On 03292c4 the same script gave TBT 194 / 218 / 236. Cause not established; not investigated (time box).
+- The local compose stack is stopped (containers kept).

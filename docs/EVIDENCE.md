@@ -2,7 +2,7 @@
 
 Every number we might quote, with where it was measured. **Where** is one of: **laptop** (one Windows laptop, Docker
 Desktop on WSL 2), **CI** (GitHub Actions), **live lite host** (the public demo, https://convoy-main.duckdns.org, one
-AWS t4g.medium, 2 vCPU / 4 GiB), **simulated** (a fake or synthetic input stands in for the real thing), **estimate**
+AWS t4g.medium, 2 vCPU / 4 GiB; runs **2278af4** since 2026-11-01 20:19 UTC, shown at `/version`), **simulated** (a fake or synthetic input stands in for the real thing), **estimate**
 (arithmetic, not a bill). **Commit** is the commit measured when the source names one, otherwise the commit that
 recorded the result. A number not in this file is not evidence. Missed and unmeasured targets: §8.
 
@@ -20,6 +20,7 @@ recorded the result. A number not in this file is not evidence. Missed and unmea
 | Authorisation tests | 42 P1 endpoints carry 106 authz test ids; deny half run for every P1 endpoint; P3 matrix covers every built endpoint | laptop + CI | 2026-10-24 / 2026-10-25 | 405d1ba / 9bb0b8d | reports/P1_REPORT.md §4, reports/P3_REPORT.md §4 |
 | Authz bugs found by the matrix | validation before authorisation on internal endpoints (400 leaked shape); E031 400 and E042 501 to wrong roles | laptop | 2026-10-24 / 2026-10-25 | 405d1ba / e5f62d4 | reports/P1_REPORT.md §6 items 4–5, reports/P2_REPORT.md §6 item 13 |
 | Vacuous checks found and fixed | 6 (each proved by breaking it, except #6 az-t6 probe: no proof recorded) | laptop | 2026-10-26 | 66be869 | reports/P5_REPORT.md §4 (P5.X) |
+| Vacuous Storybook page-state checks found and fixed | all 24 stories rendered their error state (the API mock never reached the client) yet passed; fixed, 52/52 story tests pass on the real states and the new non-member test fails when its fix is reverted | laptop | 2026-11-02 | 6a49479 | reports/p8/PROGRESS.md (P8.C) |
 
 ## 2. Concurrency
 
@@ -48,6 +49,8 @@ recorded the result. A number not in this file is not evidence. Missed and unmea
 | Claim | Value | Where | Date | Commit | Source |
 |---|---|---|---|---|---|
 | Demo journey on the public URL | PASS once, 4.5 min (real TLS, mobile-360; dealers simulated, payment simulated) | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
+| Demo journey on the public URL, after the P8 redeploy | PASS once, 4.5 min: scenario 13.3 s, committed 20.8 s, 3 simulated offers 135.5 s, booked + voucher 263.1 s, dealer and admin views | live lite host | 2026-11-01 | 2278af4 | reports/p8/PROGRESS.md (P8.C) |
+| Deploy (`deploy.sh` via `scripts/deploy-lite.sh`: backup, one service at a time, smoke test) | 268 s, no rollback | live lite host | 2026-11-01 | 2278af4 | reports/p8/PROGRESS.md (P8.C) |
 | Reboot recovery | catalog API back after 120 s; all 17 containers healthy after 157 s | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Backup + restore drill | backup 68,639 bytes (age-encrypted, OCI bucket); restored 125 tables / 616 rows, no table with fewer rows than live; 10 restore errors, all role-grant `permission denied`, no data | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Memory, idle after the journey | host 3,031 of 3,824 MiB used, 792 MiB available (+2 GiB swap); containers 2,432 MiB | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
@@ -55,11 +58,13 @@ recorded the result. A number not in this file is not evidence. Missed and unmea
 | Port scan from outside | 25 TCP ports: open 22, 80, 443 only; 22 admin IP only; `/metrics`, `/actuator/*`, internals 404 | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Lite stack cold start / idle | 56 s to all healthy; idle 2.3 GiB | laptop | 2026-10-31 | — (P6.A) | reports/p6/memory-laptop.md, reports/p6/lite-measure-20261031T114124Z/ |
 | Laptop prod rehearsal journey | PASS through Caddy in 4.1 min | laptop (real AWS shared resources) | 2026-11-01 | — | reports/P6_REPORT.md §5 |
+| `scripts/up.sh` (one-command local start) | exit 0 in 225 s (second run, Gradle and Docker caches warm; the first stopped on the shared-volume password mismatch); stack ready 54 s after compose up | laptop | 2026-11-02 | 6a49479 | reports/p8/PROGRESS.md (P8.C) |
+| Full-lifecycle journey at 360 px with the per-screen layout check (no horizontal scroll, prices ≥ 12 px and unclipped) | PASS once, 5.0 min | laptop | 2026-11-02 | 6a49479 | reports/p8/PROGRESS.md (P8.C) |
 
 ## 5. Frontend
 
 **First-load JS per route** (gzip level 9, production build, `web/scripts/js-first-load.mjs`). Laptop build at 5d79ff3;
-**not yet deployed** (the live host runs 03292c4, which predates it).
+deployed since 2026-11-01 as part of 2278af4.
 
 | Route | KB before (18bd288) | KB now (5d79ff3) | Cap | Met |
 |---|---|---|---|---|
@@ -75,15 +80,26 @@ recorded the result. A number not in this file is not evidence. Missed and unmea
 
 Source: reports/p7/frontend.md (2026-11-01).
 
-**Lighthouse, live site** (mobile preset, simulated slow 4G, median of 3 runs, @lhci/cli 0.15.1, 2026-11-01 19:00 UTC;
-site at 03292c4, the older bundles; pool page through a fresh "Try the demo" session). Lab gate (docs/testing/frontend-quality.md §2):
-LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1, performance ≥ 85. Source: reports/p8/lighthouse-live.json.
+**Lighthouse, live site** (mobile preset, simulated slow 4G, median of 3 runs, @lhci/cli 0.15.1; pool page through a
+fresh "Try the demo" session). Lab gate (docs/testing/frontend-quality.md §2): LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1,
+performance ≥ 85.
+
+Build **2278af4** (after the P8 redeploy), 2026-11-01 20:32 UTC, laptop idle. Source: reports/p8/lighthouse-live.json.
 
 | Page | LCP | CLS | TBT | Performance | Gate |
 |---|---|---|---|---|---|
-| discover | 1,446 ms | 0 | 194 ms | 93 | met |
-| model | 1,133 ms | 0 | **218 ms** | 93 | **TBT missed** |
-| pool | 2,065 ms | 0 | **236 ms** | 91 | **TBT missed** |
+| discover | 1,735 ms | 0 | **577 ms** | **80** | **TBT and performance missed** |
+| model | 1,055 ms | 0 | **603 ms** | **83** | **TBT and performance missed** |
+| pool | 1,976 ms | 0.049 | **535 ms** | **81** | **TBT and performance missed** |
+
+Same build, 4 min earlier, with the local compose stack running on the laptop: TBT 630 / 479 / 534 ms, performance
+81 / 87 / 80 (reports/p8/lighthouse-live-2278af4-busy-laptop.json). Both runs agree: on 2278af4, TBT misses its gate on
+every page.
+
+Build **03292c4** (before the redeploy), 2026-11-01 19:00 UTC: LCP 1,446 / 1,133 / 2,065 ms, CLS 0, TBT 194 / 218 /
+236 ms, performance 93 / 93 / 91 (reports/p8/lighthouse-live.json at commit 1ba7572). **Not a clean before/after pair:**
+the cause of the TBT increase is not established (the smaller bundles of 2278af4 would predict the opposite; TBT under
+simulated throttling also depends on the measuring laptop's CPU).
 
 Earlier, laptop (fda7cd2, 2026-10-25, reports/p2/lighthouse.json): LCP 2,789 / 2,607 / 2,745 ms (all over 2.5 s),
 TBT 92 / 136 / 129 ms. Laptop and live numbers are different setups and are not a before/after pair.
@@ -118,8 +134,9 @@ TBT 92 / 136 / 129 ms. Laptop and live numbers are different setups and are not 
 | HA drills (kill each service, RDS failover, Redis flush, SQS backlog on full) | **Not run.** Fargate quota 8 vCPU; full profile parked. Laptop-only equivalents: realtime kill (W5), Redis FLUSHALL, poison message (MF-5), consumer offline (MF-6). |
 | W3 capacity on one pool | **Missed** on the laptop: 27.6 % refused/failed, join p95 41.0 s (§2). |
 | W4 (50 pools × 20 dealers) | **Not built** (needs load-test dealerships). |
-| Lighthouse lab gate TBT ≤ 200 ms | **Missed** on the live site: model 218 ms, pool 236 ms (§5). |
-| Lighthouse lab gate LCP ≤ 2.5 s | Met on the live site (1.1–2.1 s); **missed** on the laptop run of 2026-10-25 (2.6–2.8 s). |
+| Lighthouse lab gate TBT ≤ 200 ms | **Missed** on the live site on all three pages for the current build 2278af4 (535–603 ms, §5); on 03292c4 model 218 ms and pool 236 ms missed. Cause of the increase not established. |
+| Lighthouse lab performance ≥ 85 | **Missed** on the live site for 2278af4: 80 / 83 / 81 (§5). |
+| Lighthouse lab gate LCP ≤ 2.5 s | Met on the live site (1.1–2.0 s on 2278af4); **missed** on the laptop run of 2026-10-25 (2.6–2.8 s). |
 | First-load JS cap 170 KB, order page | **Missed:** 178.4 KB (+8.4). |
 | RUM p75 LCP / INP / CLS from real users | **Not measured** (no real-user traffic collected). |
 | Reaper end-to-end destroy | **Unproven:** last canary failed; fix applied without a re-run. |
