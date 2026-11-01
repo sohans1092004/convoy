@@ -45,6 +45,7 @@ alive() { # arn -> exit 0 if the resource still exists
     *:vpc-endpoint/*) st=$(aws ec2 describe-vpc-endpoints --region "$region" --vpc-endpoint-ids "${1##*/}" --query 'VpcEndpoints[0].State' --output text 2>/dev/null); [ -n "$st" ] && [ "$st" != None ] && [ "${st,,}" != deleted ] ;;
     *:service/*) st=$(aws ecs describe-services --region "$region" --cluster "$(echo "$1" | cut -d/ -f2)" --services "${1##*/}" --query 'services[0].status' --output text 2>/dev/null); [ "$st" = ACTIVE ] || [ "$st" = DRAINING ] ;;
     *:cluster/*) st=$(aws ecs describe-clusters --region "$region" --clusters "$1" --query 'clusters[0].status' --output text 2>/dev/null); [ "$st" = ACTIVE ] || [ "$st" = PROVISIONING ] || [ "$st" = DEPROVISIONING ] ;;
+    *:ec2:*) [ -n "$(aws ec2 describe-tags --region "$region" --filters Name=resource-id,Values="${1##*/}" --query 'Tags[0].Key' --output text 2>/dev/null | grep -v None)" ] ;; # a deleted EC2 resource has no tags left (the tag index lags)
     *) return 0 ;;
   esac
 }
