@@ -49,7 +49,7 @@ locals {
     GATEWAY_KEY_DIR = "/tmp/keys", REALTIME_1_URL = "http://realtime:8080", REALTIME_2_URL = "http://realtime:8080" }, secrets = ["CLIENT_SECRET_GATEWAY"] }
     catalog       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_CATALOG:DB_PASSWORD", "CLIENT_SECRET_CATALOG"] }
     dealer        = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { DEMO_SCENARIOS = "true" }, secrets = ["DB_PASSWORD_DEALER:DB_PASSWORD", "CLIENT_SECRET_DEALER"] }
-    pool          = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = { DEMO_SEALED_ROUND_SECONDS = "90", DEMO_FINAL_ROUND_SECONDS = "20", DEMO_DECISION_SECONDS = "60", DEMO_CONFIRMATION_SECONDS = "60", POOL_MIN_MEMBERS = "1" }, secrets = ["DB_PASSWORD_POOL:DB_PASSWORD", "CLIENT_SECRET_POOL"] }
+    pool          = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = { DEMO_SEALED_ROUND_SECONDS = tostring(var.sealed_round_seconds), DEMO_FINAL_ROUND_SECONDS = "20", DEMO_DECISION_SECONDS = "60", DEMO_CONFIRMATION_SECONDS = "60", POOL_MIN_MEMBERS = "1" }, secrets = ["DB_PASSWORD_POOL:DB_PASSWORD", "CLIENT_SECRET_POOL"] }
     quote         = { port = 8080, cpu = 512, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_QUOTE:DB_PASSWORD", "CLIENT_SECRET_QUOTE"] }
     order         = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { EVIDENCE_BUCKET = var.shared["evidence_bucket"] }, secrets = ["DB_PASSWORD_ORDER:DB_PASSWORD", "CLIENT_SECRET_ORDER"] }
     payment       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { RAZORPAY_BASE_URL = "http://razorpay-fake:9090" }, secrets = ["DB_PASSWORD_PAYMENT:DB_PASSWORD", "CLIENT_SECRET_PAYMENT", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] }
@@ -368,6 +368,12 @@ variable "load_users" {
   description = "P7: number of load-test buyers to pre-provision (0 = none)"
   type        = number
   default     = 0
+}
+
+variable "sealed_round_seconds" {
+  description = "Sealed quote round length on this run (demo 90; P7 W4 uses 600 so 50 pools x 20 dealers can prepare drafts before T)"
+  type        = number
+  default     = 90
 }
 
 variable "load_new_dealerships" {

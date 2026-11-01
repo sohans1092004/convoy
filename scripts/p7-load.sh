@@ -17,7 +17,7 @@ remote=$(cat <<SH
 set -eux
 mkdir -p /work && cd /work
 curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/w9.k6.js -o w9.k6.js
-curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/w9_setup.py -o w9_setup.py
+for f in w9_setup.py w9_setup_lib.py w4_setup.py w4.k6.js; do curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/$f -o $f; done
 aws s3 cp $state/load-sessions.json sessions.json --only-show-errors
 ulimit -n 200000
 if [ $workload = w5 ]; then
@@ -25,6 +25,9 @@ if [ $workload = w5 ]; then
   curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/w5_aws.mjs -o w5_aws.mjs
   NODE_TLS_REJECT_UNAUTHORIZED=0 AWS_REGION=ap-southeast-2 node w5_aws.mjs $url sessions.json $cluster ${W5_CONNECTIONS:-10000} ${W5_HOLD_S:-1800} > k6.txt 2>&1 || echo "w5 exit \$?" >> k6.txt
   cp w5.json summary.json 2>/dev/null; : > points.json.gz
+elif [ $workload = w4 ]; then
+  python3 w4_setup.py $url sessions.json
+  k6 run -q -e BASE=$url --summary-export summary.json --out json=points.json.gz w4.k6.js > k6.txt 2>&1 || echo "k6 exit \$?" >> k6.txt
 else
   python3 w9_setup.py $url sessions.json
   k6 run -q -e BASE=$url -e RATE=$rate -e HOLD=$hold --summary-export summary.json --out json=points.json.gz w9.k6.js > k6.txt 2>&1 || echo "k6 exit \$?" >> k6.txt
