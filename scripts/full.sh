@@ -133,7 +133,13 @@ case $cmd in
     # The destroy code is pinned to the commit this run is applied from: no uncommitted infra or script changes allowed.
     [ -z "$(git -C "$root" status --porcelain -- infra scripts)" ] || { echo "refused: commit infra/ and scripts/ first (the reaper runs that exact commit)"; exit 2; }
     sha=$(git -C "$root" rev-parse HEAD)
-    (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") # first: the deadline holds whatever happens next
+    if [ "${REAPER:-on}" = off ]; then
+      # Only with an explicit REAPER=off for this run (the account's SCP can deny EventBridge Scheduler). The caller
+      # must arm an independent deadline instead (scripts/watchdog.ps1 arm <run>); without one nothing destroys this run.
+      echo "WARNING: REAPER=off: no scheduled destroy for run $run; the independent watchdog is the only backstop" >&2
+    else
+      (cd "$root" && scripts/schedule-reap.sh infra/aws/full "$run" "${MAX_MINUTES:-60}" "$sha") || { echo "refused: could not schedule the reaper (set REAPER=off only with an independent watchdog armed)"; exit 2; }
+    fi
     tf_init
     tfvars "$3"
     headroom
@@ -143,7 +149,7 @@ case $cmd in
     within() { local left=$(( deadline - $(date +%s) )); [ "$left" -gt 0 ] || return 124; timeout -s INT -k 180 "$left" "$@"; }
     abort() { echo "creation not finished by minute ${CREATE_MINUTES:-35} (or a step failed): destroying now"
       # keep the evidence: the destroy deletes the run's log group (smoke2 lost its startup errors this way)
-      aws logs filter-log-events --log-group-name "/convoy-full/$run" --filter-pattern '?ERROR ?Exception ?FATAL' --max-items 300         --query 'events[].[logStreamName,message]' --output text > "$root/.run/abort-$run.log" 2>&1 || true
+      MSYS_NO_PATHCONV=1 aws logs filter-log-events --log-group-name "/convoy-full/$run" --filter-pattern '?ERROR ?Exception ?FATAL' --max-items 300         --query 'events[].[logStreamName,message]' --output text > "$root/.run/abort-$run.log" 2>&1 || true
       bash "$root/scripts/full.sh" down "$run"; exit 3; }
     within terraform apply -input=false -auto-approve -var services_running=false || abort
     one_off "$(terraform output -raw db_init_task)" || abort

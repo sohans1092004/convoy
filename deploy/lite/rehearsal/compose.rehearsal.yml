@@ -1,0 +1,14 @@
+# Laptop rehearsal of the lite host (prod profile, real AWS shared resources), layered on compose.yml unchanged:
+#   docker compose --env-file deploy/lite/convoy.env --env-file deploy/lite/rehearsal/rehearsal.env --env-file <images.env> \
+#     -f deploy/lite/compose.yml -f deploy/lite/rehearsal/compose.rehearsal.yml up -d
+# Differences from the VM, and only these: Postgres's own superuser exists only to create a NON-superuser convoy_admin that
+# owns the database (as an RDS master user does), and every schema script runs as convoy_admin; the site is
+# convoy.internal (Caddy's internal CA) instead of the DuckDNS name.
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: postgres
+    volumes:
+      - ./rehearsal/initdb:/docker-entrypoint-initdb.d:ro
+      - ../local/postgres:/init-scripts:ro
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U convoy_admin -d convoy"], interval: 3s, retries: 60 }

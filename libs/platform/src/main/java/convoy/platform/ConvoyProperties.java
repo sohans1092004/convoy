@@ -35,7 +35,12 @@ public record ConvoyProperties(
     }
 
     /** @param accountId prod only (CONVOY_AWS_ACCOUNT_ID): topics and queues are checked in this account, not created */
-    public record Aws(String endpoint, String region, String accountId) {}
+    public record Aws(String endpoint, String region, String accountId) {
+        /** Blank means real AWS: prod sets AWS_ENDPOINT to empty, and an empty override broke every SNS/SQS client (P6 local prod check). */
+        public Aws {
+            if (endpoint != null && endpoint.isBlank()) endpoint = null;
+        }
+    }
 
     /**
      * @param relayIntervalMs  outbox poll interval

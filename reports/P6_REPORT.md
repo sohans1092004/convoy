@@ -183,8 +183,35 @@ services at 0 tasks, no RDS or ElastiCache (72 resources). Nothing on the laptop
 - Next attempt needs: keep the run's log group on abort (so a failed run leaves its evidence), then one more run to read
   the startup error.
 
+**smoke3–smoke5 and the local prod rehearsal (2026-11-01).**
+- smoke3 (03:18, 18bd288): db-init passed; Flyway had no password on the direct RDS URL; identity's own URL was
+  `localhost`. Aborted and torn down, TEARDOWN VERIFIED 03:52.
+- Local prod-profile check added before any AWS run (all 11 services, exact ECS env, RDS-like non-superuser DB): found
+  a blank `AWS_ENDPOINT` turned into an empty SNS/SQS endpoint override (every service failed) and notification's
+  local-only `VAPID_SUBJECT` default. Also found by reading the ALB config: no route to the simulated payment.
+- smoke4 (04:35, 92671be): all services up behind the ALB at 04:49; the journey failed 4 s later (web's server-side
+  call to gateway: Service Connect `upstream connect error`). The log group was deleted with the stack before it was
+  read: root cause not confirmed. TEARDOWN VERIFIED 05:06.
+- smoke5 (05:08): created nothing. An organisation SCP now explicitly denies `scheduler:CreateSchedule`, so the
+  reaper backup cannot be scheduled for any full run.
+- **Local prod rehearsal** (`deploy/lite/rehearsal`: compose.yml unchanged, prod profile, real AWS shared resources
+  with the host keys, PostgreSQL with a NON-superuser `convoy_admin` owning the database, Caddy at convoy.internal):
+  found (1) the lite host's IAM policy lacked `sns:GetSubscriptionAttributes` on the topic ARN (SNS authorizes it there):
+  every service refused to start; fixed in `shared` (applied on your approval); (2) Caddy's `encode gzip` rewrites ETag
+  `"1"` to `"1-gzip"`, web sent `If-Match: "NaN"` and every versioned command (confirm, accept, leave) got 428; fixed in
+  `etagVersion` with a test. **Journey then PASSED through Caddy in 4.1 min** (scenario, simulated deposit, 3 dealer
+  offers, booked with voucher, dealer view, admin view). Both bugs would have broken the Oracle VM.
+
+**smoke6 (07:56, 885d75f, REAPER=off with an independent Windows Scheduled Task watchdog, tested end to end).**
+The laptop lost its connection to S3 during the apply (`request send failed`): Terraform could not save state or
+release the lock, the abort's destroy could not run, and the run stopped at your request while offline. Recovered from
+Terraform's local `errored.tfstate`; the destroy was resumed three times across further connection drops and an expired
+login (stale lock removed each time; four ALB entries already deleted were dropped from the state).
+**TEARDOWN VERIFIED 2026-11-01 ~13:10 UTC.** The app was not exercised. Lesson: a full run needs a stable connection
+for its whole length; the laptop is a single point of failure while the account's SCP denies the scheduled reaper.
+
 **AWS spend for full-profile runs in P6 (estimates):** smoke1 ≈ $0.18, canary1 ≈ $0.17, canary2 ≈ $0.10, smoke2 ≈ $0.35;
-total ≈ **$0.80**. Plus `shared` ≈ $4.66/month always on.
+total ≈ **$0.80**; smoke3 ≈ $0.35, smoke4 ≈ $0.40, smoke5 $0, smoke6 ≈ $1.20 (RDS, NAT, ElastiCache live ~4.5 h during the interrupted teardown) → ≈ **$2.75**. Plus `shared` ≈ $4.66/month always on.
 
 ## 6. Security checks
 Built and tested so far:

@@ -51,7 +51,7 @@ locals {
     order         = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { EVIDENCE_BUCKET = var.shared["evidence_bucket"] }, secrets = ["DB_PASSWORD_ORDER:DB_PASSWORD", "CLIENT_SECRET_ORDER"] }
     payment       = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = { RAZORPAY_BASE_URL = "http://razorpay-fake:9090" }, secrets = ["DB_PASSWORD_PAYMENT:DB_PASSWORD", "CLIENT_SECRET_PAYMENT", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] }
     realtime      = { port = 8080, cpu = 512, mem = 1024, scale = "connections", env = { REDIS_HOST = local.redis_host, REALTIME_INSTANCE = "ecs" }, secrets = ["DB_PASSWORD_REALTIME:DB_PASSWORD", "CLIENT_SECRET_REALTIME"] }
-    notification  = { port = 8080, cpu = 256, mem = 1024, scale = "queue", env = merge(local.mail_env, { WEB_URL = local.public_url }), secrets = ["DB_PASSWORD_NOTIFICATION:DB_PASSWORD", "CLIENT_SECRET_NOTIFICATION", "SMTP_PASSWORD"] }
+    notification  = { port = 8080, cpu = 256, mem = 1024, scale = "queue", env = merge(local.mail_env, { WEB_URL = local.public_url, VAPID_SUBJECT = "mailto:${var.shared["mail_from"]}" }), secrets = ["DB_PASSWORD_NOTIFICATION:DB_PASSWORD", "CLIENT_SECRET_NOTIFICATION", "SMTP_PASSWORD"] }
     audit         = { port = 8080, cpu = 256, mem = 1024, scale = "cpu", env = {}, secrets = ["DB_PASSWORD_AUDIT:DB_PASSWORD", "DB_PASSWORD_AUDIT_OWNER:DB_OWNER_PASSWORD"] }
     web           = { port = 3000, cpu = 256, mem = 512, scale = "cpu", env = { GATEWAY_URL = "http://gateway:8080", RAZORPAY_CHECKOUT_URL = "${local.public_url}/pay/checkout.js", DEMO_PUBLIC = "true", EMAIL_SIGN_IN = "false" }, secrets = ["RAZORPAY_KEY_ID"] }
     razorpay-fake = { port = 9090, cpu = 256, mem = 512, scale = "cpu", env = { WEBHOOK_URL = "http://gateway:8080/webhooks/razorpay", PUBLIC_URL = "${local.public_url}/pay" }, secrets = ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] }
@@ -69,8 +69,13 @@ locals {
     "exec pgbouncer -u nobody /tmp/pgbouncer.ini",
   ])
   # Spring services read their own secrets; the JVM env sets apply to the Spring services only
-  jvm     = toset(["identity", "gateway", "catalog", "dealer", "pool", "quote", "order", "payment", "realtime", "notification", "audit"])
-  desired = { for k, v in local.services : k => var.services_running ? (contains(["adot", "demo-bots"], k) ? 1 : var.tasks_per_service) : 0 }
+  # Migrations go straight to RDS (SPRING_FLYWAY_URL, bypassing PgBouncer); with its own URL Spring Boot takes
+  # Flyway's user and password, not the datasource's, so each service's DB login is passed to Flyway too (smoke3:
+  # "SCRAM-based authentication, but no password"). audit migrates as audit_owner (its application.yml).
+  flyway_secret = { for k, v in local.services : k => [for s in v.secrets : "${split(":", s)[0]}:SPRING_FLYWAY_PASSWORD" if endswith(s, ":DB_PASSWORD") && k != "audit"] }
+  flyway_user   = { for k, v in local.services : k => length(local.flyway_secret[k]) > 0 ? { SPRING_FLYWAY_USER = k } : {} }
+  jvm           = toset(["identity", "gateway", "catalog", "dealer", "pool", "quote", "order", "payment", "realtime", "notification", "audit"])
+  desired       = { for k, v in local.services : k => var.services_running ? (contains(["adot", "demo-bots"], k) ? 1 : var.tasks_per_service) : 0 }
   # Worst case on Fargate (every scalable service at its ceiling, + db-init/seed 0.25): scripts/full.sh refuses a run
   # that would leave less than 0.5 vCPU of the account's on-demand quota for the reaper task (0.25 vCPU).
   worst_case_vcpu = (sum([for k, v in local.services : v.cpu * (v.scale == "none" ? 1 : max(var.tasks_per_service, var.max_tasks_per_service))]) + 256) / 1024
@@ -152,8 +157,8 @@ resource "aws_ecs_task_definition" "t" {
     essential    = true
     command      = each.key == "pgbouncer" ? ["sh", "-c", local.pgbouncer_start] : null
     portMappings = each.value.port == 0 ? [] : [{ name = each.key, containerPort = each.value.port, protocol = "tcp", appProtocol = contains(["pgbouncer"], each.key) ? null : "http" }]
-    environment  = [for k, v in merge(contains(local.jvm, each.key) ? local.common_env : {}, each.value.env) : { name = k, value = v }]
-    secrets = [for s in each.value.secrets : {
+    environment  = [for k, v in merge(contains(local.jvm, each.key) ? local.common_env : {}, each.value.env, local.flyway_user[each.key]) : { name = k, value = v }]
+    secrets = [for s in concat(each.value.secrets, local.flyway_secret[each.key]) : {
       name      = length(split(":", s)) > 1 ? split(":", s)[1] : s
       valueFrom = "${aws_secretsmanager_secret.app.arn}:${split(":", s)[0]}::"
     }]
@@ -191,11 +196,11 @@ resource "aws_ecs_service" "s" {
     }
   }
   dynamic "load_balancer" {
-    for_each = each.key == "web" ? [1] : []
+    for_each = contains(["web", "razorpay-fake"], each.key) ? [1] : []
     content {
-      target_group_arn = aws_lb_target_group.web.arn
-      container_name   = "web"
-      container_port   = 3000
+      target_group_arn = each.key == "web" ? aws_lb_target_group.web.arn : aws_lb_target_group.pay.arn
+      container_name   = each.key
+      container_port   = each.key == "web" ? 3000 : 9090
     }
   }
   lifecycle {

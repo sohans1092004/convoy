@@ -2,7 +2,11 @@ import { expect, test } from '@playwright/test';
 
 // The full AWS profile serves a self-signed certificate (no CloudFront, no domain: infra/aws/full/edge.tf). Only there,
 // FULL_SELF_SIGNED=1 skips TLS verification; the lite host (the public demo) has a real certificate and keeps it on.
-test.use({ ignoreHTTPSErrors: process.env.FULL_SELF_SIGNED === '1' });
+// REHEARSAL=1 (deploy/lite/rehearsal): the laptop rehearsal of the lite host, Caddy's internal CA, convoy.internal -> 127.0.0.1.
+test.use({
+  ignoreHTTPSErrors: process.env.FULL_SELF_SIGNED === '1' || process.env.REHEARSAL === '1',
+  launchOptions: process.env.REHEARSAL === '1' ? { args: ['--host-resolver-rules=MAP convoy.internal 127.0.0.1'] } : {},
+});
 
 // P6.B/P6.D: the public demo as a stranger meets it, against any deployment (WEB_URL), no email and no test accounts:
 // Try the demo -> own pool -> join + simulated deposit -> the simulated dealers quote -> compare -> accept -> confirm ->
