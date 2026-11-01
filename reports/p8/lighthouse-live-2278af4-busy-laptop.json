@@ -1,0 +1,41 @@
+{
+  "measured_at": "2026-11-01T20:28:14.662Z",
+  "url": "https://convoy-main.duckdns.org",
+  "where": "live host",
+  "lighthouse_cli": "@lhci/cli 0.15.1",
+  "results": {
+    "discover": {
+      "url": "https://convoy-main.duckdns.org/",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1286,
+      "cls": 0,
+      "tbt_ms": 630,
+      "performance": 81
+    },
+    "model": {
+      "url": "https://convoy-main.duckdns.org/models/maruti-swift",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1314,
+      "cls": 0,
+      "tbt_ms": 479,
+      "performance": 87
+    },
+    "pool": {
+      "url": "https://convoy-main.duckdns.org/pools/<pool-id>",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 2150,
+      "cls": 0.049,
+      "tbt_ms": 534,
+      "performance": 80
+    }
+  },
+  "site_commit": "2278af4 (read from https://convoy-main.duckdns.org/version, built 2026-11-01T19:56:00Z)",
+  "script_commit": "a753eb7",
+  "note": "same build, measured 4 min earlier while the local compose stack (11 JVMs) was running on the laptop"
+}

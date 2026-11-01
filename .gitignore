@@ -42,3 +42,4 @@ retry-plan.txt
 !.env.example
 *.tsbuildinfo
 deploy/lite/measure.env
+*.tfplan

@@ -1,0 +1,41 @@
+{
+  "measured_at": "2026-11-01T20:32:16.987Z",
+  "url": "https://convoy-main.duckdns.org",
+  "where": "live host",
+  "lighthouse_cli": "@lhci/cli 0.15.1",
+  "results": {
+    "discover": {
+      "url": "https://convoy-main.duckdns.org/",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1735,
+      "cls": 0,
+      "tbt_ms": 577,
+      "performance": 80
+    },
+    "model": {
+      "url": "https://convoy-main.duckdns.org/models/maruti-swift",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1055,
+      "cls": 0,
+      "tbt_ms": 603,
+      "performance": 83
+    },
+    "pool": {
+      "url": "https://convoy-main.duckdns.org/pools/<pool-id>",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1976,
+      "cls": 0.049,
+      "tbt_ms": 535,
+      "performance": 81
+    }
+  },
+  "site_commit": "2278af4 (read from https://convoy-main.duckdns.org/version, built 2026-11-01T19:56:00Z)",
+  "script_commit": "a753eb7",
+  "note": "13 min after the deploy, right after the live demo journey; laptop idle"
+}

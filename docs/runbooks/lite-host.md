@@ -15,16 +15,42 @@ The always-on demo: one Oracle Cloud Always Free A1 VM (1 OCPU, 6 GB, Ubuntu 24.
    from the `shared` and `oci` outputs; random secrets with `openssl rand -base64 24`; `AGE_RECIPIENT` from
    `age-keygen -o convoy-backup.key` on your laptop (the private key never goes to the host).
 5. **GHCR**: make the `convoy-*` packages public (repo Packages settings), or `docker login ghcr.io` as `deploy` with a read-only token.
-6. **GitHub environment `lite`**: secrets `LITE_HOST`, `LITE_SSH_KEY` (private half of `deploy_key`), `LITE_KNOWN_HOSTS`
-   (`ssh-keyscan IP`, checked against the console fingerprint); variable `LITE_SITE=convoy-demo.duckdns.org`.
-7. First deploy: Actions, `deploy-lite`, run with the latest `images` run id.
+6. **Deploy key** on the laptop: `~/.ssh/convoy-deploy` (its public half is `DEPLOY_PUBKEY` above).
+7. First deploy: `scripts/deploy-lite.sh <sha>` (below).
 
-## Deploys
-`deploy-lite` runs after every successful `images` build on main: `ssh deploy@host "deploy <sha>" < images.env`.
-The key can only run `deploy-ssh.sh`, which accepts only that command and digests from this repo's GHCR. `deploy.sh`:
-pre-deploy backup, checkout of the commit, pull by digest, one service at a time until healthy (Flyway migrates on
-start), smoke test (home page, catalogue API, `/actuator` unreachable), automatic rollback to the previous release.
-Migrations must be backward compatible (expand now, contract in a later release): rollback never touches the database.
+## Deploys (from the owner's laptop only)
+The host accepts SSH only from the owner's IP (`admin_cidr`); port 22 is never opened to GitHub runners. The
+`deploy-lite` workflow therefore never runs on push, and started by hand it fails at once and points here.
+
+1. Merge to `main` and wait for the `images` workflow on that commit to succeed (multi-arch images by digest, and the
+   web image carries the short SHA and build time shown at `/version` and in the footer).
+2. `scripts/deploy-lite.sh <sha>` (needs `gh` signed in and `~/.ssh/convoy-deploy`). It downloads that run's
+   `images.env` and runs `ssh deploy@host "deploy <sha>" < images.env`, then prints `/version` from the public site.
+3. Afterwards: the public demo journey
+   (`cd web && WEB_URL=https://<site> pnpm exec playwright test e2e/demo.spec.ts --project=mobile-360`).
+
+The deploy key can only run `deploy-ssh.sh`, which accepts only `deploy <40-hex sha>` and digests from this repo's GHCR.
+`deploy.sh`: pre-deploy backup, checkout of the commit, pull by digest, one service at a time until healthy (Flyway
+migrates on start), smoke test (home page, catalogue API, `/actuator` unreachable), automatic rollback to the previous
+release. Migrations must be backward compatible (expand now, contract in a later release): rollback never touches the
+database.
+
+### "My IP changed" (SSH times out)
+The laptop's public IP comes from the carrier and changes. Symptom: `ssh: connect to host ... port 22: Connection timed
+out` (the site itself still answers). Fix: allow the new IP in the host's security group through Terraform.
+```bash
+curl -s https://checkip.amazonaws.com                       # the new IP
+aws login --profile convoy-aws
+cd infra/aws/lite-ec2
+eval "$(aws configure export-credentials --profile convoy-aws --format env)"; export AWS_REGION=ap-southeast-2
+T=../../../tools/oci-shim/terraform                         # Terraform in Docker
+$T init -input=false -reconfigure -backend-config="bucket=convoy-tfstate-$(aws sts get-caller-identity --query Account --output text)"
+$T plan -target=aws_security_group.host -var "admin_cidr=<new IP>/32" -var "ssh_public_key=$(cat ~/.ssh/convoy-ec2.pub)" -out sg.tfplan
+```
+Use `-target=aws_security_group.host` and check the plan says `0 to add, 1 to change, 0 to destroy` and changes only
+the SSH ingress CIDR, then `$T apply sg.tfplan`. (Until P8 an untargeted plan wanted to *replace the live host* because
+`associate_public_ip_address` drifted; the code now matches the host, `ami`/`user_data` changes are ignored, and the
+instance and Elastic IP have `prevent_destroy`, so such a plan fails instead.) Only one IP is ever allowed. (`ssh_public_key` must be `convoy-ec2.pub`.)
 
 ## Backups and restore
 Nightly 02:30 IST: `backup.sh` on the VM (pg_dumpall, gzip, `age` to the public key, upload). The VM holds only a
