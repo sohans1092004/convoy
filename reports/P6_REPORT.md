@@ -202,8 +202,16 @@ services at 0 tasks, no RDS or ElastiCache (72 resources). Nothing on the laptop
   `etagVersion` with a test. **Journey then PASSED through Caddy in 4.1 min** (scenario, simulated deposit, 3 dealer
   offers, booked with voucher, dealer view, admin view). Both bugs would have broken the Oracle VM.
 
+**smoke6 (07:56, 885d75f, REAPER=off with an independent Windows Scheduled Task watchdog, tested end to end).**
+The laptop lost its connection to S3 during the apply (`request send failed`): Terraform could not save state or
+release the lock, the abort's destroy could not run, and the run stopped at your request while offline. Recovered from
+Terraform's local `errored.tfstate`; the destroy was resumed three times across further connection drops and an expired
+login (stale lock removed each time; four ALB entries already deleted were dropped from the state).
+**TEARDOWN VERIFIED 2026-11-01 ~13:10 UTC.** The app was not exercised. Lesson: a full run needs a stable connection
+for its whole length; the laptop is a single point of failure while the account's SCP denies the scheduled reaper.
+
 **AWS spend for full-profile runs in P6 (estimates):** smoke1 ≈ $0.18, canary1 ≈ $0.17, canary2 ≈ $0.10, smoke2 ≈ $0.35;
-total ≈ **$0.80**; smoke3 ≈ $0.35, smoke4 ≈ $0.40, smoke5 $0 → ≈ **$1.55**. Plus `shared` ≈ $4.66/month always on.
+total ≈ **$0.80**; smoke3 ≈ $0.35, smoke4 ≈ $0.40, smoke5 $0, smoke6 ≈ $1.20 (RDS, NAT, ElastiCache live ~4.5 h during the interrupted teardown) → ≈ **$2.75**. Plus `shared` ≈ $4.66/month always on.
 
 ## 6. Security checks
 Built and tested so far:
