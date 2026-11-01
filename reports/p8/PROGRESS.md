@@ -17,3 +17,14 @@
 - **LICENSE:** MIT.
 - **Left as is:** `deploy/lite/measure.env` holds a literal `CLIENT_SECRET_DEMO_BOTS` for the laptop
   measurement stack (LocalStack); it differs from the lite host's value.
+- **measure.env:** the literal `CLIENT_SECRET_DEMO_BOTS` replaced: `dev-env.sh` generates it into `.env`; only
+  `deploy/lite/measure.env.example` is tracked, `lite-measure.sh` copies it (compose config resolves; checked).
+- **OCI retry task** restarted on the user's apply, guards unchanged; launched through `conhost.exe --headless` (the
+  visible console had been closed twice, exit 0xC000013A). First check logged 2026-11-01 18:54:48Z: OUT_OF_HOST_CAPACITY.
+
+## P8.A Evidence inventory — done (2026-11-02)
+
+- `docs/EVIDENCE.md`: every quotable number with Where / Date / Commit / Source, and the missed or unmeasured targets.
+- New measurement: Lighthouse on the live site (`DEMO=1 ... web/scripts/lighthouse.mjs`, reports/p8/lighthouse-live.json):
+  LCP 1,446 / 1,133 / 2,065 ms, CLS 0, TBT 194 / 218 / 236 ms (discover / model / pool). TBT gate 200 ms missed on
+  model and pool. Site runs 03292c4 (without the P7.D bundle cut). One demo scenario created for the pool page.

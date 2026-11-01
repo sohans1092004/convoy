@@ -3,6 +3,8 @@
 // ../reports/p2/lighthouse.json. A real test session is created first (email OTP via Mailpit) so the pool page renders
 // its live content, and its cookie is passed to Lighthouse.
 //   node scripts/lighthouse.mjs        (stack + production web app running; WEB_URL, GATEWAY_URL, MAILPIT_URL)
+//   DEMO=1 WEB_URL=https://convoy-main.duckdns.org LH_OUT=../reports/p8/lighthouse-live.json node scripts/lighthouse.mjs
+//     (a deployed demo host: no Mailpit, so the session and its pool come from "Try the demo", like a visitor)
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -40,10 +42,23 @@ async function signIn(email) {
   throw new Error('no OTP mail');
 }
 
-const session = await signIn(`lighthouse-${Date.now().toString(36)}@convoy.test`);
-const month = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 2, 1)).toISOString().slice(0, 7);
-const pool = (await api('POST', '/api/pools', { session, idem: randomUUID(), body: { model_slug: 'maruti-swift', city: 'Mumbai', purchase_month: month } })).pool.id;
-await api('POST', `/api/pools/${pool}/members`, { session, idem: randomUUID() }).catch(() => {});
+let session, pool, cookie;
+if (process.env.DEMO === '1') {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto(WEB + '/');
+  await page.getByRole('button', { name: 'Try the demo' }).click();
+  await page.waitForURL(/\/pools\/[0-9a-f-]+$/, { timeout: 60_000 });
+  pool = page.url().split('/').pop();
+  cookie = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+  await browser.close();
+} else {
+  session = await signIn(`lighthouse-${Date.now().toString(36)}@convoy.test`);
+  const month = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 2, 1)).toISOString().slice(0, 7);
+  pool = (await api('POST', '/api/pools', { session, idem: randomUUID(), body: { model_slug: 'maruti-swift', city: 'Mumbai', purchase_month: month } })).pool.id;
+  await api('POST', `/api/pools/${pool}/members`, { session, idem: randomUUID() }).catch(() => {});
+  cookie = `cv_sid=${session}; cv_roles=buyer`;
+}
 
 const pages = { discover: `${WEB}/`, model: `${WEB}/models/maruti-swift`, pool: `${WEB}/pools/${pool}` };
 const out = join(process.cwd(), '.lighthouseci');
@@ -52,7 +67,7 @@ const chrome = chromium.executablePath();
 const results = {};
 for (const [name, url] of Object.entries(pages)) {
   execFileSync(process.execPath, [join('node_modules', '@lhci', 'cli', 'src', 'cli.js'), 'collect', `--url=${url}`, `--numberOfRuns=${RUNS}`,
-    `--settings.chromeFlags=--headless=new --no-sandbox`, `--settings.extraHeaders=${JSON.stringify({ Cookie: `cv_sid=${session}; cv_roles=buyer` })}`],
+    `--settings.chromeFlags=--headless=new --no-sandbox`, `--settings.extraHeaders=${JSON.stringify({ Cookie: cookie })}`],
   { stdio: 'inherit', env: { ...process.env, CHROME_PATH: chrome } });
   const lhrs = readdirSync(out).filter((f) => f.startsWith('lhr-') && f.endsWith('.json')).map((f) => JSON.parse(readFileSync(join(out, f), 'utf8')))
     .filter((l) => l.finalDisplayedUrl?.startsWith(url) || l.requestedUrl === url);
@@ -67,6 +82,6 @@ for (const [name, url] of Object.entries(pages)) {
   };
   rmSync(out, { recursive: true, force: true });
 }
-const report = { measured_at: new Date().toISOString(), commit: execFileSync('git', ['rev-parse', '--short', 'HEAD']).toString().trim(), lighthouse_cli: '@lhci/cli 0.15.1', results };
-writeFileSync(join(process.cwd(), '..', 'reports', 'p2', 'lighthouse.json'), JSON.stringify(report, null, 2) + '\n');
+const report = { measured_at: new Date().toISOString(), url: WEB, where: process.env.DEMO === '1' ? 'live host' : 'laptop', commit: execFileSync('git', ['rev-parse', '--short', 'HEAD']).toString().trim(), lighthouse_cli: '@lhci/cli 0.15.1', results };
+writeFileSync(process.env.LH_OUT || join(process.cwd(), '..', 'reports', 'p2', 'lighthouse.json'), JSON.stringify(report, null, 2) + '\n');
 console.table(Object.fromEntries(Object.entries(results).map(([k, v]) => [k, { LCP_ms: v.lcp_ms, CLS: v.cls, TBT_ms: v.tbt_ms, perf: v.performance }])));
