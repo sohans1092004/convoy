@@ -385,7 +385,7 @@ resource "aws_ecs_task_definition" "loadseed" {
     name      = "loadseed"
     image     = lookup(var.images, "python", "destroy-only@sha256:0000000000000000000000000000000000000000000000000000000000000000")
     essential = true
-    command = ["sh", "-c", "pip install -q --no-cache-dir 'cryptography==44.0.2' 'psycopg[binary]==3.2.6' 'boto3==1.37.30' && echo \"$PY\" | base64 -d > /tmp/p.py && python /tmp/p.py"]
+    command   = ["sh", "-c", "pip install -q --no-cache-dir 'cryptography==44.0.2' 'psycopg[binary]==3.2.6' 'boto3==1.37.30' && echo \"$PY\" | base64 -d > /tmp/p.py && python /tmp/p.py"]
     environment = [
       { name = "PY", value = base64encode(file("${path.module}/../../../tools/load/provision.py")) },
       { name = "PGHOST", value = local.db_host }, { name = "RUN_ID", value = var.run_id }, { name = "LOAD_USERS", value = tostring(var.load_users) },
