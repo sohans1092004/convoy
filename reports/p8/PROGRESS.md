@@ -85,3 +85,16 @@
   are kept in EVIDENCE.md; their cause is not established. Live TBT is recorded as "not reliably met". No fix needed.
 - lite-ec2: the full plan now shows no changes (`associate_public_ip_address` matches the host, `ami`/`user_data`
   ignored, `prevent_destroy` on the instance and the Elastic IP).
+
+### P8.C report (2026-11-02)
+- **Shipped (PR #10 → 2278af4, PR #11 → 4b887fc):** non-members never open the pool stream and refused streams stop
+  retrying; Storybook page-state stories fixed (they were vacuous) and the spec fails on play errors; `/version` and a
+  footer build line; "deposit returned" wording; 360 px layout check in the journey; one-command local start
+  (`scripts/up.sh`); laptop-only lite deploys (`scripts/deploy-lite.sh`, `deploy-lite` workflow refuses); lite-ec2 can
+  no longer replace the live host (plan: no changes; `prevent_destroy`).
+- **Live:** https://convoy-main.duckdns.org runs **2278af4** (`/version`), deployed 2026-11-01 20:19 UTC in 268 s, no
+  rollback. Main is at 4b887fc; the difference is docs, scripts, workflow and Terraform only (no runtime change).
+- **Live numbers (live lite host):** public demo journey PASS in 4.5 min; Lighthouse at 20:51 UTC TBT 111 / 85 / 179 ms,
+  performance 98 / 97 / 94, LCP 1,090 / 1,162 / 1,822 ms; two earlier runs missed TBT (recorded, cause not established).
+- **Laptop numbers:** lifecycle journey at 360 px PASS in 5.0 min; `up.sh` 225 s; A/B shows no page-speed regression.
+- **Open:** CI does not validate `infra/aws/lite-ec2` (only full, shared, oci); live TBT varies run to run.
