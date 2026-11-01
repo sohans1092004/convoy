@@ -31,8 +31,10 @@ resource "aws_iam_role_policy" "loadgen_sessions" {
   count = var.loadgen_type == "" ? 0 : 1
   name  = "read-run-sessions"
   role  = aws_iam_role.loadgen[0].id
-  policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = "s3:GetObject",
-  Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/*" }] })
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect = "Allow", Action = "s3:GetObject", Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/*" },
+    { Effect = "Allow", Action = "s3:PutObject", Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/results/*" },
+  ] })
 }
 
 resource "aws_iam_instance_profile" "loadgen" {
