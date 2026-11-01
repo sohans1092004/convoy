@@ -10,7 +10,13 @@ max=${1:-288}
 ads=$(terraform output -raw ad_count 2>/dev/null || echo 1)
 for attempt in $(seq 1 "$max"); do
   ad=$(( (attempt - 1) % ads ))
-  terraform plan -input=false -no-color -var "availability_domain_index=$ad" -out retry.tfplan > retry-plan.txt 2>&1 || { tail -5 retry-plan.txt; echo "stopped: plan failed"; exit 1; }
+  if ! terraform plan -input=false -no-color -var "availability_domain_index=$ad" -out retry.tfplan > retry-plan.txt 2>&1; then
+    # a failed name lookup or connection is transient (laptop/Docker DNS): try again next round instead of stopping
+    if grep -qE "dial tcp|no such host|i/o timeout|connection reset|TLS handshake" retry-plan.txt; then
+      echo "$(date -u +%FT%TZ) attempt $attempt: network error during plan, retrying"; sleep 60; continue
+    fi
+    tail -5 retry-plan.txt; echo "stopped: plan failed"; exit 1
+  fi
   if ! grep -q "Plan: 1 to add, 0 to change, 0 to destroy" retry-plan.txt || ! grep -q "oci_core_instance.lite will be created" retry-plan.txt; then
     grep -E "^Plan:|No changes" retry-plan.txt; echo "stopped: the plan is not exactly the instance"; exit 1
   fi

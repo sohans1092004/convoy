@@ -69,20 +69,16 @@ resource "aws_iam_user_policy" "smtp" {
 # ---------------------------------------------------------------- budget alerts at $8 and $20 (actual), plus $20 forecast
 # The expected bill is ~$4.66/month (docs/cost/aws-cost-estimate.md §6): $8 fires only on a real jump.
 resource "aws_budgets_budget" "monthly" {
-  name         = "convoy-monthly"
+  name         = "concord-account-monthly"
   budget_type  = "COST"
-  limit_amount = "20"
+  limit_amount = "55"
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
-  # Only Convoy's spend: the account also runs Concord (cost allocation tag `project` activated by you)
-  cost_filter {
-    name   = "TagKeyValue"
-    values = ["user:project$convoy"]
-  }
-
+  # Account-wide (Concord + Convoy): a linked account cannot activate cost allocation tags, so a tag-filtered budget
+  # never sees any spend. Expected ~$44/month: Concord ~$6.50 + the interim EC2 lite host ~$37.50.
   dynamic "notification" {
-    for_each = [{ t = 8, kind = "ACTUAL" }, { t = 20, kind = "ACTUAL" }, { t = 20, kind = "FORECASTED" }]
+    for_each = [{ t = 30, kind = "ACTUAL" }, { t = 50, kind = "ACTUAL" }, { t = 55, kind = "FORECASTED" }] # 30 = halfway notice; expected ~$44 with the EC2 lite host
     content {
       comparison_operator        = "GREATER_THAN"
       threshold                  = notification.value.t

@@ -6,7 +6,7 @@
 > torn down, TEARDOWN VERIFIED. Every AWS run of this phase was destroyed and verified.
 
 ## 1. Summary
-- **Live demo URL:** pending (`https://convoy-demo.duckdns.org` once the VM, DuckDNS name and first deploy exist).
+- **Live demo URL:** **https://convoy-main.duckdns.org** (interim EC2 host; moves to the Oracle VM if A1 capacity appears).
 - Convoy now has a production configuration (`prod` profile validated at startup, topology checked not created),
   multi-arch images by digest, a public demo mode safe for strangers, Terraform for the AWS resources the demo uses,
   for the Oracle Always Free VM, and for the on-demand full AWS stack, plus the host scripts and workflows that deploy,
@@ -90,10 +90,26 @@
 - Notification email links now use `WEB_URL` instead of a hard-coded `https://convoy.test`.
 - `d001` (the P1 journey dealership) is seeded on lite too; with no staff user there it is invited but never quotes.
 
-## 4. Memory and CPU on the VM
-Pending (VM). Laptop numbers, reported separately (`reports/p6/memory-laptop.md`): cold start 56 s; idle 2,377 MiB
-for all lite containers, JVMs 175–234 MiB each against 384 MiB limits; journey peak not measured on the laptop (too
-little free memory), to be measured on the VM.
+## 4. The lite host, live (interim EC2, 2026-11-01). VM numbers, not laptop numbers.
+Oracle A1 is still out of capacity (Hyderabad, single AD; the retry loop continues). The demo runs on
+`infra/aws/lite-ec2` (own state and VPC): one **t4g.medium** (2 vCPU, 4 GiB, Ubuntu 24.04 arm64), Elastic IP
+52.64.115.0, DuckDNS `convoy-main.duckdns.org`, `deploy/lite/compose.yml` unchanged, deployed at 03292c4 with the images
+that passed the laptop prod rehearsal. ≈ $37.50/month; account budget alerts at $30/$50 actual and $55 forecast.
+
+| Check | Result |
+|---|---|
+| Demo journey on the public URL (real TLS, mobile-360) | **PASS**, 4.5 min: scenario, deposit, 3 dealer offers, booked + voucher, dealer view, admin view |
+| TLS | Let's Encrypt (YE1), valid to 2027-01-30; http -> https 308 |
+| Outside port scan (25 TCP ports) | open: 22, 80, 443 only; 22 accepts only the admin IP (security group) |
+| `/metrics`, `/actuator/*`, gateway and payment internals | 404 from outside |
+| Memory, idle after the journey | host 3,031 of 3,824 MiB used, 792 MiB available (+2 GiB swap); containers 2,432 MiB |
+| Reboot | catalog API back after **120 s**, all 17 containers up/healthy after **157 s** |
+| Backup -> restore drill | backup 68,639 bytes (age-encrypted, OCI bucket via write-only PAR); restored 125 tables / 616 rows; every differing table has more rows live than in the backup (35 of 35, written since), none fewer; 10 restore errors, all `permission denied to grant privileges as role "convoy_admin"` (role-membership grants of the RDS-like setup), no data |
+
+Found while deploying: bootstrap's iptables step assumed Oracle's REJECT rule; `deploy.sh`'s smoke check ran before
+Caddy had its first certificate (now waits up to 2 min); the host had checked out `main` (P6 not merged yet);
+`AGE_RECIPIENT` was a placeholder (age key generated, private key on the laptop only).
+Headroom is thin (792 MiB available): fine for the demo, no room for more services on this size.
 
 ## 5. The full-profile smoke run, with its cost
 **Attempt `smoke1` (2026-10-31 18:12–18:29 UTC): stopped before the journey, torn down, TEARDOWN VERIFIED.**
@@ -209,6 +225,39 @@ Terraform's local `errored.tfstate`; the destroy was resumed three times across 
 login (stale lock removed each time; four ALB entries already deleted were dropped from the state).
 **TEARDOWN VERIFIED 2026-11-01 ~13:10 UTC.** The app was not exercised. Lesson: a full run needs a stable connection
 for its whole length; the laptop is a single point of failure while the account's SCP denies the scheduled reaper.
+
+**smoke7–smoke9 (2026-11-01): Service Connect name resolution.**
+- smoke7 (13:14): `catalog` never started: `UnknownHostException: pgbouncer`. Aborted, TEARDOWN VERIFIED 13:59.
+- smoke8 (13:59): core services first (pgbouncer, adot, then the apps): 15/16 up, `identity` kept failing with the same
+  error. Its teardown was cut by the laptop's DNS (`lookup ...amazonaws.com: no such host`: single carrier resolver;
+  now 1.1.1.1/8.8.8.8); resumed after a state refresh, TEARDOWN VERIFIED 15:47 (the verifier's EC2 liveness check fixed).
+- smoke9 (15:48, 03292c4; + 90 s DB connect retry): **UP after 19 min, all services stable**, but the ALB answered 503
+  for 5 min: the `web` target failed its health check (`/` -> 503), `catalog` had dropped to 0/1 again. Saved logs:
+  tasks of most services keep failing to resolve Service Connect names (gateway/order/catalog/payment/audit -> `adot`,
+  identity/quote/realtime/notification/pool/audit/payment -> `pgbouncer`, 10–18 times each), well after both were running.
+  Journey failed. **Root cause not established**: Service Connect DNS is unreliable for these tasks in this setup
+  (not an application bug: the same images pass the laptop prod rehearsal and the live lite host).
+  Parked (below); smoke9 was the last approved attempt.
+
+### Full profile: PARKED (2026-11-01, your decision after smoke9)
+**Works:** the stack applies end to end (107 resources: VPC, NAT, ALB + self-signed ACM certificate, ECS cluster,
+16 services, RDS, ElastiCache, secrets); db-init and the seed run on RDS with a non-superuser admin; all 16 services
+reached a stable state behind the ALB (smoke9, 19 min); teardown is verified after every run (`full-down`, the
+independent watchdog when the SCP denies the reaper schedule).
+**Does not work:** service-to-service names through ECS Service Connect. smoke9's saved logs
+(`.run/fail-logs-smoke9.txt`, `.run/smoke9-unknownhost.txt`): tasks of most services kept failing to resolve `adot` and
+`pgbouncer` (10–18 `UnknownHostException`s per service, long after both were running); `catalog` dropped to 0/1 and
+`web` could not reach `gateway`, so the ALB health check got 503 and the journey could not run.
+Closing state (2026-11-01 16:40 UTC): smoke9 TEARDOWN VERIFIED 16:33:26 (107 destroyed); every resource the tag index
+still lists under `profile=full` (81 entries: inactive ECS services/clusters, deregistered task definitions, deleted VPC
+endpoints and NAT gateway) was checked by its own describe call: 0 live. No watchdog task armed.
+**Next steps, in this order (not built):**
+1. Known Service Connect gotchas: (a) clients started before a server registered (a task gets the namespace's endpoints
+   at start; restart the clients after the servers are up, or start servers in an earlier apply); (b) client alias names
+   vs. the hostnames the services use (`pgbouncer`, `adot`, `gateway`, ... must equal each `client_alias.dns_name`, and
+   the port the clients dial must equal the alias port); (c) pgbouncer and adot as Service Connect servers with named port
+   mappings (pgbouncer's port has no appProtocol; check that both publish an endpoint in the namespace).
+2. Cloud Map private DNS namespace (plain A records via the VPC resolver) instead of Service Connect.
 
 **AWS spend for full-profile runs in P6 (estimates):** smoke1 ≈ $0.18, canary1 ≈ $0.17, canary2 ≈ $0.10, smoke2 ≈ $0.35;
 total ≈ **$0.80**; smoke3 ≈ $0.35, smoke4 ≈ $0.40, smoke5 $0, smoke6 ≈ $1.20 (RDS, NAT, ElastiCache live ~4.5 h during the interrupted teardown) → ≈ **$2.75**. Plus `shared` ≈ $4.66/month always on.

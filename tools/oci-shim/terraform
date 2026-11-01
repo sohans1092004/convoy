@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Lives in the repo (tools/oci-shim) so the scheduled OCI retry task does not depend on any session path.
+# Laptop shim: terraform via the official image. Mounts the repo root (configs read files outside their own folder),
+# ~/.oci (key path rewritten inside) and the admin public key; passes AWS session credentials if exported.
+export MSYS_NO_PATHCONV=1 MSYS2_ENV_CONV_EXCL='*'
+root=$(cygpath -u "$(git rev-parse --show-toplevel)"); rel=${PWD#"$root"}
+exec "/c/Users/sohan/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe" run --rm -i --dns 1.1.1.1 --dns 8.8.8.8 \
+  -v "$(cygpath -w "$root"):/w" -w "/w$rel" -v "$(cygpath -w ~/.oci):/ocisrc:ro" \
+  -v "$(cygpath -w ~/.ssh/convoy_lite_ed25519.pub):/keys/convoy_lite_ed25519.pub:ro" \
+  -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_REGION \
+  -e KEYNAME="$(basename "$(ls ~/.oci/*.pem | head -1)")" --entrypoint sh hashicorp/terraform:1.10.5 -c \
+  'mkdir -p /root/.oci && tr -d "\r" < /ocisrc/config | sed -E "s#^key_file\s*=.*#key_file=/ocisrc/$KEYNAME#" > /root/.oci/config && chmod 600 /root/.oci/config && exec terraform "$@"' terraform "$@"

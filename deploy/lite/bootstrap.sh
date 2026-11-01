@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare the Oracle Cloud A1 VM for Convoy lite (P6.D). Idempotent: safe to run again after an upgrade or a change here.
+# Prepare the lite host for Convoy (P6.D): the Oracle Cloud A1 VM, or the interim EC2 instance (infra/aws/lite-ec2). Idempotent: safe to run again after an upgrade or a change here.
 #   scp deploy/lite/bootstrap.sh ubuntu@<ip>: && ssh ubuntu@<ip> 'sudo DEPLOY_PUBKEY="ssh-ed25519 AAAA... ci" bash bootstrap.sh'
 # What it does:
 # - unattended security upgrades, fail2ban, SSH keys only (no passwords, no root login)
@@ -44,7 +44,7 @@ systemctl restart fail2ban
 # iptables: 80/443 before Oracle's final REJECT (the security list allows the same; both layers must agree)
 for port in 80 443; do
   iptables -C INPUT -p tcp -m state --state NEW --dport "$port" -j ACCEPT 2>/dev/null \
-    || iptables -I INPUT "$(iptables -L INPUT --line-numbers | awk '/REJECT/ {print $1; exit}')" -p tcp -m state --state NEW --dport "$port" -j ACCEPT
+    || { pos=$(iptables -L INPUT --line-numbers | awk '/REJECT/ {print $1; exit}'); iptables -I INPUT ${pos:-1} -p tcp -m state --state NEW --dport "$port" -j ACCEPT; } # EC2's Ubuntu has no REJECT rule
 done
 netfilter-persistent save
 
