@@ -10,7 +10,7 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 dir="$root/infra/aws/full"
 account=$(aws sts get-caller-identity --query Account --output text)
 state="s3://convoy-tfstate-$account/full/$run"
-iid=$(cd "$dir" && terraform output -raw loadgen_instance); url=$(cd "$dir" && terraform output -raw url)
+iid=$(cd "$dir" && terraform output -raw loadgen_instance); url=$(cd "$dir" && terraform output -raw url); cluster=$(cd "$dir" && terraform output -raw cluster)
 sha=$(git -C "$root" rev-parse HEAD)
 [ -n "$iid" ] || { echo "no load generator in this run (LOADGEN_TYPE)"; exit 2; }
 remote=$(cat <<SH
@@ -19,9 +19,16 @@ mkdir -p /work && cd /work
 curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/w9.k6.js -o w9.k6.js
 curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/w9_setup.py -o w9_setup.py
 aws s3 cp $state/load-sessions.json sessions.json --only-show-errors
-python3 w9_setup.py $url sessions.json
 ulimit -n 200000
-k6 run -q -e BASE=$url -e RATE=$rate -e HOLD=$hold --summary-export summary.json --out json=points.json.gz w9.k6.js > k6.txt 2>&1 || echo "k6 exit \$?" >> k6.txt
+if [ $workload = w5 ]; then
+  command -v node >/dev/null || dnf install -y -q nodejs22 >/dev/null
+  curl -fsSL https://raw.githubusercontent.com/sohans1092004/convoy/$sha/tools/load/w5_aws.mjs -o w5_aws.mjs
+  NODE_TLS_REJECT_UNAUTHORIZED=0 AWS_REGION=ap-southeast-2 node w5_aws.mjs $url sessions.json $cluster ${W5_CONNECTIONS:-10000} ${W5_HOLD_S:-1800} > k6.txt 2>&1 || echo "w5 exit \$?" >> k6.txt
+  cp w5.json summary.json 2>/dev/null; : > points.json.gz
+else
+  python3 w9_setup.py $url sessions.json
+  k6 run -q -e BASE=$url -e RATE=$rate -e HOLD=$hold --summary-export summary.json --out json=points.json.gz w9.k6.js > k6.txt 2>&1 || echo "k6 exit \$?" >> k6.txt
+fi
 top -bn1 | head -5 > host.txt
 aws s3 cp summary.json $state/results/$workload-summary.json --only-show-errors
 aws s3 cp points.json.gz $state/results/$workload-points.json.gz --only-show-errors

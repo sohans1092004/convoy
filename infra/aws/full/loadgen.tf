@@ -34,6 +34,8 @@ resource "aws_iam_role_policy" "loadgen_sessions" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = "s3:GetObject", Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/*" },
     { Effect = "Allow", Action = "s3:PutObject", Resource = "arn:aws:s3:::convoy-tfstate-${local.account}/full/${var.run_id}/results/*" },
+    # W5 reconnect storm: stop one realtime task of this run's cluster
+    { Effect = "Allow", Action = ["ecs:ListTasks", "ecs:StopTask"], Resource = "*", Condition = { ArnEquals = { "ecs:cluster" = aws_ecs_cluster.c.arn } } },
   ] })
 }
 

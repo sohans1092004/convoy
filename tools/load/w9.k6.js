@@ -40,7 +40,9 @@ export const options = {
 };
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
-const h = (s, extra) => ({ headers: { 'X-Convoy-Session': s, 'Content-Type': 'application/json', ...extra } });
+// Through the ALB the web BFF is the entry point, so requests look like the browser's: session cookie, a double-submit
+// CSRF pair (any value, cookie == header) and a same-origin Origin on writes (web/app/api/[...path]/route.ts).
+const h = (s, extra) => ({ headers: { Cookie: `cv_sid=${s}; cv_csrf=load`, 'X-CSRF-Token': 'load', Origin: BASE, 'Content-Type': 'application/json', ...extra } });
 const tag = (route, p) => ({ ...p, tags: { route } });
 function check(r, ok, route) { if (!ok.includes(r.status)) unexpected.add(1, { route, status: String(r.status) }); }
 

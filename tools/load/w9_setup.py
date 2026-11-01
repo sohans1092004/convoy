@@ -15,7 +15,7 @@ dealers = [{'session': s['session'], 'dealership_id': s['dealership_id']} for s 
 
 def api(method, path, session=None, body=None, idem=False, ok=(200, 201), base=BASE, tries=5):
     h = {'Content-Type': 'application/json'}
-    if session: h['X-Convoy-Session'] = session
+    if session: h.update({'Cookie': f'cv_sid={session}; cv_csrf=load', 'X-CSRF-Token': 'load', 'Origin': base})  # as the browser, via the BFF
     if idem: h['Idempotency-Key'] = str(uuid.uuid4())
     for t in range(tries):
         req = urllib.request.Request(base + path, data=json.dumps(body).encode() if body is not None else None, method=method, headers=h)
