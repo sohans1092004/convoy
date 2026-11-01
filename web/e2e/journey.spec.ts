@@ -59,6 +59,27 @@ async function axe(page: Page, name: string) {
   const bad = r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
   axeFindings.push({ page: name, ids: bad.map((v) => `${v.id} (${v.nodes.length})`) });
   expect(bad.map((v) => `${v.id}: ${v.help} -> ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`), `axe serious/critical on ${name}`).toEqual([]);
+  await layout(page, name);
+}
+
+/** P8.C: every flagship screen fits the viewport (no sideways scroll at 360 px) and every price is readable and unclipped. */
+async function layout(page: Page, name: string) {
+  const r = await page.evaluate(() => {
+    const overflow = document.documentElement.scrollWidth - window.innerWidth;
+    const prices: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent?.includes('₹')) continue;
+      const el = n.parentElement!;
+      const box = el.getBoundingClientRect();
+      if (!box.width || !box.height || getComputedStyle(el).visibility === 'hidden') continue;
+      const size = parseFloat(getComputedStyle(el).fontSize);
+      if (size < 12 || el.scrollWidth > el.clientWidth + 1 || box.right > window.innerWidth + 1) prices.push(`${n.textContent.trim().slice(0, 40)} (${size}px)`);
+    }
+    return { overflow, prices: prices.slice(0, 5) };
+  });
+  expect(r.overflow, `horizontal scroll on ${name}`).toBeLessThanOrEqual(0);
+  expect(r.prices, `small or clipped prices on ${name}`).toEqual([]);
 }
 
 async function signIn(page: Page, email: string) {

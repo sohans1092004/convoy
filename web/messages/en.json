@@ -1,5 +1,6 @@
 {
   "nav": {
+    "build": "Build {sha}",
     "brand": "Convoy",
     "cars": "Cars",
     "orders": "My orders",
@@ -92,7 +93,8 @@
     "live": {
       "live": "Live",
       "reconnecting": "Reconnecting…",
-      "delayed": "Updates delayed — refreshing every 10 s"
+      "delayed": "Updates delayed — refreshing every 10 s",
+      "membersOnly": "Join to see live updates"
     },
     "loadFailed": "This pool could not be loaded.",
     "retry": "Try again",

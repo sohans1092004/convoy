@@ -1,0 +1,41 @@
+{
+  "measured_at": "2026-11-01T19:00:49.032Z",
+  "url": "https://convoy-main.duckdns.org",
+  "where": "live host",
+  "lighthouse_cli": "@lhci/cli 0.15.1",
+  "results": {
+    "discover": {
+      "url": "https://convoy-main.duckdns.org/",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1446,
+      "cls": 0,
+      "tbt_ms": 194,
+      "performance": 93
+    },
+    "model": {
+      "url": "https://convoy-main.duckdns.org/models/maruti-swift",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 1133,
+      "cls": 0,
+      "tbt_ms": 218,
+      "performance": 93
+    },
+    "pool": {
+      "url": "https://convoy-main.duckdns.org/pools/<pool-id>",
+      "runs": 3,
+      "form_factor": "mobile",
+      "throttling": "simulate",
+      "lcp_ms": 2065,
+      "cls": 0,
+      "tbt_ms": 236,
+      "performance": 91
+    }
+  },
+  "script_commit": "2af752d",
+  "site_commit": "03292c4 per reports/P6_REPORT.md \u00a74 (the site exposes no version; not re-verified); P7.D bundle cut 5d79ff3 is not in it",
+  "note": "one demo scenario created via Try the demo for the pool page session (expires in 24 h)"
+}

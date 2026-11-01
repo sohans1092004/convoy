@@ -33,3 +33,12 @@ apply3.txt
 retry.tfplan
 retry-plan.txt
 .run/
+# Private keys and certificate bundles never belong in the repo (OCI API key lives in ~/.oci/)
+*.pem
+*.key
+*.p12
+# Local env files and build caches (the *.example files stay tracked)
+.env.*
+!.env.example
+*.tsbuildinfo
+deploy/lite/measure.env

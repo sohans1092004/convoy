@@ -52,8 +52,8 @@
   },
   "REFUND_DONE": {
     "link": "/orders",
-    "en": {"subject": "Your refund is complete", "body": "Your deposit has been refunded in full."},
-    "hi": {"draft": true, "subject": "आपका रिफ़ंड पूरा हुआ", "body": "आपकी जमा राशि पूरी तरह लौटा दी गई है।"}
+    "en": {"subject": "Your deposit has been returned", "body": "Your deposit has been returned to you in full."},
+    "hi": {"draft": true, "subject": "आपकी जमा राशि लौटा दी गई", "body": "आपकी जमा राशि पूरी तरह लौटा दी गई है।"}
   },
   "BOOKING_CONFIRMED": {
     "link": "/orders",
