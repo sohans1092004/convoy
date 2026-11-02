@@ -61,7 +61,13 @@ function VoucherCard({ orderId }: { orderId: string }) {
   );
 }
 
-const DOT: Record<StepStatus, string> = { done: 'bg-success-fg border-success-fg', current: 'bg-primary border-primary', upcoming: 'bg-surface border-border', ended: 'bg-surface-2 border-border' };
+// Shape, not only colour: a check for done, a ring for current, a hollow control-border dot for not yet, a dash for did not happen.
+const MARK: Record<StepStatus, { className: string; glyph: string }> = {
+  done: { className: 'bg-success-bg text-success-fg', glyph: '✓' },
+  current: { className: 'border-[3px] border-primary bg-surface', glyph: '' },
+  upcoming: { className: 'border border-control bg-surface', glyph: '' },
+  ended: { className: 'bg-surface-2 text-muted', glyph: '–' },
+};
 
 /** The order's whole life on one line of steps; the current one is announced to screen readers. */
 function Timeline({ order, deposit }: { order: Order; deposit: DepositState | null }) {
@@ -73,8 +79,8 @@ function Timeline({ order, deposit }: { order: Order; deposit: DepositState | nu
       <ol className="flex flex-col gap-2" aria-label={t('title')}>
         {steps.map((s) => (
           <li key={s.key} className="flex items-start gap-3" aria-current={s.status === 'current' ? 'step' : undefined}>
-            <span aria-hidden className={`mt-1 h-3 w-3 shrink-0 rounded-full border-2 ${DOT[s.status]}`} />
-            <span className={s.status === 'ended' ? 'text-muted line-through' : s.status === 'upcoming' ? 'text-muted' : ''}>
+            <span aria-hidden className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${MARK[s.status].className}`}>{MARK[s.status].glyph}</span>
+            <span className={s.status === 'ended' ? 'text-muted line-through' : s.status === 'upcoming' ? 'text-muted' : s.status === 'current' ? 'font-semibold' : ''}>
               {t(`step.${s.key}`)}
               {s.key === 'deposit' && deposit ? <span className="text-sm text-muted"> · {t(`deposit.${deposit}`)}</span> : null}
               <span className="sr-only"> ({t(`status.${s.status}`)})</span>

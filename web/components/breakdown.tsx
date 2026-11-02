@@ -16,15 +16,19 @@ export function Flags({ l }: { l: { flags: string[] } }) {
   );
 }
 
+export const estimateLines = (lines: EngineLine[]): EngineLine[] => lines.filter((l) => !(l.code === 'DISCOUNT' && l.amount_paise === 0))
+  .map((l) => (l.evidence === 'DEALER_CONFIRMED' ? { ...l, evidence: 'CATALOGUE_ESTIMATE' as const } : l));
+
 /**
  * Itemised price-engine output: mandatory lines, then optional items (not in cash payable), each with its evidence label
  * (dealer-confirmed, catalogue estimate or unverified). Below the sm breakpoint it is a stacked list (PLAN section 5.1:
  * cards on mobile, never a squeezed table), so every value is visible at 360 px without scrolling sideways.
  */
-export function Breakdown({ output, caption, stacked }: { output: EngineOutput; caption: string; /** Always the list: for a narrow column on a wide screen. */ stacked?: boolean }) {
+export function Breakdown({ output, caption, stacked, estimate }: { output: EngineOutput; caption: string; /** Always the list: for a narrow column on a wide screen. */ stacked?: boolean; /** No dealer is involved yet: no empty discount line, and no line reads as dealer-confirmed. */ estimate?: boolean }) {
   const t = useTranslations('breakdown');
-  const mandatory = output.lines.filter((l) => l.in_cash_payable);
-  const optional = output.lines.filter((l) => !l.in_cash_payable);
+  const lines = estimate ? estimateLines(output.lines) : output.lines;
+  const mandatory = lines.filter((l) => l.in_cash_payable);
+  const optional = lines.filter((l) => !l.in_cash_payable);
   const row = (l: EngineLine) => (
     <tr key={l.code} className="border-b border-border last:border-0">
       <th scope="row" className="py-2 pr-3 text-left font-normal">{lineLabel(l.code)}<Flags l={l} /></th>

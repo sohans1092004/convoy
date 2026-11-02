@@ -45,7 +45,7 @@ test('public demo: a stranger books through simulated dealers', async ({ page },
   await expect.poll(async () => {
     await page.goto('/orders');
     return page.getByRole('link', { name: /^Order / }).count();
-  }, { timeout: 4 * 60_000, intervals: [5000] }).toBeGreaterThan(0);
+  }, { timeout: 7 * 60_000, intervals: [5000] }).toBeGreaterThan(0); // the 5-minute decision window has to close first
   await page.getByRole('link', { name: /^Order / }).first().click();
   await expect(page.getByTestId('car-and-dealer')).toContainText('Maruti Suzuki Swift'); // U.1: what, and from whom, above the amount
   await expect(page.getByTestId('car-and-dealer')).toContainText('Simulated Motors');

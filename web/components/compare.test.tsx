@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Breakdown, type EngineOutput } from './breakdown';
+import { Breakdown, estimateLines, type EngineOutput } from './breakdown';
 import { addonFlags, OfferCard, StockNote, stockConfidence, TierLadder } from './compare-view';
 import { Countdown, deadlinePhase } from './ui/countdown';
 import { keyLines, matrixRows, nextTier, sortOffers } from '@/lib/compare';
@@ -78,6 +78,13 @@ describe('compare helpers (rate card)', () => {
     const html = render(<OfferCard offer={off} poolId="p" acceptedVariantId={null} canAccept committed={1} flagged={[]} onAccepted={() => {}} />);
     expect(html).toContain('Minimum 3 confirmed buyers');
     expect(html).not.toContain('would not go ahead');
+  });
+});
+
+describe('estimates', () => {
+  it('drop the empty discount and never read as dealer-confirmed', () => {
+    const lines = estimateLines([{ code: 'DISCOUNT', amount_paise: 0, evidence: 'DEALER_CONFIRMED', in_cash_payable: true, flags: [] }, { code: 'TCS', amount_paise: 5, evidence: 'DEALER_CONFIRMED', in_cash_payable: true, flags: [] }] as never);
+    expect(lines.map((l) => [l.code, l.evidence])).toEqual([['TCS', 'CATALOGUE_ESTIMATE']]);
   });
 });
 
