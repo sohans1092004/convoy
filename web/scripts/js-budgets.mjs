@@ -37,7 +37,7 @@ async function measure(browser, route) {
       try { scripts.set(u, gzipSync(await res.body(), { level: 9 }).length); } catch { /* aborted */ }
     }
   });
-  await page.goto(WEB + route.path, { waitUntil: 'networkidle' });
+  await page.goto(WEB + route.path, { waitUntil: 'networkidle', timeout: 180_000 }); // a deployed host may sit behind a slow link
   await ctx.close();
   return { bytes: [...scripts.values()].reduce((a, b) => a + b, 0), chunks: scripts.size };
 }

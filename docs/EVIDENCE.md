@@ -2,7 +2,7 @@
 
 Every number we might quote, with where it was measured. **Where** is one of: **laptop** (one Windows laptop, Docker
 Desktop on WSL 2), **CI** (GitHub Actions), **live lite host** (the public demo, https://convoy-main.duckdns.org, one
-AWS t4g.medium, 2 vCPU / 4 GiB; runs **2278af4** since 2026-11-01 20:19 UTC, shown at `/version`), **simulated** (a fake or synthetic input stands in for the real thing), **estimate**
+AWS t4g.medium, 2 vCPU / 4 GiB; runs **7c48456** since 2026-11-02 14:45 UTC, shown at `/version`), **simulated** (a fake or synthetic input stands in for the real thing), **estimate**
 (arithmetic, not a bill). **Commit** is the commit measured when the source names one, otherwise the commit that
 recorded the result. A number not in this file is not evidence. Missed and unmeasured targets: §8.
 
@@ -82,6 +82,20 @@ deployed since 2026-11-01 as part of 2278af4.
 | dealer | 183.7 | 164.5 | none | n/a |
 
 Source: reports/p7/frontend.md (2026-11-01).
+
+**Rate-card UI, live site, build 7c48456** (2026-11-02, laptop in India to the host in Sydney). Sources: reports/ui/lighthouse-live.json (second run), reports/ui/lighthouse-ab-local.md, reports/ui/BACKLOG.md.
+
+| Page | First run: LCP / TBT / performance | Second run, nothing else running: LCP / TBT / performance | CLS | Gate |
+|---|---|---|---|---|
+| discover | 7,082 ms / 43 ms / 56 | 4,853 ms / 4 ms / 66 | 0 | **missed** (LCP, performance) |
+| model | 5,826 ms / 22 ms / 59 | 8,922 ms / 38 ms / 55 | 0 | **missed** (LCP, performance) |
+| pool | 3,254 ms / 11 ms / 79 | 7,301 ms / 0 ms / 58 | 0 | **missed** (LCP, performance) |
+
+**These are misses, measured on a degraded link.** Throughput from the laptop to the host was 2 to 30 KB/s, against about 205 to 340 KB/s to Cloudflare at the same time, with 1 to 3 s to first byte. On the host itself the home page takes 0.04 s, and the host was idle with full CPU credits. Whether the route or the host's outbound traffic is the limit is not established: no run has been made from another network. The first run also shared the link with other jobs.
+
+A laptop A/B with no network link shows what the code itself adds on discover: LCP median 2,845 → 3,104 ms, 193 → 236 KB. That run has no backend, so it compares the builds and is not an absolute figure. Both builds exceed 2.5 s in it. **So this build costs about 260 ms of LCP, and the 2.5 s gate is not shown to be met until a run on a healthy link.**
+
+Same build and date: demo journey on the public URL PASS once, 9.9 min at 360 px, including the 5-minute demo decision window, with the journey's navigation limit raised to 120 s for remote runs. Route JS budgets all within budget, measured on the live build: discover 163.7, model 167.6, pool 168.2, compare 169.2, confirm 180, my cars 164.7, quote builder 190.7 KB gzip. Axe: 0 violations at 360 and 1280 px in light and dark on 10 screen states, against mocked API replies, not the live data (the model page is server-rendered, so it had no mocked axe run here; the CI journey covers it). Storybook page states 52/52 on the branch in CI. Not run on this build: real screen readers, physical phones, Firefox and Safari. The nightly browser job already failed on main on 2026-11-02 before this work, because `e2e/demo.spec.ts` expects the demo button on a stack without `DEMO_PUBLIC`; the same failure skips that job's budget and Lighthouse steps.
 
 **Lighthouse, live site** (mobile preset, simulated slow 4G, median of 3 runs, @lhci/cli 0.15.1; pool page through a
 fresh "Try the demo" session). Lab gate (docs/testing/frontend-quality.md §2): LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1,

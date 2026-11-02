@@ -9,6 +9,12 @@ Items come from the U.0 review. None are built. P1 parts that were outside the s
 - **Hindi beyond the money screens (1.16):** the model page's remaining strings are marked `lang="en"`, not translated. The dealer tools are all English and marked as such. `scripts/i18n-untranslated.mjs` still undercounts. All Hindi remains an unreviewed machine draft.
 - **Demo confirmation window:** still 60 s, so the last-minute warning shows as soon as the confirm screen opens. Only the decision window was lengthened.
 
+## Found during this pass
+- **Live LCP:** 3.3 to 8.9 s on 7c48456 against the 2.5 s gate, measured on a degraded link. Re-run `DEMO=1 WEB_URL=https://convoy-main.duckdns.org LH_OUT=../reports/ui/lighthouse-live.json node scripts/lighthouse.mjs` on a healthy link, or from another network. The code itself adds about 260 ms and 43 KB on discover (`lighthouse-ab-local.md`).
+- **Slow path to the host:** 2 to 30 KB/s from the laptop while Cloudflare gave 205 to 340 KB/s. Cause not established.
+- **Nightly browser job:** already failing on main: `e2e/demo.spec.ts` runs on a stack without `DEMO_PUBLIC`, and the failure skips the job's budget and Lighthouse steps.
+- **Demo confirmation window:** one capture over the slow link missed the 60 s window altogether. A visitor on a slow connection could too.
+
 ## P2
 - Pool title from a slug if the catalogue is unreachable: a hyphenated brand reads badly in that fallback only.
 - Model estimate: a ₹0 TCS line still shows on cars below the TCS threshold.

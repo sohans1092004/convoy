@@ -46,7 +46,8 @@ let session, pool, cookie;
 if (process.env.DEMO === '1') {
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  await page.goto(WEB + '/');
+  page.setDefaultTimeout(180_000); // a deployed host may sit behind a slow link
+  await page.goto(WEB + '/', { timeout: 180_000 });
   await page.getByRole('button', { name: 'Try the demo' }).click();
   await page.waitForURL(/\/pools\/[0-9a-f-]+$/, { timeout: 60_000 });
   pool = page.url().split('/').pop();
