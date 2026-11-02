@@ -522,6 +522,18 @@
               "string",
               "null"
             ]
+          },
+          "evidence_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "manual_note": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -529,9 +541,11 @@
           "attempts",
           "buyer_id",
           "created_at",
+          "evidence_ref",
           "failure_reason",
           "id",
           "kind",
+          "manual_note",
           "next_attempt_at",
           "payment_id",
           "pool_id",

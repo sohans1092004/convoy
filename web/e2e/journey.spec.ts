@@ -137,7 +137,12 @@ async function dealerQuote(browser: Browser, poolId: string, project: string) {
   await axe(page, 'dealer inbox');
   await card.getByRole('button', { name: 'Start a quote' }).click();
   await page.waitForURL(/\/dealer\/quotes\//);
-  await expect(page.getByText('Preview (TypeScript engine')).toBeVisible();
+  await page.getByLabel('Tier 1 discount').fill('10000');
+  await page.getByLabel('Tier 2 discount').fill('25000');
+  await page.getByLabel('Units in stock').fill('5');
+  await page.getByLabel('Colour').fill('White');
+  await page.getByLabel('Delivery from').fill(new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10));
+  await expect(page.getByText('Preview (the server recalculates')).toBeVisible();
   await axe(page, 'dealer quote form');
   await page.getByRole('button', { name: 'Submit sealed quote' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Submit' }).click();

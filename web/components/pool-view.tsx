@@ -234,7 +234,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
         </div>
         <Card className="flex flex-col gap-3">
           <CardTitle>{tp('yourPlace')}</CardTitle>
-          <p className="text-sm">{me ? <>{tp('status')} <strong>{me.state.replace(/_/g, ' ').toLowerCase()}</strong></> : tp('notIn')}</p>
+          <p className="text-sm">{me ? <>{tp('status')} <strong lang="en">{me.state.replace(/_/g, ' ').toLowerCase()}</strong></> : tp('notIn')}</p>
           {!me && joinable ? (
             <Button variant="secondary" disabled={!online} loading={join.state.kind === 'loading'} onClick={() => join.execute()}>{tp('join')}</Button>
           ) : null}

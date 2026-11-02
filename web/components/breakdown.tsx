@@ -1,10 +1,21 @@
 import { EvidenceBadge } from '@/components/ui/badge';
 import type { Schemas } from '@/lib/api';
-import { lineLabel, rupees } from '@/lib/format';
+import { rupees } from '@/lib/format';
 import { useTranslations } from 'next-intl';
 
 export type EngineOutput = Schemas['catalog']['PriceOutput'];
 export type EngineLine = EngineOutput['lines'][number];
+
+/** A price line's name in the page language; a dealer's own item keeps the name the dealer gave it. */
+export function useLineLabel() {
+  const t = useTranslations('line');
+  return (code: string): string => {
+    if (t.has(`code.${code}`)) return t(`code.${code}`);
+    const [kind, rest] = code.split(':');
+    const nice = (rest ?? kind).replace(/_/g, ' ').toLowerCase();
+    return t.has(`kind.${kind}`) ? `${t(`kind.${kind}`)}${rest ? `: ${nice}` : ''}` : nice;
+  };
+}
 
 export function Flags({ l }: { l: { flags: string[] } }) {
   const t = useTranslations('breakdown');
@@ -26,6 +37,7 @@ export const estimateLines = (lines: EngineLine[]): EngineLine[] => lines.filter
  */
 export function Breakdown({ output, caption, stacked, estimate }: { output: EngineOutput; caption: string; /** Always the list: for a narrow column on a wide screen. */ stacked?: boolean; /** No dealer is involved yet: no empty discount line, and no line reads as dealer-confirmed. */ estimate?: boolean }) {
   const t = useTranslations('breakdown');
+  const lineLabel = useLineLabel();
   const lines = estimate ? estimateLines(output.lines) : output.lines;
   const mandatory = lines.filter((l) => l.in_cash_payable);
   const optional = lines.filter((l) => !l.in_cash_payable);

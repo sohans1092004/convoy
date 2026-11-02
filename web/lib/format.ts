@@ -10,38 +10,12 @@ export function rupees(paise: number, exact = false): string {
 /** Times are stored in UTC and shown in IST. */
 export function ist(iso: string | null | undefined, withSeconds = false): string {
   if (!iso) return '';
-  return new Intl.DateTimeFormat('en-IN', {
+  // ponytail: reads the page language rather than threading a locale through every caller; on the server it stays en-IN.
+  const locale = typeof document !== 'undefined' && document.documentElement.lang.startsWith('hi') ? 'hi-IN' : 'en-IN';
+  return new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
     ...(withSeconds ? { second: '2-digit' } : {}), hour12: true,
   }).format(new Date(iso)) + ' IST';
 }
 
 export type Evidence = import('./api').Schemas['catalog']['Line']['evidence'];
-
-export const EVIDENCE_LABEL: Record<Evidence, string> = {
-  DEALER_CONFIRMED: 'Dealer-confirmed',
-  CATALOGUE_ESTIMATE: 'Catalogue estimate',
-  UNVERIFIED: 'Unverified',
-};
-
-export const LINE_LABEL: Record<string, string> = {
-  EX_SHOWROOM: 'Ex-showroom price',
-  DISCOUNT: 'Dealer discount',
-  REGISTRATION: 'Registration (dealer figure)',
-  ROAD_TAX: 'Road tax',
-  ROAD_TAX_CESS: 'Road tax cess',
-  REGISTRATION_FEE: 'Registration fee',
-  SMART_CARD_FEE: 'Smart card fee',
-  INSURANCE_OD: 'Insurance: own damage, year 1',
-  INSURANCE_TP: 'Insurance: third party, 3 years',
-  INSURANCE_GST: 'GST on insurance',
-  TCS: 'TCS 1% (creditable against income tax)',
-  EXTENDED_WARRANTY: 'Extended warranty',
-};
-
-export function lineLabel(code: string): string {
-  if (LINE_LABEL[code]) return LINE_LABEL[code];
-  const [kind, rest] = code.split(':');
-  const nice = (rest ?? '').replace(/_/g, ' ').toLowerCase();
-  return { ACCESSORY: 'Accessory', FEE: 'Fee', CHARGE: 'Other charge', INSURANCE_ADDON: 'Insurance add-on' }[kind] + (nice ? `: ${nice}` : '');
-}

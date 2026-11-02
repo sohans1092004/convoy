@@ -356,7 +356,7 @@ public class Payments {
     /** Refunds that need a person: failed at Razorpay, or out of automatic attempts. */
     public List<Map<String, Object>> adminQueue() {
         return jdbc.queryForList("select r.id::text as id, r.payment_id::text as payment_id, p.buyer_id::text as buyer_id, p.pool_id::text as pool_id, r.kind, r.reason_code, "
-                + "r.amount_paise, r.state, r.attempts, r.failure_reason, r.next_attempt_at, r.created_at, r.requested_by::text as requested_by from refunds r join payments p on p.id = r.payment_id "
+                + "r.amount_paise, r.state, r.attempts, r.failure_reason, r.next_attempt_at, r.created_at, r.requested_by::text as requested_by, r.evidence_ref, r.manual_note from refunds r join payments p on p.id = r.payment_id "
                 + "where r.state in ('REFUND_REQUESTED', 'REFUND_FAILED') and (r.state = 'REFUND_FAILED' or r.attempts >= ?) order by r.created_at",
                 settings.refundRetrySchedule().size());
     }

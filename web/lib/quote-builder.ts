@@ -8,6 +8,12 @@ export interface Issue { field: string; message: string }
 const num = (s: string) => (s.trim() === '' ? null : Number(s.replace(/,/g, '')));
 export const paise = (rupeesText: string) => { const n = num(rupeesText); return n === null || Number.isNaN(n) ? null : Math.round(n * 100); };
 
+/** Rupees as typed, shown with lakh grouping; anything that is not yet a number is left as typed. paise() ignores the commas. */
+export function grouped(text: string): string {
+  const [, whole, rest] = text.replace(/,/g, '').match(/^(\d+)(\.\d*)?$/) ?? [];
+  return whole === undefined ? text : Number(whole).toLocaleString('en-IN') + (rest ?? '');
+}
+
 /** Tier ladder checks mirroring the server's (contiguous from 1, last open-ended, discount never shrinks). */
 export function tierIssues(tiers: TierRow[], minF: string, maxUnits: string): Issue[] {
   const out: Issue[] = [];

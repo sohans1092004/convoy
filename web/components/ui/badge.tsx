@@ -1,7 +1,8 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { cn } from '@/lib/cn';
-import { EVIDENCE_LABEL, type Evidence } from '@/lib/format';
+import type { Evidence } from '@/lib/format';
+import { useTranslations } from 'next-intl';
 
 const badgeVariants = cva('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold', {
   variants: {
@@ -24,10 +25,11 @@ const EVIDENCE_MARK: Record<Evidence, string> = { DEALER_CONFIRMED: '■', CATAL
 
 /** Evidence level of a price line: a small word beside the amount, shape + text, never colour alone. Only "Unverified" takes colour. */
 export function EvidenceBadge({ evidence, className }: { evidence: Evidence; className?: string }) {
+  const t = useTranslations('evidence');
   return (
     <span className={cn('inline-flex items-center gap-1 whitespace-nowrap text-xs', evidence === 'UNVERIFIED' ? 'font-semibold text-warning-fg' : 'text-muted', className)}>
       <span aria-hidden>{EVIDENCE_MARK[evidence]}</span>
-      {EVIDENCE_LABEL[evidence]}
+      {t(evidence)}
     </span>
   );
 }

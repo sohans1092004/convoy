@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import * as React from 'react';
 import { Breakdown } from '@/components/breakdown';
 import { CommandStatus } from '@/components/command-status';
+import { TwoStep } from '@/components/two-step';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
@@ -31,10 +32,16 @@ function CarAndDealer({ order, className }: { order: Order; className?: string }
   if (!order.car && !order.dealership_name) return <p role="status" className={`text-sm text-muted ${className ?? ''}`}>{t('namesUnavailable')}</p>;
   return (
     <div className={className} data-testid="car-and-dealer">
-      {order.car ? <p className="font-bold">{t('carAndDealer', order.car)}</p> : null}
+      {order.car ? <p lang="en" className="font-bold">{t('carAndDealer', order.car)}</p> : null}
       {order.dealership_name ? <p className="text-sm">{t('dealerLine', { dealer: order.dealership_name })}</p> : null}
     </div>
   );
+}
+
+/** An order or voucher state in the page language; a state with no wording yet stays in English and says so. */
+function stateWord(t: ReturnType<typeof useTranslations<'order'>>, state: string) {
+  const key = `state.${state}` as never;
+  return t.has(key) ? t(key) : <span lang="en">{state.replace(/_/g, ' ').toLowerCase()}</span>;
 }
 
 function VoucherCard({ orderId }: { orderId: string }) {
@@ -50,10 +57,10 @@ function VoucherCard({ orderId }: { orderId: string }) {
   if (!v) return <Skeleton className="h-64" label={to('loadingVoucher')} />;
   return (
     <Card emphasis className="flex flex-col items-start gap-3 sm:flex-row">
-      <div role="img" aria-label={`QR code for booking voucher ${v.id.slice(-8)}`} className="w-48 shrink-0 rounded-lg bg-white p-2" dangerouslySetInnerHTML={{ __html: svg }} />
+      <div role="img" aria-label={to('qrLabel', { id: v.id.slice(-8) })} className="w-48 shrink-0 rounded-lg bg-white p-2" dangerouslySetInnerHTML={{ __html: svg }} />
       <div className="flex flex-col gap-1">
         <CardTitle>{to('voucher')}</CardTitle>
-        <p className="text-sm">{to('booking')} <span className="font-mono">{v.id.slice(-8).toUpperCase()}</span> · <Badge tone="success">{v.state.replace(/_/g, ' ').toLowerCase()}</Badge></p>
+        <p className="text-sm">{to('booking')} <span className="font-mono">{v.id.slice(-8).toUpperCase()}</span> · <Badge tone="success">{stateWord(to, v.state)}</Badge></p>
         {v.promised_delivery_date ? <p className="text-sm">{to('promised', { date: v.promised_delivery_date })}</p> : null}
         <CardText>{v.dealership_name ? to('qrNoteAt', { dealer: v.dealership_name }) : to('qrNote')}</CardText>
       </div>
@@ -204,14 +211,13 @@ export function OrderView({ orderId }: { orderId: string }) {
     await call(api.POST('/bookings/{id}/confirm-delivery', { params: { path: { id: snap.data!.order.booking!.id } }, headers: { 'Idempotency-Key': key } }));
     await fresh();
   });
-  const [confirmCancel, setConfirmCancel] = React.useState(false);
   const o = snap.data?.order;
   // The next rung of the ladder for the confirm screen; the order itself carries only its ceiling. No line if offers can't be read.
   const offers = useFetch(['offers', o?.pool_id], async () => (await call(api.GET('/pools/{poolId}/quotes', { params: { path: { poolId: o!.pool_id } } }))).data, { enabled: o?.state === 'CONFIRMATION_PENDING' });
   const pricedVariant = offers.data?.quotes.find((q) => q.quote_id === o?.quote_id)?.variants.find((v) => v.variant_id === o?.variant_id);
   const next = pricedVariant ? nextTier(pricedVariant.tiers) : null;
   if (snap.loading && !o) return <Skeleton className="h-96" label={to('loading')} />;
-  if (!o) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{snap.problem?.detail ?? to('loadFailed')}</p>;
+  if (!o) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{snap.problem?.detail ? <span lang="en">{snap.problem.detail}</span> : to('loadFailed')}</p>;
   const ceiling = o.snapshots.ceiling!;
   const b = o.booking;
   const dealerFailure = o.disputes.length > 0;
@@ -219,7 +225,7 @@ export function OrderView({ orderId }: { orderId: string }) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-extrabold">{to('title')}</h1>
-        <Badge tone={['BOOKED', 'COMPLETED'].includes(o.state) ? 'success' : o.state === 'CONFIRMATION_PENDING' ? 'warning' : 'neutral'}>{o.state.replace(/_/g, ' ').toLowerCase()}</Badge>
+        <Badge tone={['BOOKED', 'COMPLETED'].includes(o.state) ? 'success' : o.state === 'CONFIRMATION_PENDING' ? 'warning' : 'neutral'}>{stateWord(to, o.state)}</Badge>
       </div>
       {o.state === 'CONFIRMATION_PENDING' ? null : <CarAndDealer order={o} />}
       {o.state === 'CONFIRMATION_PENDING' ? (
@@ -234,7 +240,7 @@ export function OrderView({ orderId }: { orderId: string }) {
           <Countdown deadline={o.confirmation_deadline} label={to('confirmBy')} />
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button loading={confirm.state.kind === 'loading'} onClick={() => confirm.execute()}>{t('cta', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</Button>
-            <Button variant="secondary" loading={decline.state.kind === 'loading'} onClick={() => decline.execute()}>{to('decline')}</Button>
+            <TwoStep label={to('decline')} terms={to('declineTerms')} yes={to('declineYes')} no={to('declineNo')} loading={decline.state.kind === 'loading'} onConfirm={() => decline.execute()} />
           </div>
           <p className="text-sm">{t('body', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</p>
           <p className="text-sm">{t('consent')}</p>
@@ -296,7 +302,7 @@ export function OrderView({ orderId }: { orderId: string }) {
           <CardTitle>{tl('cases')}</CardTitle>
           <ul className="flex flex-col gap-1">
             {o.disputes.map((d) => (
-              <li key={d.id}><Link className="underline" href={`/disputes/${d.id}`}>{tl(`category.${d.category}`)}</Link> · <Badge tone="neutral">{d.state.replace(/_/g, ' ').toLowerCase()}</Badge></li>
+              <li key={d.id}><Link className="underline" href={`/disputes/${d.id}`}>{tl(`category.${d.category}`)}</Link> · <Badge tone="neutral" lang="en">{d.state.replace(/_/g, ' ').toLowerCase()}</Badge></li>
             ))}
           </ul>
         </Card>
@@ -309,15 +315,7 @@ export function OrderView({ orderId }: { orderId: string }) {
       ) : null}
       {(o.state === 'CONFIRMED' || (o.state === 'BOOKED' && b && b.state !== 'DELIVERED')) ? (
         <div className="flex flex-col gap-2">
-          {confirmCancel ? (
-            <div className="flex flex-col gap-2 rounded-lg border border-border p-3" role="group" aria-label={to('cancelBooking')}>
-              <p className="text-sm">{tl('cancelTerms')}</p>
-              <div className="flex gap-2">
-                <Button variant="secondary" loading={cancel.state.kind === 'loading'} onClick={() => cancel.execute()}>{tl('cancelYes')}</Button>
-                <Button variant="link" onClick={() => setConfirmCancel(false)}>{tl('cancelNo')}</Button>
-              </div>
-            </div>
-          ) : <Button variant="secondary" className="self-start" onClick={() => setConfirmCancel(true)}>{to('cancelBooking')}</Button>}
+          <TwoStep label={to('cancelBooking')} terms={tl('cancelTerms')} yes={tl('cancelYes')} no={tl('cancelNo')} className="self-start" loading={cancel.state.kind === 'loading'} onConfirm={() => cancel.execute()} />
           <CommandStatus state={cancel.state} successText={tl('cancelledDone')} />
         </div>
       ) : null}

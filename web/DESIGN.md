@@ -1,17 +1,18 @@
 ---
 name: Convoy
-description: Group car buying for India. Records the visual system as implemented; it is not a target.
+description: Group car buying for India. Records the visual system as implemented ("the rate card").
 colors:
   primary: "#0f5c4d"
   primary-fg: "#ffffff"
-  accent: "#b4520c"
-  bg: "#f7f7f5"
+  bg: "#f6f7f6"
   surface: "#ffffff"
-  surface-2: "#efeee9"
+  surface-2: "#eceeec"
   fg: "#1b1d1f"
-  muted: "#55595e"
-  border: "#d4d2cb"
+  muted: "#4a5057"
+  border: "#d9dcd9"
+  control: "#858a8f"
   danger: "#a3261d"
+  danger-fg: "#ffffff"
   danger-bg: "#fbeceb"
   warning-bg: "#fdf3dd"
   warning-fg: "#6b4a00"
@@ -22,32 +23,32 @@ colors:
   focus: "#1a56db"
 typography:
   headline:
-    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif"
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Devanagari, Segoe UI, system-ui, sans-serif"
     fontSize: "1.5rem"
-    fontWeight: 800
+    fontWeight: 600
     lineHeight: 1.25
   title:
-    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif"
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Devanagari, Segoe UI, system-ui, sans-serif"
     fontSize: "1.125rem"
-    fontWeight: 700
+    fontWeight: 600
     lineHeight: 1.375
   price-lg:
-    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif"
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Devanagari, Segoe UI, system-ui, sans-serif"
     fontSize: "1.875rem"
-    fontWeight: 700
+    fontWeight: 600
     fontFeature: "tnum"
   body:
-    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif"
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Devanagari, Segoe UI, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
   body-sm:
-    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif"
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Devanagari, Segoe UI, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.43
   label:
-    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif"
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Devanagari, Segoe UI, system-ui, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.33
@@ -75,7 +76,7 @@ components:
     padding: "0 16px"
   button-danger:
     backgroundColor: "{colors.danger}"
-    textColor: "#ffffff"
+    textColor: "{colors.danger-fg}"
     rounded: "{rounded.lg}"
     height: "44px"
     padding: "0 16px"
@@ -99,67 +100,63 @@ components:
 
 # Design System: Convoy
 
-<!-- Scope: the system as implemented on 2026-11-02, from web/app/globals.css and web/components/ui. A record, not an endorsement. -->
+<!-- Scope: the system as implemented on 2026-11-02, from web/app/globals.css and web/components/ui. -->
 
 ## Overview
 
-**Creative North Star: "The Default Utility"**
+**Creative North Star: "The Rate Card"**
 
-Convoy looks like what it is today: a blunt, accurate, tokenised utility with little authored character. Everything sits in a single centred column of flat, bordered cards on a warm off-white page, with one deep green for actions. Its discipline shows in behaviour and accuracy (states, focus, tabular money, evidence labels) rather than in visual identity.
-
-Nearly every screen is built from the same few primitives, so buyer, dealer and admin surfaces share one density and one look. Hierarchy comes from weight and size inside cards, and the page itself has no distinct composition, imagery or brand mark beyond the bold wordmark.
+The priced, itemised sheet is the product's signature. The home page leads with leverage ("Dealers compete for you"), and the decision screens lead with the sheet: the most you can pay, each line, and what each line is based on. Cool neutrals and one green keep attention on the figures.
 
 **Key Characteristics:**
-- Flat, bordered cards with no resting shadows.
-- One action colour, deep green; amber, red, green and blue tints carry status.
-- System sans in practice, because the named first choice is never loaded.
-- Small text everywhere: `text-sm` is by far the most used size.
+- Ruled rows inside flat, bordered cards, with no resting shadows.
+- One action colour, deep green. Amber means "unverified" or "needs your attention".
+- IBM Plex Sans and IBM Plex Sans Devanagari, self-hosted, at two weights.
+- Two densities: generous for buyers, dense for dealer and admin tools.
 - Light and dark themes through semantic tokens; dark follows the operating system.
 
 ## Colors
 
-A neutral warm-grey page and white cards, one deep green for action, and pale tinted pairs for status.
-
 ### Primary
-- **Deep Bottle Green:** primary buttons, links, the emphasised card border, progress fill and the current timeline step. Dark theme swaps it for a lighter mint (`#4fbfa5`) with near-black text (`#08201b`).
-
-### Secondary
-- **Burnt Orange (`accent`):** defined as a token but not used by the components surveyed.
+- **Deep Bottle Green:** primary buttons, links, the emphasised card border, the progress fill and the current timeline step. The dark theme swaps it for a lighter mint (`#4fbfa5`) with near-black text (`#08201b`).
 
 ### Neutral
-- **Warm Off-White (`bg`):** page background.
-- **White (`surface`):** cards, inputs, secondary buttons.
-- **Warm Grey Tint (`surface-2`):** neutral badges, the pre-commit panel, skeletons, the next-action strip.
+- **Page (`bg`), White (`surface`), Cool Tint (`surface-2`):** page, cards and inputs, then neutral badges, the pre-commit panel and rows that differ across offers.
 - **Ink (`fg`):** body text and the test-mode banner background.
-- **Slate (`muted`):** secondary text, at about 6.6:1 on the page.
-- **Stone (`border`):** all hairlines and input borders, at about 1.5:1 on white.
+- **Slate (`muted`):** secondary text.
+- **Hairline (`border`):** rules and card edges, never the only edge of a control.
+- **Control (`control`):** input, radio-row and secondary-button borders, at least 3:1 on the page and on white in both themes (`#858a8f`, dark `#6e757b`).
 
 ### Status
-Each status is a pale background with a dark foreground: **danger**, **warning**, **success** and **info**. The dark theme mirrors each pair with a deep background and a light foreground.
+Each status is a pale background with a dark foreground: **danger**, **warning**, **success** and **info**. The dark theme mirrors each pair. `danger-fg` is the text on a danger button (white, or near-black on the dark theme's light red).
 
-**The Shape-And-Word Rule.** Evidence levels are never colour alone: each badge carries a shape mark (■ ▣ □) and a text label.
+**The Shape-And-Word Rule.** Evidence levels are never colour alone: each carries a shape mark (■ ▣ □) and a word.
 
 ## Typography
 
-**Body Font:** Inter is named first in the stack, with `ui-sans-serif`, `system-ui`, `-apple-system`, Segoe UI, Roboto and Noto Sans behind it.
-
-**Character:** Inter is never loaded (no `@font-face`, no `next/font`), so visitors get their platform's system sans unless Inter happens to be installed. Devanagari falls back to whichever system font covers it.
+**Font:** IBM Plex Sans first, because IBM Plex Sans Devanagari has no rupee sign. Both are self-hosted subsets in `app/fonts` at 400 and 600. The Devanagari files load only when a page has Hindi text. Every heavy utility resolves to 600, and `font-medium` to 400.
 
 ### Hierarchy
-- **Headline** (800, 1.5rem, rising to 1.875rem on the home and model pages from `sm`): the page `h1`.
-- **Title** (700, 1.125rem): card titles.
-- **Price** (700, 1.875rem / 1.25rem / 1rem, tabular): rupee amounts through the `Price` primitive.
-- **Body** (400, 1rem): default page text and input text.
-- **Body small** (400, 0.875rem): most running text, including terms and explanations.
-- **Label** (600, 0.75rem): badges and the fine print under sections. The test-mode banner uses this size at weight 700.
+- **Hero figure** (600, 2.25rem, tabular): the ceiling on the confirm screen.
+- **Headline** (600, 1.5rem; 1.875 to 2.25rem on home): the page `h1`.
+- **Title** (600, 1.125rem): card titles.
+- **Price** (600, 1.875rem / 1.25rem / 1rem, tabular): rupee amounts through the `Price` primitive.
+- **Body** (400, 1rem) and **Body small** (400, 0.875rem).
+- **Label** (0.75rem): evidence words and fine print.
 
-**The Tabular Money Rule.** Rupee amounts and counts use tabular figures, formatted with lakh and crore grouping.
+Hindi uses a line height of 1.7 for body text and 1.35 for headings.
+
+**The Tabular Money Rule.** Rupee amounts and counts use tabular figures, with lakh and crore grouping. Plex Sans digits are tabular by default.
+
+### Density
+- **Buyer (default):** 16 px body, 44 px controls (`--control-h`).
+- **Work (`data-density="work"`, dealer and admin layouts):** 14 px body, 13 px small text, 36 px controls, 32 px from 1024 px wide. Targets stay above the 24 px floor.
 
 ## Layout
 
 A single centred column, `max-w-5xl` with 16px side padding, under a wrapping header. Screens stack cards with 16 to 24px gaps. Spacing follows Tailwind's 4px steps, with 8 and 12px gaps most common.
 
-Grids appear from the `sm`, `md` and `lg` breakpoints: discover goes to two then three columns, the model and pool pages to two asymmetric columns, and compare to two offer cards at `lg`. Below `sm`, the price breakdown switches from a table to a stacked list. There is no sticky action bar and no route-level navigation beyond the header links. On `origin/main` and the live build, a small footer line shows the build id.
+Grids appear from the `sm`, `md` and `lg` breakpoints: discover goes to two then three columns, and the model and pool pages to two asymmetric columns. Compare is one DOM: sorted cards on a phone, and from `md` a matrix whose rows align across dealers through CSS subgrid, with row labels in a first column. Below `sm`, the price breakdown switches from a table to a stacked list. There is no sticky action bar and no route-level navigation beyond the header links. On `origin/main` and the live build, a small footer line shows the build id.
 
 ## Elevation & Depth
 
@@ -181,17 +178,17 @@ One gently rounded corner (0.625rem) on cards, buttons, inputs and notices. Badg
 Plain and direct, with no iconography.
 - **Shape:** gently rounded, 44px minimum height.
 - **Primary:** green with white text, semibold 0.95rem.
-- **Secondary:** white with a stone border; hover tints to `surface-2`.
+- **Secondary:** white with a control border; hover tints to `surface-2`.
 - **Danger:** red with white text.
 - **Link:** green underlined text at 24px minimum height.
 - **States:** hover brightens or tints, disabled drops to 55% opacity, and loading adds a small spinner and `aria-busy`.
 
 ### Cards / Containers
-- **Style:** white, 1px stone border, 16px padding (20px from `sm`), no shadow.
+- **Style:** white, 1px hairline border, 16px padding (20px from `sm`), no shadow.
 - **Emphasis:** a 2px green border.
 
 ### Inputs / Fields
-- **Style:** white with a stone border, 44px minimum height, label above in semibold small text, hint below it.
+- **Style:** white with a control border, `--control-h` minimum height, label above in semibold small text, hint below it.
 - **Focus:** the global 3px blue outline with 2px offset.
 - **Error:** danger border with a linked `role="alert"` message; the value is kept. Several forms outside this primitive use raw inputs with `p-2` and no minimum height.
 
@@ -202,16 +199,19 @@ Small pills in neutral, success, warning, danger or info tints, never wrapping.
 Text links in a wrapping header row beneath a dark, full-width test-mode banner. There is no active-page state. Language switch and sign-in are pushed to the right; the notifications bell is an emoji with a screen-reader label.
 
 ### Evidence Badge
-The product's one signature primitive: an evidence level as a tinted pill with a shape mark and label (Dealer-confirmed, Catalogue estimate, Unverified).
+The product's one signature primitive: a small word beside an amount, with a shape mark (Dealer-confirmed, Catalogue estimate, Unverified). Only "Unverified" takes colour. Estimates never read as dealer-confirmed.
 
 ### Countdown
-A deadline line with its IST time and a live remaining value, ticking each second inside the last 24 hours, followed by a "Server time" line. It adds a warning in the final 60 seconds.
+A deadline stated as a fact: its date and time in IST, and the time now on the server clock, to the minute. No ticking seconds. A plain note appears in the last minute, and the last minute and the close are each announced once to screen readers.
+
+### Two-Step Confirm
+Consequential actions (decline, cancel, withdraw, approve, verify) open their terms and an explicit yes in place. Focus lands on the safe choice.
 
 ### Tier Ladder
-A plain ordered list of confirmed-buyer ranges and prices, with the ceiling tier in bold.
+A plain ordered list of confirmed-buyer ranges and prices, with the ceiling tier in 600.
 
 ### Order Timeline
-A vertical list of steps with small status dots, followed by a tinted next-action strip.
+A vertical list of steps, followed by a tinted next-action strip. Done is a check, current is a ring with a 600 label, not yet is a hollow dot, and did not happen is a dash.
 
 ## Do's and Don'ts
 
@@ -225,4 +225,4 @@ A vertical list of steps with small status dots, followed by a tinted next-actio
 ### Don't:
 - **Don't** add resting shadows; this system is flat, and only overlays lift.
 - **Don't** introduce a second action colour; green is the only one in use.
-- **Don't** treat this record as a target. A proposed direction is under review separately.
+- **Don't** use `--border` as the only edge of a control; use `--control`.

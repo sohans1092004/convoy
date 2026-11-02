@@ -67,7 +67,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
         <section aria-labelledby="estimate" className="flex flex-col gap-3 border-t border-border pt-4">
           <h2 id="estimate" className="text-lg font-semibold">{t('estimateTitle', { city })}</h2>
           {estimate.isPending && estimate.isFetching ? <Skeleton className="h-24" label={t('calculating')} /> : null}
-          {estimate.isFetching && previous ? <p aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
+          {estimate.isFetching && previous ? <p lang="en" aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
           {noPrice ? (
             <div><p className="text-sm"><strong>{t('noPriceTitle', { variant: variant?.name ?? t('car'), city })}</strong></p>
               <p className="mt-2 text-sm text-muted">{variant?.fuel === 'EV' ? t('noPriceEv') : t('noPriceGeneric')}</p></div>
@@ -78,7 +78,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
             </div>
           ) : null}
           {(estimate.isError && current && !noPrice) || (!online && current) ? (
-            <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">
+            <p lang="en" role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">
               This estimate was calculated {ist(current.snapshot.computed_at)} and could not be refreshed{!online ? ' (offline)' : ''}. It may be out of date.
             </p>
           ) : null}
@@ -86,7 +86,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
             <div className={previous ? 'opacity-60' : undefined} aria-busy={Boolean(previous)}>
               <h3 className="text-sm font-semibold">{t('cash')}</h3>
               <Price paise={shownEstimate.snapshot.output.cash_payable_paise} evidence="CATALOGUE_ESTIMATE" size="lg" />
-              <p className="mt-1 text-sm text-muted">Catalogue figures only: registration and insurance are estimated from published rules. {shownEstimate.city_confirmed ? '' : 'Manufacturer price; city not confirmed.'}</p>
+              <p lang="en" className="mt-1 text-sm text-muted">Catalogue figures only: registration and insurance are estimated from published rules. {shownEstimate.city_confirmed ? '' : 'Manufacturer price; city not confirmed.'}</p>
             </div>
           ) : null}
         </section>
@@ -109,7 +109,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
       {shownEstimate && !noPrice ? (
         <div className={previous ? 'opacity-60' : undefined} aria-busy={Boolean(previous)}>
           <Breakdown estimate output={shownEstimate.snapshot.output} caption={`On-road estimate, ${variant?.name}, ${city}`} />
-          <p className="mt-2 text-xs text-muted">Ruleset {shownEstimate.snapshot.ruleset_version} · calculated {ist(shownEstimate.snapshot.computed_at)} · snapshot {shownEstimate.snapshot.sha256.slice(0, 12)}</p>
+          <p lang="en" className="mt-2 text-xs text-muted">Ruleset {shownEstimate.snapshot.ruleset_version} · calculated {ist(shownEstimate.snapshot.computed_at)} · snapshot {shownEstimate.snapshot.sha256.slice(0, 12)}</p>
         </div>
       ) : null}
     </div>

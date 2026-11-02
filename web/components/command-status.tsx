@@ -12,7 +12,7 @@ export function CommandStatus({ state, successText, className }: { state: Comman
     return (
       <div aria-live="polite" role="status" className={cn('rounded-lg bg-info-bg p-3 text-sm text-info-fg', className)}>
         <p className="font-semibold">{t('notBuiltTitle')}</p>
-        <p>{state.problem.detail}</p>
+        <p lang="en">{state.problem.detail}</p>
         <p className="mt-1">{t('notBuiltBody')}</p>
       </div>
     );
@@ -26,13 +26,13 @@ export function CommandStatus({ state, successText, className }: { state: Comman
   return (
     <div aria-live="polite" role={state.kind === 'error' || state.kind === 'conflict' ? 'alert' : 'status'} className={cn('rounded-lg p-3 text-sm', tone, className)}>
       {state.kind === 'pending' ? <p>{state.message}</p> : null}
-      {state.kind === 'success' ? <p className="font-semibold">{state.message ?? successText ?? 'Done.'}</p> : null}
+      {state.kind === 'success' ? <p className="font-semibold">{state.message ?? successText ?? t('done')}</p> : null}
       {state.kind === 'error' || state.kind === 'conflict' ? (
         <>
-          <p className="font-semibold">{state.kind === 'conflict' ? 'This changed before your action reached us' : 'That did not work'}</p>
-          <p>{state.problem.detail ?? state.problem.title}</p>
+          <p className="font-semibold">{state.kind === 'conflict' ? t('conflict') : t('failed')}</p>
+          <p lang="en">{state.problem.detail ?? state.problem.title}</p>
           {state.problem.code === 'DEADLINE_PASSED' && state.problem.deadline ? (
-            <p className="mt-1">Deadline {ist(state.problem.deadline, true)}; our database clock read {ist(state.problem.server_time as string, true)}. Nothing was saved.</p>
+            <p className="mt-1">{t('deadlinePassed', { deadline: ist(state.problem.deadline, true), now: ist(state.problem.server_time as string, true) })}</p>
           ) : null}
           {state.kind === 'error' ? <p className="mt-1">{t('inputKept')}</p> : <p className="mt-1">{t('latestState')}</p>}
         </>

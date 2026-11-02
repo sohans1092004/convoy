@@ -5,6 +5,7 @@ import * as React from 'react';
 import { DealerClarifications } from '@/components/clarifications';
 import { CommandStatus } from '@/components/command-status';
 import type { Request, RoundVariant } from '@/components/dealer-inbox';
+import { TwoStep } from '@/components/two-step';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
@@ -14,8 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { rupees } from '@/lib/format';
-import { type Accessory, type Issue, diff, lineIssues, ordinal, paise, priceOnlyFalls, tierIssues, type TierRow, validityIssues, whatIf } from '@/lib/quote-builder';
+import { type Accessory, type Issue, diff, grouped, lineIssues, ordinal, paise, priceOnlyFalls, tierIssues, type TierRow, validityIssues, whatIf } from '@/lib/quote-builder';
 import { useCommand } from '@/lib/use-command';
+import { useModel } from '@/lib/use-model';
 
 // Dealer quote builder (P3.D). Amounts are typed in rupees and stored in paise. The live summary uses the TypeScript
 // price engine as a preview only; stored prices are the server's (recomputed on every submit and revision).
@@ -91,8 +93,8 @@ function AccessoryTable({ title, hint, rows, onChange, onRemove, onAdd, disabled
         <tbody>
           {rows.length === 0 ? <tr><td colSpan={3} className="text-muted">None.</td></tr> : rows.map(({ a, k }) => (
             <tr key={k}>
-              <td><input aria-label={`${title} item ${k + 1} name`} className="w-full rounded border border-border bg-surface px-2 py-1" value={a.label} onChange={(e) => onChange(k, { label: e.target.value })} /></td>
-              <td><input aria-label={`${title} item ${k + 1} amount`} inputMode="numeric" className="tabular w-full rounded border border-border bg-surface px-2 py-1" value={a.amount} onChange={(e) => onChange(k, { amount: e.target.value })} /></td>
+              <td><input aria-label={`${title} item ${k + 1} name`} className="w-full rounded border border-control bg-surface px-2 py-1" value={a.label} onChange={(e) => onChange(k, { label: e.target.value })} /></td>
+              <td><input aria-label={`${title} item ${k + 1} amount`} inputMode="numeric" className="tabular w-full rounded border border-control bg-surface px-2 py-1" value={grouped(a.amount)} onChange={(e) => onChange(k, { amount: e.target.value })} /></td>
               <td><Button variant="link" type="button" onClick={() => onRemove(k)}>Remove</Button></td>
             </tr>
           ))}
@@ -107,7 +109,7 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
   const [quote, setQuote] = React.useState<Quote | null>(null);
   const [request, setRequest] = React.useState<Request | null>(null);
   const [lines, setLines] = React.useState<Line[]>([]);
-  const [tiers, setTiers] = React.useState<TierRow[]>([{ min: '1', max: '4', discount: '10000' }, { min: '5', max: '', discount: '25000' }]);
+  const [tiers, setTiers] = React.useState<TierRow[]>([{ min: '1', max: '4', discount: '' }, { min: '5', max: '', discount: '' }]);
   const [minF, setMinF] = React.useState('1');
   const [maxUnits, setMaxUnits] = React.useState('');
   const [validUntil, setValidUntil] = React.useState(inDays(30));
@@ -115,20 +117,26 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
   const [revising, setRevising] = React.useState(false);
   const [changes, setChanges] = React.useState<ReturnType<typeof diff> | null>(null);
   const [ranks, setRanks] = React.useState<Rank[]>([]);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [pool, setPool] = React.useState<Schemas['pool']['Pool'] | null>(null);
+  const model = useModel(pool?.model_slug);
 
   const load = React.useCallback(async () => {
     const q = await call(api.GET('/dealer/quotes/{id}', { params: { path: { id: quoteId } } }));
     const inbox = await call(api.GET('/dealer/inbox'));
-    const r = inbox.data.requests.find((x) => x.pool_id === q.data.pool_id && x.state === 'OPEN') ?? inbox.data.requests.find((x) => x.pool_id === q.data.pool_id)!;
+    const r = inbox.data.requests.find((x) => x.pool_id === q.data.pool_id && x.state === 'OPEN') ?? inbox.data.requests.find((x) => x.pool_id === q.data.pool_id);
+    if (!r) throw new Error('This pool is not in your inbox any more, so its round cannot be shown.');
     setQuote({ ...q.data, version: etagVersion(q.response) ?? q.data.version });
     setRequest(r);
+    // The title's car and city; the page works without them if the pool can't be read.
+    api.GET('/pools/{id}', { params: { path: { id: q.data.pool_id } } }).then((p) => { if (p.data) setPool(p.data); }).catch(() => {});
     const stored = fromDraft(q.data.draft, r.variants);
     if (stored) {
       setLines(stored.lines); setTiers(stored.tiers); setMinF(stored.minF); setMaxUnits(stored.maxUnits); setValidUntil(stored.validUntil);
     } else {
       setLines((prev) => prev.length ? prev : r.variants.map((v, i) => ({
         variant_id: v.id, include: i === 0, ex: rupeesText(v.catalogue_ex_showroom_paise), reg: '',
-        insMode: 'estimate', od: '', tp: '', gst: '', binding: true, units: '5', colour: 'White', delivery: inDays(14), accessories: [],
+        insMode: 'estimate', od: '', tp: '', gst: '', binding: true, units: '', colour: '', delivery: '', accessories: [], // no invented stock or dates: a buyer reads these as the dealer's statement
       })));
     }
     if (q.data.state !== 'DRAFT') {
@@ -136,8 +144,12 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
       setRanks(rk.data?.ranks ?? []);
     }
   }, [quoteId]);
+  const loadOrExplain = React.useCallback(() => {
+    setLoadError(null);
+    load().catch((e: Error & { problem?: { detail?: string } }) => setLoadError(e.problem?.detail ?? e.message));
+  }, [load]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the dealer quote once on mount; setState happens after the fetch resolves
-  React.useEffect(() => { load().catch(() => {}); }, [load]);
+  React.useEffect(() => { loadOrExplain(); }, [loadOrExplain]);
 
   const draftNow = () => toDraft(lines, tiers, minF, maxUnits, validUntil);
   const save = useCommand(async () => {
@@ -168,6 +180,18 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
     return r;
   });
 
+  if (loadError && (!quote || !request)) {
+    return (
+      <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger">
+        <p className="font-semibold">This quote could not be loaded.</p>
+        <p>{loadError}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="secondary" onClick={loadOrExplain}>Try again</Button>
+          <Link href="/dealer" className="font-semibold underline">Back to inbox</Link>
+        </div>
+      </div>
+    );
+  }
   if (!quote || !request) return <Skeleton className="h-96" label="Loading the quote" />;
   const open = request.state === 'OPEN';
   const live = ['SUBMITTED', 'REVISED'].includes(quote.state);
@@ -185,10 +209,10 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-extrabold">Quote for pool …{quote.pool_id.slice(-6)}</h1>
+        <h1 className="text-2xl font-semibold">{pool ? `Quote: ${model ? `${model.brand} ${model.name}` : pool.brand}, ${pool.city}` : `Quote for pool …${quote.pool_id.slice(-6)}`}</h1>
         <Badge tone={quote.state === 'DRAFT' ? 'warning' : 'success'}>{quote.state.toLowerCase()}</Badge>
         {ranks.length ? ranks.map((r) => (
-          <Badge key={r.variant_id} tone="info">{ordinalRank(r)} for {request.variants.find((v) => v.id === r.variant_id)?.name ?? 'variant'}</Badge>
+          <Badge key={r.variant_id} tone="info" className="whitespace-normal">{ordinalRank(r)} for {request.variants.find((v) => v.id === r.variant_id)?.name ?? 'variant'}</Badge>
         )) : null}
         <Link href="/dealer" className="ml-auto text-sm font-semibold text-primary underline">Back to inbox</Link>
       </div>
@@ -197,7 +221,7 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
         {validUntil ? <Countdown deadline={`${validUntil}T23:59:59+05:30`} label="Quote valid until" /> : null}
       </div>
       {ranks.length ? <p className="text-sm text-muted"><strong>Ranking rule:</strong> {RANKING_RULE}</p> : null}
-      <DealerClarifications items={quote.clarifications} onChange={() => void load()} />
+      <DealerClarifications items={quote.clarifications} onChange={loadOrExplain} />
 
       {!editable && quote.state !== 'DRAFT' ? (
         <Card>
@@ -226,17 +250,17 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
               <label className="flex items-center gap-2 font-bold"><input type="checkbox" className="size-5" checked={l.include} onChange={(e) => set(i, { include: e.target.checked })} />{v.name}</label>
               {l.include ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Input label="Ex-showroom (₹)" inputMode="numeric" value={l.ex} onChange={(e) => set(i, { ex: e.target.value })} hint={v.catalogue_ex_showroom_paise ? `Catalogue: ${rupees(v.catalogue_ex_showroom_paise)}` : undefined} />
-                  <Input label="Registration / RTO (₹)" inputMode="numeric" value={l.reg} onChange={(e) => set(i, { reg: e.target.value })} hint="Leave empty to use the published-rules estimate." />
+                  <Input label="Ex-showroom (₹)" inputMode="numeric" value={grouped(l.ex)} onChange={(e) => set(i, { ex: e.target.value })} hint={v.catalogue_ex_showroom_paise ? `Catalogue: ${rupees(v.catalogue_ex_showroom_paise)}` : undefined} />
+                  <Input label="Registration / RTO (₹)" inputMode="numeric" value={grouped(l.reg)} onChange={(e) => set(i, { reg: e.target.value })} hint="Leave empty to use the published-rules estimate." />
                   <fieldset className="flex flex-col gap-2 sm:col-span-2">
                     <legend className="text-sm font-semibold">Insurance (baseline: comprehensive year-1 OD + 3-year TP)</legend>
                     <label className="flex items-center gap-2 text-sm"><input type="radio" checked={l.insMode === 'estimate'} onChange={() => set(i, { insMode: 'estimate' })} />Use the baseline estimate</label>
                     <label className="flex items-center gap-2 text-sm"><input type="radio" checked={l.insMode === 'dealer'} onChange={() => set(i, { insMode: 'dealer' })} />Enter our figures</label>
                     {l.insMode === 'dealer' ? (
                       <div className="grid gap-3 sm:grid-cols-3">
-                        <Input label="Own damage, year 1 (₹)" inputMode="numeric" value={l.od} onChange={(e) => set(i, { od: e.target.value })} />
-                        <Input label="Third party, 3 years (₹)" inputMode="numeric" value={l.tp} onChange={(e) => set(i, { tp: e.target.value })} />
-                        <Input label="GST on insurance (₹)" inputMode="numeric" value={l.gst} onChange={(e) => set(i, { gst: e.target.value })} />
+                        <Input label="Own damage, year 1 (₹)" inputMode="numeric" value={grouped(l.od)} onChange={(e) => set(i, { od: e.target.value })} />
+                        <Input label="Third party, 3 years (₹)" inputMode="numeric" value={grouped(l.tp)} onChange={(e) => set(i, { tp: e.target.value })} />
+                        <Input label="GST on insurance (₹)" inputMode="numeric" value={grouped(l.gst)} onChange={(e) => set(i, { gst: e.target.value })} />
                         <label className="flex items-start gap-2 text-sm sm:col-span-3">
                           <input type="checkbox" className="mt-0.5 size-5" checked={l.binding} onChange={(e) => set(i, { binding: e.target.checked })} />
                           <span><strong>Binding baseline cover</strong>: IDV 95 %, no add-ons, binding on this quote. {l.binding ? 'Your figure is used for your rank.' : 'Not ticked: buyers see your figure, but ranking uses the baseline estimate instead.'}</span>
@@ -256,7 +280,7 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
                   <Input label="Colour" value={l.colour} onChange={(e) => set(i, { colour: e.target.value })} />
                   <Input label="Delivery from" type="date" value={l.delivery} onChange={(e) => set(i, { delivery: e.target.value })} />
                   <div aria-live="polite" className="text-sm sm:col-span-2">
-                    <p className="font-semibold">Preview (TypeScript engine; the server recalculates on submit)</p>
+                    <p className="font-semibold">Preview (the server recalculates on submit)</p>
                     {prev.map((p, k) => <p key={k} className="tabular">Tier {k + 1}: {p.ok ? rupees(p.cash) : `not valid (${p.errors.join(', ')})`}</p>)}
                     {prev.length ? (
                       <table className="tabular mt-2 w-full">
@@ -282,9 +306,9 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
               {tiers.map((t, i) => (
                 <tr key={i}>
                   <th scope="row" className="text-left">{i + 1}</th>
-                  <td><input aria-label={`Tier ${i + 1} from`} inputMode="numeric" className="tabular w-full rounded border border-border bg-surface px-2 py-1" value={t.min} onChange={(e) => setTiers((ts) => ts.map((x, j) => (j === i ? { ...x, min: e.target.value } : x)))} /></td>
-                  <td><input aria-label={`Tier ${i + 1} to`} inputMode="numeric" className="tabular w-full rounded border border-border bg-surface px-2 py-1" value={t.max} onChange={(e) => setTiers((ts) => ts.map((x, j) => (j === i ? { ...x, max: e.target.value } : x)))} /></td>
-                  <td><input aria-label={`Tier ${i + 1} discount`} inputMode="numeric" className="tabular w-full rounded border border-border bg-surface px-2 py-1" value={t.discount} onChange={(e) => setTiers((ts) => ts.map((x, j) => (j === i ? { ...x, discount: e.target.value } : x)))} /></td>
+                  <td><input aria-label={`Tier ${i + 1} from`} inputMode="numeric" className="tabular w-full rounded border border-control bg-surface px-2 py-1" value={t.min} onChange={(e) => setTiers((ts) => ts.map((x, j) => (j === i ? { ...x, min: e.target.value } : x)))} /></td>
+                  <td><input aria-label={`Tier ${i + 1} to`} inputMode="numeric" className="tabular w-full rounded border border-control bg-surface px-2 py-1" value={t.max} onChange={(e) => setTiers((ts) => ts.map((x, j) => (j === i ? { ...x, max: e.target.value } : x)))} /></td>
+                  <td><input aria-label={`Tier ${i + 1} discount`} inputMode="numeric" className="tabular w-full rounded border border-control bg-surface px-2 py-1" value={grouped(t.discount)} onChange={(e) => setTiers((ts) => ts.map((x, j) => (j === i ? { ...x, discount: e.target.value } : x)))} /></td>
                 </tr>
               ))}
             </tbody>
@@ -320,12 +344,12 @@ export function QuoteForm({ quoteId }: { quoteId: string }) {
           {revising ? (
             <>
               <Button onClick={() => setConfirm('revise')} disabled={issues.length > 0}>Submit revision</Button>
-              <Button variant="secondary" onClick={() => { setRevising(false); load().catch(() => {}); }}>Discard changes</Button>
+              <Button variant="secondary" onClick={() => { setRevising(false); loadOrExplain(); }}>Discard changes</Button>
             </>
           ) : (
             <Button variant="secondary" onClick={() => { setRevising(true); setChanges(null); }}>Revise (new version)</Button>
           )}
-          <Button variant="secondary" loading={withdraw.state.kind === 'loading'} onClick={() => withdraw.execute()}>Withdraw quote</Button>
+          <TwoStep label="Withdraw quote" terms="Withdraw this quote? It stops counting in this round." yes="Yes, withdraw" no="Keep my quote" loading={withdraw.state.kind === 'loading'} onConfirm={() => withdraw.execute()} />
         </div>
       ) : null}
       <CommandStatus state={revise.state} successText="New version submitted." />

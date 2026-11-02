@@ -199,7 +199,11 @@
     "notBuiltTitle": "Not available in this test build yet",
     "notBuiltBody": "Nothing was changed: your order, booking and deposit are exactly as they were.",
     "inputKept": "Your input is kept. You can try again.",
-    "latestState": "The page now shows the latest state."
+    "latestState": "The page now shows the latest state.",
+    "conflict": "This changed before your action reached us",
+    "failed": "That did not work",
+    "deadlinePassed": "Deadline {deadline}; our database clock read {now}. Nothing was saved.",
+    "done": "Done."
   },
   "breakdown": {
     "dealerRequired": "(dealer-required)",
@@ -266,7 +270,13 @@
       "DEALER_CONFIRMED": "the dealer stated it, or a verified rule sets it.",
       "CATALOGUE_ESTIMATE": "our estimate from published figures, not the dealer's.",
       "UNVERIFIED": "we could not verify it. Ask the dealer."
-    }
+    },
+    "dealerFallback": "Dealer",
+    "projectionLabel": "If the count stays at {count} ({basis})",
+    "basisConfirmed": "confirmed buyers",
+    "basisAccepting": "buyers accepting now",
+    "belowMinimum": "Below the dealer's minimum of {min}; the offer would not go ahead at this count.",
+    "breakdownCaption": "{dealer}, {variant}: breakdown at the ceiling tier"
   },
   "signIn": {
     "title": "Sign in",
@@ -306,7 +316,23 @@
     "carAndDealer": "{brand} {model} {variant}",
     "dealerLine": "From {dealer}",
     "namesUnavailable": "The car and dealer names could not be loaded right now. Your order is safe; try again shortly.",
-    "qrNoteAt": "Show this QR code at {dealer}. It carries a signed token the dealer scans to check your booking."
+    "qrNoteAt": "Show this QR code at {dealer}. It carries a signed token the dealer scans to check your booking.",
+    "qrLabel": "QR code for booking voucher {id}",
+    "declineTerms": "Decline this offer? Your ₹999 test deposit is refunded in full.",
+    "declineYes": "Yes, decline",
+    "declineNo": "Keep this offer",
+    "state": {
+      "CONFIRMATION_PENDING": "confirmation pending",
+      "CONFIRMED": "confirmed",
+      "BOOKED": "booked",
+      "COMPLETED": "completed",
+      "CANCELLED": "cancelled",
+      "DECLINED": "declined",
+      "VOIDED": "could not go ahead",
+      "ISSUED": "issued",
+      "DEALER_CONFIRMED": "dealer confirmed",
+      "DELIVERY_SCHEDULED": "delivery scheduled"
+    }
   },
   "myCars": {
     "seePools": "See pools for my cars",
@@ -541,7 +567,13 @@
       "refundLatency": "Refund latency, requested to refunded (hours)",
       "disputeTime": "Dispute resolution time (days)",
       "pct": "median {p50} · p95 {p95}"
-    }
+    },
+    "requestedBy": "Requested by",
+    "approveTerms": "Approve this manual refund of {amount}? It is recorded under your name as the second admin.",
+    "approveYes": "Yes, approve",
+    "verifyTerms": "Verify {dealer}? They can then quote on pools.",
+    "verifyYes": "Yes, verify",
+    "notNow": "Not now"
   },
   "dispute": {
     "loading": "Loading the case",
@@ -686,5 +718,32 @@
     "now": "Time now {time}",
     "warning": "Your action must reach us before {time}. A slow network can make a last-second action miss.",
     "closed": "This deadline has passed."
+  },
+  "evidence": {
+    "DEALER_CONFIRMED": "Dealer-confirmed",
+    "CATALOGUE_ESTIMATE": "Catalogue estimate",
+    "UNVERIFIED": "Unverified"
+  },
+  "line": {
+    "code": {
+      "EX_SHOWROOM": "Ex-showroom price",
+      "DISCOUNT": "Dealer discount",
+      "REGISTRATION": "Registration (dealer figure)",
+      "ROAD_TAX": "Road tax",
+      "ROAD_TAX_CESS": "Road tax cess",
+      "REGISTRATION_FEE": "Registration fee",
+      "SMART_CARD_FEE": "Smart card fee",
+      "INSURANCE_OD": "Insurance: own damage, year 1",
+      "INSURANCE_TP": "Insurance: third party, 3 years",
+      "INSURANCE_GST": "GST on insurance",
+      "TCS": "TCS 1% (creditable against income tax)",
+      "EXTENDED_WARRANTY": "Extended warranty"
+    },
+    "kind": {
+      "ACCESSORY": "Accessory",
+      "FEE": "Fee",
+      "CHARGE": "Other charge",
+      "INSURANCE_ADDON": "Insurance add-on"
+    }
   }
 }

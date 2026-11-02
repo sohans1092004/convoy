@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import * as React from 'react';
-import { Breakdown, Flags } from '@/components/breakdown';
+import { Breakdown, Flags, useLineLabel } from '@/components/breakdown';
 import { BuyerClarifications } from '@/components/clarifications';
 import { CommandStatus } from '@/components/command-status';
 import { Badge, EvidenceBadge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, etagVersion, type Schemas } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { keyLines, matrixRows, shownVariant, sortOffers } from '@/lib/compare';
-import { ist, lineLabel, rupees, type Evidence } from '@/lib/format';
+import { ist, rupees, type Evidence } from '@/lib/format';
 import { useModel } from '@/lib/use-model';
 import { useCommand } from '@/lib/use-command';
 import { useSnapshot } from '@/lib/use-snapshot';
@@ -76,7 +76,7 @@ export function addonFlags(offers: Offer[]): Record<string, Line[]> {
 type Reliability = Schemas['dealer']['Reliability'];
 
 function useDealer(id: string) {
-  const [d, setD] = React.useState<{ name: string; reliability: Reliability | null }>({ name: 'Dealer', reliability: null });
+  const [d, setD] = React.useState<{ name: string | null; reliability: Reliability | null }>({ name: null, reliability: null });
   React.useEffect(() => {
     call(api.GET('/dealerships/{id}', { params: { path: { id } } })).then((r) => setD({ name: r.data.trade_name, reliability: r.data.reliability })).catch(() => {});
   }, [id]);
@@ -101,7 +101,9 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
   /** Above the lowest ceiling: 0 for the lowest; undefined when there is nothing to compare. */ delta?: { paise: number; of: number };
 }) {
   const t = useTranslations('compare');
-  const { name, reliability } = useDealer(offer.dealership_id);
+  const lineLabel = useLineLabel();
+  const { name: dealerName, reliability } = useDealer(offer.dealership_id);
+  const name = dealerName ?? t('dealerFallback');
   const v = shownVariant(offer, chosenId, acceptedVariantId);
   const accepted = acceptedVariantId !== null && acceptedVariantId === v.variant_id;
   const acceptedOther = acceptedVariantId !== null && !accepted;
@@ -119,7 +121,7 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
   return (
     <article className={cn('flex min-w-0 flex-col rounded-lg border bg-surface p-4 md:grid md:grid-rows-subgrid md:p-0 md:[grid-row:1/-1]', accepted ? 'border-2 border-primary' : 'border-border')}>
       <div className={cn(ROW, 'flex flex-col gap-2 pt-0 md:pt-3')}>
-        <h2 className="text-lg font-semibold leading-snug">{name}</h2>
+        <h2 lang={dealerName ? 'en' : undefined} className="text-lg font-semibold leading-snug">{name}</h2>
         <div className="flex flex-wrap gap-2">
           {accepted ? <Badge tone="success">{t('yourChoice')}</Badge> : null}
           <Badge>{offer.state === 'FINAL' ? t('finalOffer') : t('sealedOffer', { version: offer.version_no })}</Badge>
@@ -131,7 +133,7 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
             {offer.variants.map((x) => (
               <label key={x.variant_id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-control px-3 has-[:checked]:border-primary has-[:checked]:bg-surface-2">
                 <input type="radio" name={`variant-${offer.quote_id}`} checked={x.variant_id === v.variant_id} onChange={() => onChoose?.(x.variant_id)} className="size-4 accent-[var(--primary)]" />
-                <span className="flex-1">{x.variant_name}</span>
+                <span lang="en" className="flex-1">{x.variant_name}</span>
                 <span className="tabular font-semibold">{rupees(x.ceiling.cash_payable_paise)}</span>
               </label>
             ))}
@@ -154,7 +156,7 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
         const line = lines.find((l) => l.key === key);
         return (
           <div key={key} className={cn(ROW, 'flex items-start justify-between gap-3 text-sm md:block md:text-right', differs && 'md:bg-surface-2', !line && 'max-md:hidden')}>
-            <span className="md:sr-only">{rowLabel(t, key)}</span>
+            <span className="md:sr-only">{rowLabel(t, lineLabel, key)}</span>
             <span className="flex flex-col items-end text-right">
               {line ? <>
                 <span className="tabular">{rupees(line.amount_paise)}</span>
@@ -168,8 +170,8 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
       <div className={cn(ROW, 'text-sm')}>
         {atZero ? <p>{t('minimumNeeded', { min: offer.min_fulfilment })}</p> : (
           <>
-            <p><span className="font-semibold">{v.projection.label}:</span>{' '}
-              {v.projection.cash_payable_paise === null ? <span>{v.projection.note}</span> : <><span className="tabular">{rupees(v.projection.cash_payable_paise)}</span> <span className="text-muted">{t('notGuaranteed')}</span></>}</p>
+            <p><span className="font-semibold">{t('projectionLabel', { count: v.projection.count, basis: t(v.projection.label.includes('confirmed') ? 'basisConfirmed' : 'basisAccepting') })}:</span>{' '}
+              {v.projection.cash_payable_paise === null ? <span>{t('belowMinimum', { min: offer.min_fulfilment })}</span> : <><span className="tabular">{rupees(v.projection.cash_payable_paise)}</span> <span className="text-muted">{t('notGuaranteed')}</span></>}</p>
             <p className="text-muted">{t('minimumNeeded', { min: offer.min_fulfilment })}</p>
           </>
         )}
@@ -189,7 +191,7 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
       <div className="flex flex-col gap-2 py-2 md:px-3 md:pb-3">
         <details>
           <summary className="min-h-6 cursor-pointer text-sm font-semibold">{t('breakdownSummary')}</summary>
-          <div className="mt-2"><Breakdown stacked output={v.ceiling.output} caption={`${name}, ${v.variant_name}: breakdown at the ceiling tier`} /></div>
+          <div className="mt-2"><Breakdown stacked output={v.ceiling.output} caption={t('breakdownCaption', { dealer: name, variant: v.variant_name })} /></div>
         </details>
         {offer.state === 'FINAL' ? <BuyerClarifications poolId={poolId} quoteId={offer.quote_id} items={offer.clarifications} onChange={onAccepted} /> : null}
       </div>
@@ -197,17 +199,18 @@ export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committ
   );
 }
 
-const rowLabel = (t: ReturnType<typeof useTranslations<'compare'>>, key: string) => (t.has(`row.${key}` as never) ? t(`row.${key}` as never) : lineLabel(key));
+const rowLabel = (t: ReturnType<typeof useTranslations<'compare'>>, lineLabel: (code: string) => string, key: string) => (t.has(`row.${key}` as never) ? t(`row.${key}` as never) : lineLabel(key));
 const EVIDENCE: Evidence[] = ['DEALER_CONFIRMED', 'CATALOGUE_ESTIMATE', 'UNVERIFIED'];
 
 export function CompareView({ poolId }: { poolId: string }) {
   const t = useTranslations('compare');
+  const lineLabel = useLineLabel();
   const pool = useSnapshot(() => call(api.GET('/pools/{id}', { params: { path: { id: poolId } } })), [poolId]);
   const offers = useSnapshot(() => call(api.GET('/pools/{poolId}/quotes', { params: { path: { poolId } } })), [poolId]);
   const model = useModel(pool.data?.model_slug);
   const [chosen, setChosen] = React.useState<Record<string, string>>({});
   if ((pool.loading && !pool.data) || (offers.loading && !offers.data)) return <Skeleton className="h-96" label={t('loading')} />;
-  if (!offers.data) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{offers.problem?.detail ?? t('loadFailed')}</p>;
+  if (!offers.data) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{offers.problem?.detail ? <span lang="en">{offers.problem.detail}</span> : t('loadFailed')}</p>;
   const p = pool.data;
   const canAccept = p?.state === 'DECISION_OPEN' && ['COMMITTED', 'ACCEPTED'].includes(p.my_membership?.state ?? '');
   const acceptedOf = (o: Offer) => (p?.my_membership?.accepted_quote_id === o.quote_id ? p.my_membership.accepted_variant_id ?? o.variants[0].variant_id : null);
@@ -217,7 +220,7 @@ export function CompareView({ poolId }: { poolId: string }) {
   const rows = matrixRows(sorted.map((o) => keyLines(shown(o).ceiling.output.lines)));
   const mixed = new Set(sorted.map((o) => shown(o).variant_id)).size > 1;
   const flags = addonFlags(sorted);
-  const labels = [null, t('ceilingTitle'), ...rows.map((r) => rowLabel(t, r.key)), t('rowMinimum'), t('priceOnlyFalls'), t('stock'), null, null];
+  const labels = [null, t('ceilingTitle'), ...rows.map((r) => rowLabel(t, lineLabel, r.key)), t('rowMinimum'), t('priceOnlyFalls'), t('stock'), null, null];
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
