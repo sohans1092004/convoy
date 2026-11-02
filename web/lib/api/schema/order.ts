@@ -404,11 +404,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        CarRef: {
-            brand: string;
-            model: string;
-            variant: string;
-        };
         DeliveryBody: {
             /** Format: date */
             scheduled_date: string;
@@ -456,6 +451,11 @@ export interface components {
             invoice_total_paise: number | null;
             invoice_confirmed_at: string | null;
         };
+        CarRef: {
+            brand: string;
+            model: string;
+            variant: string;
+        };
         DisputeRef: {
             id: string;
             category: string;
@@ -473,8 +473,6 @@ export interface components {
             flags: string[];
         };
         Order: {
-            dealership_name?: string;
-            car?: components["schemas"]["CarRef"];
             id: string;
             pool_id: string;
             /** Format: int32 */
@@ -501,6 +499,8 @@ export interface components {
             disputes: components["schemas"]["DisputeRef"][];
             dealership_id: string;
             server_time: string;
+            car: components["schemas"]["CarRef"] | null;
+            dealership_name: string | null;
         };
         PriceOutput: {
             status: string;
@@ -610,13 +610,13 @@ export interface components {
             owner_id: string | null;
         };
         Voucher: {
-            dealership_name?: string;
             id: string;
             state: string;
             qr_payload: string;
             promised_delivery_date: string | null;
             dealership_id: string;
             verification: string;
+            dealership_name: string | null;
         };
         OrderList: {
             orders: components["schemas"]["OrderRow"][];

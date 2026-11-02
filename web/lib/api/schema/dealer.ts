@@ -64,6 +64,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/dealerships/{id}/name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dealershipName"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dealerships/{id}": {
         parameters: {
             query?: never;
@@ -116,9 +132,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        DealershipName: {
-            trade_name: string;
-        };
         Register: {
             trade_name: string;
             legal_name: string;
@@ -163,6 +176,9 @@ export interface components {
             dealership_ids: string[];
             /** Format: int32 */
             count: number;
+        };
+        DealershipName: {
+            trade_name: string;
         };
         Dealership: {
             id: string;
@@ -310,6 +326,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Eligibility"];
+                };
+            };
+        };
+    };
+    dealershipName: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DealershipName"];
                 };
             };
         };

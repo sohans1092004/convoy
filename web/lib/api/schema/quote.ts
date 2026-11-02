@@ -381,9 +381,9 @@ export interface components {
             clarifications: components["schemas"]["Clarification"][];
         };
         OfferVariant: {
-            variant_name: string;
             variant_id: string;
             variant_code: string;
+            variant_name: string;
             ceiling: components["schemas"]["Ceiling"];
             projection: components["schemas"]["Projection"];
             tiers: components["schemas"]["TierView"][];

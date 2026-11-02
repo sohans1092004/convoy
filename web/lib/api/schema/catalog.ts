@@ -32,6 +32,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/variants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["internalVariant"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/models/{slug}": {
         parameters: {
             query?: never;
@@ -116,11 +132,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        CarRef: {
-            brand: string;
-            model: string;
-            variant: string;
-        };
         SavedCar: {
             model_id: string;
             slug: string;
@@ -130,6 +141,11 @@ export interface components {
         };
         SavedCars: {
             cars: components["schemas"]["SavedCar"][];
+        };
+        CarRef: {
+            brand: string;
+            model: string;
+            variant: string;
         };
         InternalModel: {
             id: string;
@@ -258,7 +274,6 @@ export interface components {
             variants: components["schemas"]["Variant"][];
         };
         Variant: {
-            estimate_cities: string[];
             id: string;
             code: string;
             name: string;
@@ -268,6 +283,7 @@ export interface components {
             engine_cc: number | null;
             note: string | null;
             prices: components["schemas"]["CityPrice"][];
+            estimate_cities: string[];
         };
     };
     responses: never;
@@ -338,6 +354,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SavedCars"];
+                };
+            };
+        };
+    };
+    internalVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CarRef"];
                 };
             };
         };
