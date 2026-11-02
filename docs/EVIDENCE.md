@@ -2,7 +2,7 @@
 
 Every number we might quote, with where it was measured. **Where** is one of: **laptop** (one Windows laptop, Docker
 Desktop on WSL 2), **CI** (GitHub Actions), **live lite host** (the public demo, https://convoy-main.duckdns.org, one
-AWS t4g.medium, 2 vCPU / 4 GiB; runs **7c48456** since 2026-11-02 14:45 UTC, shown at `/version`), **simulated** (a fake or synthetic input stands in for the real thing), **estimate**
+AWS t4g.medium, 2 vCPU / 4 GiB; runs **02c83b3** since 2026-11-02 17:00 UTC, shown at `/version`), **simulated** (a fake or synthetic input stands in for the real thing), **estimate**
 (arithmetic, not a bill). **Commit** is the commit measured when the source names one, otherwise the commit that
 recorded the result. A number not in this file is not evidence. Missed and unmeasured targets: §8.
 
@@ -95,7 +95,9 @@ Source: reports/p7/frontend.md (2026-11-01).
 
 A laptop A/B with no network link shows what the code itself adds on discover: LCP median 2,845 → 3,104 ms, 193 → 236 KB. That run has no backend, so it compares the builds and is not an absolute figure. Both builds exceed 2.5 s in it. **So this build costs about 260 ms of LCP, and the 2.5 s gate is not shown to be met until a run on a healthy link.**
 
-Same build and date: demo journey on the public URL PASS once, 9.9 min at 360 px, including the 5-minute demo decision window, with the journey's navigation limit raised to 120 s for remote runs. Route JS budgets all within budget, measured on the live build: discover 163.7, model 167.6, pool 168.2, compare 169.2, confirm 180, my cars 164.7, quote builder 190.7 KB gzip. Axe: 0 violations at 360 and 1280 px in light and dark on 10 screen states, against mocked API replies, not the live data (the model page is server-rendered, so it had no mocked axe run here; the CI journey covers it). Storybook page states 52/52 on the branch in CI. Not run on this build: real screen readers, physical phones, Firefox and Safari. The nightly browser job already failed on main on 2026-11-02 before this work, because `e2e/demo.spec.ts` expects the demo button on a stack without `DEMO_PUBLIC`; the same failure skips that job's budget and Lighthouse steps.
+Same build and date: demo journey on the public URL PASS once, 9.9 min at 360 px, including the 5-minute demo decision window, with the journey's navigation limit raised to 120 s for remote runs. Route JS budgets all within budget, measured on the live build: discover 163.7, model 167.6, pool 168.2, compare 169.2, confirm 180, my cars 164.7, quote builder 190.7 KB gzip. Axe: 0 violations at 360 and 1280 px in light and dark on 10 screen states, against mocked API replies, not the live data (the model page is server-rendered, so it had no mocked axe run here; the CI journey covers it). Storybook page states 52/52 on the branch in CI. Not run on this build: real screen readers, physical phones, Firefox and Safari.
+
+Build **02c83b3** (AMENDMENT-014 copy, demo decision window 300 s and confirmation window 180 s, both read from the running pool container): demo journey on the public URL PASS once, 10.4 min at 360 px, 2026-11-02. The nightly jobs all passed on this code on the branch (run 41482784793), after `e2e/demo.spec.ts` was limited to deployments. That run's Lighthouse, on a GitHub runner against a local stack with no link to Sydney: LCP discover 2,418 ms, model 2,574 ms, pool 3,524 ms, against the 2.5 s gate; CLS 0 / 0.012 / 0.031. **So model and pool miss the gate there too, and the slow link does not explain all of the live misses.** Live figures from PageSpeed Insights are pending.
 
 **Lighthouse, live site** (mobile preset, simulated slow 4G, median of 3 runs, @lhci/cli 0.15.1; pool page through a
 fresh "Try the demo" session). Lab gate (docs/testing/frontend-quality.md §2): LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1,
