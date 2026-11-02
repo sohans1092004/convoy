@@ -12,7 +12,8 @@ public final class Api {
 
     public record QueuedRefund(String id, String paymentId, String buyerId, String poolId, String kind, String reasonCode, long amountPaise, String state,
                                int attempts, @org.springframework.lang.Nullable String failureReason, String nextAttemptAt, String createdAt,
-                               @org.springframework.lang.Nullable String requestedBy) {}
+                               @org.springframework.lang.Nullable String requestedBy, @org.springframework.lang.Nullable String evidenceRef,
+                               @org.springframework.lang.Nullable String manualNote) {}
 
     public record RefundQueue(java.util.List<QueuedRefund> refunds) {}
 

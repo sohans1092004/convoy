@@ -94,6 +94,11 @@ await cap('Quote builder: the same engine runs in the browser, so the dealer see
 await wait(4000);
 await scroll(600, 3500);
 await scroll(600, 3500);
+await page.getByLabel('Tier 1 discount').fill('10000');
+await page.getByLabel('Tier 2 discount').fill('25000');
+await page.getByLabel('Units in stock').fill('5');
+await page.getByLabel('Colour').fill('White');
+await page.getByLabel('Delivery from').fill(new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10));
 await cap('Submit sealed: no dealer sees another\'s offer; the round closes on the database clock at commit');
 await page.getByRole('button', { name: 'Submit sealed quote' }).click();
 await page.getByRole('dialog').getByRole('button', { name: 'Submit' }).click();

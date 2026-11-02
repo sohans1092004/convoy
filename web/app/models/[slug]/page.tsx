@@ -19,7 +19,7 @@ export default async function ModelPage({ params }: { params: Promise<{ slug: st
       <div>
         <p className="text-sm font-semibold text-muted">{data.brand}</p>
         <h1 className="text-2xl font-extrabold sm:text-3xl">{data.name}</h1>
-        <p className="mt-1 text-sm text-muted">
+        <p lang="en" className="mt-1 text-sm text-muted">
           Source: <a className="underline" href={data.source_url} rel="noopener noreferrer" target="_blank">{data.source_title}</a>, read on {data.accessed_on}. {data.price_label}
         </p>
       </div>

@@ -5,6 +5,7 @@ import * as React from 'react';
 import { AnalyticsView } from '@/components/analytics-view';
 import { AuditViewer } from '@/components/audit-viewer';
 import { CommandStatus } from '@/components/command-status';
+import { TwoStep } from '@/components/two-step';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
@@ -29,7 +30,7 @@ function RefundRow({ r, refresh }: { r: Refund; refresh: () => Promise<unknown> 
   });
   const approve = useCommand(async (key: string) => { await call(api.POST('/admin/refunds/{id}/approve', { params: { path: { id: r.id } }, headers: { 'Idempotency-Key': key } })); await refresh(); });
   return (
-    <Card className="flex flex-col gap-2">
+    <Card className="flex min-w-0 flex-col gap-2 [overflow-wrap:anywhere]">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono">{r.id.slice(-8).toUpperCase()}</span>
         <Badge tone="warning">{r.state.replace(/_/g, ' ').toLowerCase()}</Badge>
@@ -43,7 +44,12 @@ function RefundRow({ r, refresh }: { r: Refund; refresh: () => Promise<unknown> 
       {r.requested_by ? (
         <div className="flex flex-col gap-2">
           <CardText>{t('awaitingSecond')}</CardText>
-          <Button className="self-start" loading={approve.state.kind === 'loading'} onClick={() => approve.execute()}>{t('approve')}</Button>
+          <dl className="grid gap-x-3 gap-y-1 text-sm sm:grid-cols-[auto_minmax(0,1fr)]" data-testid="second-approver">
+            <dt className="font-semibold">{t('requestedBy')}</dt><dd className="font-mono">{r.requested_by}</dd>
+            <dt className="font-semibold">{t('evidence')}</dt><dd>{r.evidence_ref}</dd>
+            <dt className="font-semibold">{t('note')}</dt><dd>{r.manual_note}</dd>
+          </dl>
+          <TwoStep variant="primary" className="self-start" label={t('approve')} terms={t('approveTerms', { amount: rupees(r.amount_paise) })} yes={t('approveYes')} no={t('notNow')} loading={approve.state.kind === 'loading'} onConfirm={() => approve.execute()} />
         </div>
       ) : (
         <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); ask.execute(); }}>
@@ -65,12 +71,12 @@ function VerificationRow({ d, refresh }: { d: Registration; refresh: () => Promi
     await refresh();
   });
   return (
-    <Card className="flex flex-col gap-2">
+    <Card className="flex min-w-0 flex-col gap-2 [overflow-wrap:anywhere]">
       <CardTitle as="h3">{d.trade_name}</CardTitle>
       <CardText>{d.legal_name} · GSTIN {d.gstin} · {d.city} · {d.brands.join(', ')}</CardText>
       <label className="flex flex-col gap-1 text-sm">{t('rejectReason')}<input maxLength={500} className="rounded-lg border border-control bg-surface p-2" value={reason} onChange={(e) => setReason(e.target.value)} /></label>
-      <div className="flex gap-2">
-        <Button loading={decide.state.kind === 'loading'} onClick={() => decide.execute('APPROVE')}>{t('verify')}</Button>
+      <div className="flex flex-wrap items-start gap-2">
+        <TwoStep variant="primary" label={t('verify')} terms={t('verifyTerms', { dealer: d.trade_name })} yes={t('verifyYes')} no={t('notNow')} loading={decide.state.kind === 'loading'} onConfirm={() => decide.execute('APPROVE')} />
         <Button variant="secondary" disabled={!reason} loading={decide.state.kind === 'loading'} onClick={() => decide.execute('REJECT')}>{t('reject')}</Button>
       </div>
       <CommandStatus state={decide.state} />
@@ -99,7 +105,7 @@ export function AdminConsole() {
         {tab === 'refunds' ? (refunds.data ? (refunds.data.refunds.length === 0 ? <Card><p>{t('noRefunds')}</p></Card>
           : refunds.data.refunds.map((r) => <RefundRow key={r.id} r={r} refresh={refunds.refresh} />)) : <Skeleton className="h-32" label={t('loading')} />) : null}
         {tab === 'disputes' ? (disputes.data ? (disputes.data.disputes.length === 0 ? <Card><p>{t('noDisputes')}</p></Card> : disputes.data.disputes.map((d) => (
-          <Card key={d.id} className="flex flex-wrap items-center gap-2">
+          <Card key={d.id} className="flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
             <Link className="font-mono underline" href={`/disputes/${d.id}`}>{d.id.slice(-8).toUpperCase()}</Link>
             <Badge tone={d.state === 'OPEN' ? 'warning' : 'neutral'}>{d.state.replace(/_/g, ' ').toLowerCase()}</Badge>
             <span>{d.category}</span><span className="text-sm text-muted">{t('openedBy', { by: d.opened_by })} · {ist(d.created_at)}</span>
@@ -109,7 +115,7 @@ export function AdminConsole() {
         {tab === 'verification' ? (queue.data ? (queue.data.dealerships.length === 0 ? <Card><p>{t('noDealers')}</p></Card>
           : queue.data.dealerships.map((d) => <VerificationRow key={d.id} d={d} refresh={queue.refresh} />)) : <Skeleton className="h-32" label={t('loading')} />) : null}
         {tab === 'reconciliation' ? (runs.data ? (runs.data.runs.length === 0 ? <Card><p>{t('noRuns')}</p></Card> : runs.data.runs.map((r) => (
-          <Card key={r.id} className="flex flex-col gap-1">
+          <Card key={r.id} className="flex flex-col gap-1 [overflow-wrap:anywhere]">
             <CardTitle as="h3">{ist(r.started_at)} · {t('runSummary', { checked: r.checked, mismatches: r.mismatch_count })}</CardTitle>
             {r.mismatches.length > 0 ? <ul className="text-sm">{r.mismatches.map((m, i) => <li key={i}><Badge tone="warning">{m.mismatch_class}</Badge> {m.detail}</li>)}</ul> : null}
           </Card>

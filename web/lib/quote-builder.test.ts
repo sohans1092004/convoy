@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { diff, lineIssues, ordinal, priceOnlyFalls, tierIssues, validityIssues, whatIf, type LineInput } from './quote-builder';
+import { diff, grouped, lineIssues, paise, ordinal, priceOnlyFalls, tierIssues, validityIssues, whatIf, type LineInput } from './quote-builder';
 
 const ladder = [{ min: '1', max: '4', discount: '10000' }, { min: '5', max: '9', discount: '20000' }, { min: '10', max: '', discount: '30000' }];
+
+describe('grouped rupee inputs', () => {
+  it('groups in lakhs, keeps paise and partial text, and still reads back', () => {
+    expect(grouped('583900')).toBe('5,83,900');
+    expect(grouped('12345678')).toBe('1,23,45,678');
+    expect(grouped('5,83,9001')).toBe('58,39,001');
+    expect(grouped('1000.5')).toBe('1,000.5');
+    expect(['', 'abc'].map(grouped)).toEqual(['', 'abc']);
+    expect(paise(grouped('583900'))).toBe(58390000);
+  });
+});
 
 describe('tier ladder', () => {
   it('accepts a contiguous, open-ended, non-shrinking ladder', () => {

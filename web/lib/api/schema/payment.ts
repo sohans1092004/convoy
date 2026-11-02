@@ -212,6 +212,8 @@ export interface components {
             next_attempt_at: string;
             created_at: string;
             requested_by: string | null;
+            evidence_ref: string | null;
+            manual_note: string | null;
         };
         RefundQueue: {
             refunds: components["schemas"]["QueuedRefund"][];
