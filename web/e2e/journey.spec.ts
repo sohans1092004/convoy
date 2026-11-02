@@ -193,8 +193,9 @@ test('buyer journey from sign-in to booking voucher', async ({ page, browser }, 
 
   await expect(page.getByRole('link', { name: 'Compare offers' })).toBeVisible({ timeout: 360_000 });
   await page.getByRole('link', { name: 'Compare offers' }).click();
-  await expect(page.getByText('Cash payable at your ceiling (the most you can pay)').first()).toBeVisible();
-  await expect(page.getByText(/If the count stays at/).first()).toBeVisible(); // AMENDMENT-005 projection label
+  await expect(page.getByText(/^Most you can pay/).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText(/^■ ?Dealer-confirmed/).filter({ visible: true }).first()).toBeVisible(); // evidence beside each amount, not behind a row
+  await expect(page.getByText(/If the count stays at|^Minimum \d+ confirmed/).filter({ visible: true }).first()).toBeVisible(); // AMENDMENT-005: projection, or at 0 the minimum
   if (sims) {
     const [aggressive, mispriced] = await sims;
     step(`simulators: ${JSON.stringify([aggressive, mispriced].map((r) => ({ dealer: r.dealer, log: r.log, error: r.error ?? null })))}`);

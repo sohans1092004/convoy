@@ -48,8 +48,8 @@ function BookingRow({ b, admin, refresh }: { b: Booking; admin: boolean; refresh
       ) : null}
       {['DEALER_CONFIRMED', 'DELIVERY_SCHEDULED'].includes(b.state) ? (
         <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); schedule.execute(); }}>
-          <label className="flex flex-col gap-1 text-sm">{t('date')}<input type="date" min={todayIst()} required className="rounded-lg border border-border bg-surface p-2" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-          <label className="flex flex-col gap-1 text-sm">{t('slot')}<input className="rounded-lg border border-border bg-surface p-2" maxLength={40} value={slot} onChange={(e) => setSlot(e.target.value)} /></label>
+          <label className="flex flex-col gap-1 text-sm">{t('date')}<input type="date" min={todayIst()} required className="rounded-lg border border-control bg-surface p-2" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          <label className="flex flex-col gap-1 text-sm">{t('slot')}<input className="rounded-lg border border-control bg-surface p-2" maxLength={40} value={slot} onChange={(e) => setSlot(e.target.value)} /></label>
           <Button type="submit" variant="secondary" loading={schedule.state.kind === 'loading'}>{b.state === 'DELIVERY_SCHEDULED' ? t('reschedule') : t('setDate')}</Button>
           <CommandStatus state={schedule.state} className="basis-full" />
         </form>
@@ -57,7 +57,7 @@ function BookingRow({ b, admin, refresh }: { b: Booking; admin: boolean; refresh
       {b.scheduled_date ? <CardText>{t('scheduled', { date: b.scheduled_date, slot: b.delivery_slot ?? '' })}</CardText> : null}
       {b.state === 'DELIVERY_SCHEDULED' ? (
         <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); deliver.execute(); }}>
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">{t('voucher')}<input required className="rounded-lg border border-border bg-surface p-2 font-mono text-xs" value={token} onChange={(e) => setToken(e.target.value)} /></label>
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">{t('voucher')}<input required className="rounded-lg border border-control bg-surface p-2 font-mono text-xs" value={token} onChange={(e) => setToken(e.target.value)} /></label>
           <Button type="submit" loading={deliver.state.kind === 'loading'}>{t('handOver')}</Button>
           <CommandStatus state={deliver.state} className="basis-full" />
         </form>

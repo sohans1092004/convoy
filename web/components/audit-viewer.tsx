@@ -25,7 +25,7 @@ export function AuditViewer() {
   });
   const input = (k: string, type = 'text') => (
     <label key={k} className="flex flex-col gap-1 text-sm">{t(k)}
-      <input type={type} className="rounded-lg border border-border bg-surface p-2" value={f[k] ?? ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
+      <input type={type} className="rounded-lg border border-control bg-surface p-2" value={f[k] ?? ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
     </label>
   );
   return (

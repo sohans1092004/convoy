@@ -21,7 +21,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({ label, hi
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={cn('min-h-11 rounded-lg border border-border bg-surface px-3 text-base text-fg placeholder:text-muted', error && 'border-danger', className)}
+        className={cn('min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3 text-base text-fg placeholder:text-muted', error && 'border-danger', className)}
         {...props}
       />
       {error ? <p id={`${inputId}-error`} role="alert" className="text-sm font-medium text-danger">{error}</p> : null}

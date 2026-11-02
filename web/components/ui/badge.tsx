@@ -20,15 +20,14 @@ export function Badge({ className, tone, ...props }: React.HTMLAttributes<HTMLSp
   return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
 }
 
-const EVIDENCE_TONE: Record<Evidence, 'success' | 'info' | 'warning'> = { DEALER_CONFIRMED: 'success', CATALOGUE_ESTIMATE: 'info', UNVERIFIED: 'warning' };
 const EVIDENCE_MARK: Record<Evidence, string> = { DEALER_CONFIRMED: '■', CATALOGUE_ESTIMATE: '▣', UNVERIFIED: '□' };
 
-/** Evidence level of a price line; shape + text, never colour alone. */
+/** Evidence level of a price line: a small word beside the amount, shape + text, never colour alone. Only "Unverified" takes colour. */
 export function EvidenceBadge({ evidence, className }: { evidence: Evidence; className?: string }) {
   return (
-    <Badge tone={EVIDENCE_TONE[evidence]} className={className}>
+    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap text-xs', evidence === 'UNVERIFIED' ? 'font-semibold text-warning-fg' : 'text-muted', className)}>
       <span aria-hidden>{EVIDENCE_MARK[evidence]}</span>
       {EVIDENCE_LABEL[evidence]}
-    </Badge>
+    </span>
   );
 }

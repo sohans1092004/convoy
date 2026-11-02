@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Breakdown, type EngineOutput } from './breakdown';
 import { addonFlags, OfferCard, StockNote, stockConfidence, TierLadder } from './compare-view';
+import { Countdown, deadlinePhase } from './ui/countdown';
+import { keyLines, matrixRows, nextTier, sortOffers } from '@/lib/compare';
 import { rupees } from '@/lib/format';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
@@ -34,6 +36,48 @@ describe('price breakdown', () => {
   it('keeps the table for wider screens, hidden below sm', () => {
     expect(html).toMatch(/class="hidden [^"]*sm:block"/);
     expect(html).toMatch(/<section class="[^"]*sm:hidden"/);
+  });
+});
+
+describe('compare helpers (rate card)', () => {
+  const line = (code: string, amount_paise: number, evidence = 'DEALER_CONFIRMED') => ({ code, amount_paise, evidence, in_cash_payable: true, flags: [] });
+  const lines = [line('EX_SHOWROOM', 58390000), line('DISCOUNT', -1460000), line('ROAD_TAX', 6000000, 'CATALOGUE_ESTIMATE'), line('REGISTRATION_FEE', 60000, 'CATALOGUE_ESTIMATE'), line('SMART_CARD_FEE', 20000, 'UNVERIFIED'),
+    line('INSURANCE_OD', 1000000, 'CATALOGUE_ESTIMATE'), line('INSURANCE_TP', 1000000, 'CATALOGUE_ESTIMATE'), line('ACCESSORY:MUDFLAPS', 600000), { ...line('EXTENDED_WARRANTY', 99), in_cash_payable: false }] as never[];
+  it('groups lines, keeps the weakest evidence, and sums to the same total', () => {
+    const rows = keyLines(lines);
+    expect(rows.map((r) => r.key)).toEqual(['EX_SHOWROOM', 'DISCOUNT', 'ROAD_TAX', 'REGISTRATION', 'INSURANCE', 'ACCESSORY:MUDFLAPS']);
+    expect(rows.find((r) => r.key === 'REGISTRATION')).toMatchObject({ amount_paise: 80000, evidence: 'UNVERIFIED' });
+    expect(rows.reduce((a, r) => a + r.amount_paise, 0)).toBe(58390000 - 1460000 + 6000000 + 80000 + 2000000 + 600000);
+  });
+  it('sorts by ceiling, breaking ties by delivery date then commit time', () => {
+    const o = (id: string, cash: number, date: string | null, at = '2026-11-02') => ({ quote_id: id, committed_at: at, variants: [{ variant_id: 'v', ceiling: { cash_payable_paise: cash }, stock: { delivery_date: date } }] }) as never;
+    const ids = sortOffers([o('c', 200, null), o('b', 100, null), o('a', 100, '2026-11-20')], (x) => x.variants[0]).map((x) => x.quote_id);
+    expect(ids).toEqual(['a', 'b', 'c']);
+  });
+  it('marks a row as differing when an offer lacks it', () => {
+    expect(matrixRows([[{ key: 'A', amount_paise: 1, evidence: 'UNVERIFIED', flags: [] }], []])).toEqual([{ key: 'A', differs: true }]);
+  });
+  it('finds the rung after the ceiling, or none at the end', () => {
+    const t = (min: number, is_ceiling = false) => ({ min, max: null, cash_payable_paise: min, is_ceiling });
+    expect(nextTier([t(1, true), t(5)])?.min).toBe(5);
+    expect(nextTier([t(1), t(5, true)])).toBeNull();
+    expect(nextTier([t(1)])).toBeNull();
+  });
+  it('states a deadline without its seconds, and changes phase only at the last minute and the close', () => {
+    const at = (iso: string) => () => Date.parse(iso);
+    const html = render(<Countdown label="Decide by" deadline="2026-11-02T08:00:00Z" now={at('2026-11-02T07:00:00Z')} />);
+    expect(html).toContain('2 Nov');
+    expect(html).toContain('Time now');
+    expect(html).not.toContain('database');
+    expect([deadlinePhase(61_000), deadlinePhase(60_000), deadlinePhase(0)]).toEqual(['open', 'warning', 'closed']);
+  });
+  it('states the minimum, not the alarm, at a count of 0', () => {
+    const variant = { variant_id: 'v1', variant_name: 'LXi MT', projection: { label: 'If the count stays at 0', count: 0, guaranteed: false, cash_payable_paise: null, note: 'would not go ahead' },
+      tiers: [], stock: { units: 1, colours: [], delivery_date: null }, ceiling: { cash_payable_paise: 100, output } };
+    const off = { quote_id: 'q', dealership_id: 'd', state: 'FINAL', version_no: 1, committed_at: '2026-11-02T07:55:52Z', min_fulfilment: 3, variants: [variant], clarifications: [] } as never;
+    const html = render(<OfferCard offer={off} poolId="p" acceptedVariantId={null} canAccept committed={1} flagged={[]} onAccepted={() => {}} />);
+    expect(html).toContain('Minimum 3 confirmed buyers');
+    expect(html).not.toContain('would not go ahead');
   });
 });
 

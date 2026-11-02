@@ -133,13 +133,13 @@ export function MyCars() {
         <CardTitle>{t('want')}</CardTitle>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-semibold">City
-            <select className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" value={prefs.city ?? ''} onChange={(e) => set({ city: e.target.value || null })}>
+            <select className="min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3 text-base font-normal" value={prefs.city ?? ''} onChange={(e) => set({ city: e.target.value || null })}>
               <option value="">{t('chooseCity')}</option>
               {CITIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold">Purchase month
-            <select className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" value={prefs.purchase_month ?? ''} onChange={(e) => set({ purchase_month: e.target.value || null })}>
+            <select className="min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3 text-base font-normal" value={prefs.purchase_month ?? ''} onChange={(e) => set({ purchase_month: e.target.value || null })}>
               <option value="">{t('chooseMonth')}</option>
               {months().map((m) => <option key={m}>{m}</option>)}
             </select>
@@ -150,7 +150,7 @@ export function MyCars() {
         <Checks legend="Transmission" options={transmissions.map((t) => ({ value: t, label: t }))} value={prefs.transmissions} onChange={(v) => set({ transmissions: v })} />
         <label className="flex flex-col gap-1 text-sm font-semibold">Colours (comma separated)
           <span className="font-normal text-muted">{t('coloursNote')}</span>
-          <input className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" value={colour} onChange={(e) => setColour(e.target.value)} />
+          <input className="min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3 text-base font-normal" value={colour} onChange={(e) => setColour(e.target.value)} />
         </label>
         <Button className="self-start" loading={save.state.kind === 'loading'} onClick={() => save.execute()}>{t('save')}</Button>
         <CommandStatus state={save.state} successText={t('saved')} />

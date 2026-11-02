@@ -47,8 +47,8 @@ function RefundRow({ r, refresh }: { r: Refund; refresh: () => Promise<unknown> 
         </div>
       ) : (
         <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); ask.execute(); }}>
-          <label className="flex flex-col gap-1 text-sm">{t('evidence')}<input required maxLength={200} className="rounded-lg border border-border bg-surface p-2" value={evidence} onChange={(e) => setEvidence(e.target.value)} /></label>
-          <label className="flex flex-col gap-1 text-sm">{t('note')}<input required maxLength={500} className="rounded-lg border border-border bg-surface p-2" value={note} onChange={(e) => setNote(e.target.value)} /></label>
+          <label className="flex flex-col gap-1 text-sm">{t('evidence')}<input required maxLength={200} className="rounded-lg border border-control bg-surface p-2" value={evidence} onChange={(e) => setEvidence(e.target.value)} /></label>
+          <label className="flex flex-col gap-1 text-sm">{t('note')}<input required maxLength={500} className="rounded-lg border border-control bg-surface p-2" value={note} onChange={(e) => setNote(e.target.value)} /></label>
           <Button type="submit" variant="secondary" className="self-start" loading={ask.state.kind === 'loading'}>{t('askManual')}</Button>
         </form>
       )}
@@ -68,7 +68,7 @@ function VerificationRow({ d, refresh }: { d: Registration; refresh: () => Promi
     <Card className="flex flex-col gap-2">
       <CardTitle as="h3">{d.trade_name}</CardTitle>
       <CardText>{d.legal_name} · GSTIN {d.gstin} · {d.city} · {d.brands.join(', ')}</CardText>
-      <label className="flex flex-col gap-1 text-sm">{t('rejectReason')}<input maxLength={500} className="rounded-lg border border-border bg-surface p-2" value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+      <label className="flex flex-col gap-1 text-sm">{t('rejectReason')}<input maxLength={500} className="rounded-lg border border-control bg-surface p-2" value={reason} onChange={(e) => setReason(e.target.value)} /></label>
       <div className="flex gap-2">
         <Button loading={decide.state.kind === 'loading'} onClick={() => decide.execute('APPROVE')}>{t('verify')}</Button>
         <Button variant="secondary" disabled={!reason} loading={decide.state.kind === 'loading'} onClick={() => decide.execute('REJECT')}>{t('reject')}</Button>

@@ -51,7 +51,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-semibold">{t('variant')}</legend>
           {variants.map((v) => (
-            <label key={v.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3 has-[:checked]:border-primary has-[:checked]:bg-surface-2">
+            <label key={v.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-control px-3 has-[:checked]:border-primary has-[:checked]:bg-surface-2">
               <input type="radio" name="variant" value={v.id} checked={v.id === variantId} onChange={() => setVariantId(v.id)} className="size-4 accent-[var(--primary)]" />
               <span className="flex-1">{v.name} <span className="text-sm text-muted">{[v.fuel, v.transmission].filter(Boolean).join(' · ')}</span></span>
             </label>
@@ -59,7 +59,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
         </fieldset>
         <div className="flex flex-col gap-1">
           <label htmlFor="city" className="text-sm font-semibold">{t('city')}</label>
-          <select id="city" value={city} onChange={(e) => setCity(e.target.value as (typeof CITIES)[number])} className="min-h-11 rounded-lg border border-border bg-surface px-3">
+          <select id="city" value={city} onChange={(e) => setCity(e.target.value as (typeof CITIES)[number])} className="min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3">
             {CITIES.map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
