@@ -41,10 +41,10 @@ export function Discover() {
       <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <label className="flex flex-col gap-1 text-sm font-semibold">{t('search')}
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('searchPlaceholder')}
-            className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal" />
+            className="min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3 text-base font-normal" />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">{t('city')}
-          <select value={city} onChange={(e) => setCity(e.target.value)} className="min-h-11 rounded-lg border border-border bg-surface px-3 text-base font-normal">
+          <select value={city} onChange={(e) => setCity(e.target.value)} className="min-h-[var(--control-h)] rounded-lg border border-control bg-surface px-3 text-base font-normal">
             {CITIES.map((c) => <option key={c} value={c}>{c || t('anyCity')}</option>)}
           </select>
         </label>

@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 export type EngineOutput = Schemas['catalog']['PriceOutput'];
 export type EngineLine = EngineOutput['lines'][number];
 
-function Flags({ l }: { l: EngineLine }) {
+export function Flags({ l }: { l: { flags: string[] } }) {
   const t = useTranslations('breakdown');
   return (
     <>
@@ -21,7 +21,7 @@ function Flags({ l }: { l: EngineLine }) {
  * (dealer-confirmed, catalogue estimate or unverified). Below the sm breakpoint it is a stacked list (PLAN section 5.1:
  * cards on mobile, never a squeezed table), so every value is visible at 360 px without scrolling sideways.
  */
-export function Breakdown({ output, caption }: { output: EngineOutput; caption: string }) {
+export function Breakdown({ output, caption, stacked }: { output: EngineOutput; caption: string; /** Always the list: for a narrow column on a wide screen. */ stacked?: boolean }) {
   const t = useTranslations('breakdown');
   const mandatory = output.lines.filter((l) => l.in_cash_payable);
   const optional = output.lines.filter((l) => !l.in_cash_payable);
@@ -40,7 +40,7 @@ export function Breakdown({ output, caption }: { output: EngineOutput; caption: 
   );
   return (
     <>
-      <section className="rounded-lg border border-border px-3 py-2 text-sm sm:hidden" aria-label={caption}>
+      <section className={`rounded-lg border border-border px-3 py-2 text-sm${stacked ? '' : ' sm:hidden'}`} aria-label={caption}>
         <h4 className="font-semibold">{caption}</h4>
         <ul>{mandatory.map(item)}</ul>
         <p className="flex justify-between border-t border-border py-2 font-bold"><span>{t('cashPayable')}</span><span className="tabular">{rupees(output.cash_payable_paise)}</span></p>
@@ -52,7 +52,7 @@ export function Breakdown({ output, caption }: { output: EngineOutput; caption: 
           </>
         ) : null}
       </section>
-      <div className="hidden overflow-x-auto rounded-lg border border-border sm:block" tabIndex={0} role="region" aria-label={caption}>
+      {stacked ? null : <div className="hidden overflow-x-auto rounded-lg border border-border sm:block" tabIndex={0} role="region" aria-label={caption}>
         <table className="w-full min-w-[22rem] text-sm">
           <caption className="px-3 pb-1 pt-3 text-left font-semibold">{caption}</caption>
           <tbody className="[&_th]:pl-3 [&_td:last-child]:pr-3">
@@ -75,7 +75,7 @@ export function Breakdown({ output, caption }: { output: EngineOutput; caption: 
             ) : null}
           </tbody>
         </table>
-      </div>
+      </div>}
     </>
   );
 }

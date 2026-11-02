@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { cookies } from 'next/headers';
+import localFont from 'next/font/local';
 import Link from 'next/link';
 import { LocaleSwitch } from '@/components/locale-switch';
 import { SignOutButton } from '@/components/sign-out';
@@ -10,6 +11,10 @@ import { ServiceWorkerRegister } from '@/components/sw-register';
 import { gatewayGet } from '@/lib/gateway';
 import { build } from '@/lib/build';
 import './globals.css';
+
+// Self-hosted subsets (app/fonts, OFL). Devanagari is not preloaded: browsers fetch it only when a page has Hindi text.
+const plex = localFont({ variable: '--font-plex', display: 'swap', src: [{ path: './fonts/plex-sans-Regular.woff2', weight: '400' }, { path: './fonts/plex-sans-SemiBold.woff2', weight: '600' }] });
+const plexDeva = localFont({ variable: '--font-plex-deva', display: 'swap', preload: false, adjustFontFallback: false, src: [{ path: './fonts/plex-deva-Regular.woff2', weight: '400' }, { path: './fonts/plex-deva-SemiBold.woff2', weight: '600' }] });
 
 export const metadata: Metadata = { title: 'Convoy', description: 'Group car buying with sealed, itemised dealer offers.' };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f5c4d' };
@@ -25,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Bell (P5.A): unread count from notification; when that service is down the bell shows no count and nothing else changes.
   const unread = signedIn ? (await gatewayGet<{ unread_count: number }>('/me/notifications?limit=1')).data?.unread_count : undefined;
   return (
-    <html lang={locale === 'hi' ? 'hi-IN' : 'en-IN'}>
+    <html lang={locale === 'hi' ? 'hi-IN' : 'en-IN'} className={`${plex.variable} ${plexDeva.variable}`}>
       <body className="min-h-screen">
         <ServiceWorkerRegister />
         <NextIntlClientProvider>

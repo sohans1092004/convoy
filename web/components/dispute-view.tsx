@@ -69,16 +69,16 @@ function AdminActions({ d, refresh }: { d: Dispute; refresh: () => Promise<unkno
       {d.state === 'OPEN' ? <Button className="self-start" loading={act.state.kind === 'loading'} onClick={() => act.execute('assign')}>{t('assign')}</Button> : null}
       {d.state === 'UNDER_REVIEW' ? (
         <>
-          <label className="flex flex-col gap-1 text-sm">{t('note')}<textarea rows={2} maxLength={2000} className="rounded-lg border border-border bg-surface p-2" value={note} onChange={(e) => setNote(e.target.value)} /></label>
+          <label className="flex flex-col gap-1 text-sm">{t('note')}<textarea rows={2} maxLength={2000} className="rounded-lg border border-control bg-surface p-2" value={note} onChange={(e) => setNote(e.target.value)} /></label>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-sm">{t('askParty')}
-              <select className="rounded-lg border border-border bg-surface p-2" value={party} onChange={(e) => setParty(e.target.value as 'BUYER' | 'DEALER')}><option value="DEALER">{t('dealer')}</option><option value="BUYER">{t('buyer')}</option></select>
+              <select className="rounded-lg border border-control bg-surface p-2" value={party} onChange={(e) => setParty(e.target.value as 'BUYER' | 'DEALER')}><option value="DEALER">{t('dealer')}</option><option value="BUYER">{t('buyer')}</option></select>
             </label>
             <Button variant="secondary" disabled={!note} loading={act.state.kind === 'loading'} onClick={() => act.execute('info')}>{t('requestInfo')}</Button>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-sm">{t('outcome')}
-              <select className="rounded-lg border border-border bg-surface p-2" value={outcome} onChange={(e) => setOutcome(e.target.value)}>{OUTCOMES.map((o) => <option key={o} value={o}>{t(`outcomes.${o}`)}</option>)}</select>
+              <select className="rounded-lg border border-control bg-surface p-2" value={outcome} onChange={(e) => setOutcome(e.target.value)}>{OUTCOMES.map((o) => <option key={o} value={o}>{t(`outcomes.${o}`)}</option>)}</select>
             </label>
             <Button disabled={!note} loading={act.state.kind === 'loading'} onClick={() => act.execute('resolve')}>{d.proposed_outcome === outcome ? t('confirmOutcome') : t('resolve')}</Button>
           </div>
@@ -136,7 +136,7 @@ export function DisputeView({ disputeId }: { disputeId: string }) {
       {!closed && !isAdmin ? (
         <Card className="flex flex-col gap-2">
           <label className="flex flex-col gap-1 text-sm">{d.state === 'RESOLVED' ? t('appealWhy') : t('message')}
-            <textarea rows={3} maxLength={4000} className="rounded-lg border border-border bg-surface p-2" value={text} onChange={(e) => setText(e.target.value)} />
+            <textarea rows={3} maxLength={4000} className="rounded-lg border border-control bg-surface p-2" value={text} onChange={(e) => setText(e.target.value)} />
           </label>
           <div className="flex flex-wrap gap-2">
             {d.state === 'RESOLVED' && isBuyer ? <Button disabled={!text || d.appeal_count > 0} loading={party.state.kind === 'loading'} onClick={() => party.execute('appeal')}>{t('appeal')}</Button>

@@ -37,11 +37,12 @@
     "decisionLater": "the decision deadline, once offers are in"
   },
   "confirm": {
-    "title": "Confirm at most {ceiling} (cash payable) — TEST MODE",
     "body": "You will never pay more than {ceiling}. If fewer buyers confirm than the dealer's minimum, this offer can't go ahead and your ₹999 test deposit is refunded (or, if the pool tries once more, you choose to keep your place). You can cancel after confirming and still get your ₹999 back.",
     "drop": "If {nextMin}+ buyers confirm by {deadline} the price drops to {nextPrice}.",
     "consent": "If your booking is issued, we share your name and email with this offer's dealer only, so they can arrange delivery. No other dealer gets them.",
-    "cta": "Confirm at most {ceiling}"
+    "cta": "Confirm at most {ceiling}",
+    "heroLabel": "You will never pay more than (cash payable)",
+    "testTag": "TEST MODE: no real money"
   },
   "closed": {
     "title": "This pool has closed",
@@ -187,7 +188,7 @@
     "finalOffer": "Final offer",
     "sealedOffer": "Sealed offer v{version}",
     "lastUpdated": "Last updated {time} (version {version})",
-    "ceilingTitle": "Cash payable at your ceiling (the most you can pay)",
+    "ceilingTitle": "Most you can pay (cash payable at your ceiling)",
     "ceilingLabel": "Cash payable at your ceiling",
     "notGuaranteed": "· projection, not guaranteed",
     "stock": "Stock:",
@@ -202,8 +203,8 @@
     "none": "No offers yet. Dealers have until the round deadline.",
     "addonFlag": "This offer adds a dealer-required add-on that the other offers do not include: {items}. Ask the dealer whether you can decline it.",
     "stockNote": {
-      "enough": "{units} in stock: enough for the {committed} committed buyers",
-      "short": "{units} in stock for {committed} committed buyers: some cars come later",
+      "enough": "{units} in stock: enough for the {committed} committed {committed, plural, one {buyer} other {buyers}}",
+      "short": "{units} in stock for {committed} committed {committed, plural, one {buyer} other {buyers}}: some cars come later",
       "none": "No stock held: cars are ordered after confirmation",
       "statement": "(the dealer's statement)",
       "statementWithDate": "(the dealer's statement, delivery from {date})"
@@ -212,7 +213,30 @@
     "reliabilityNone": "No completed bookings in the last {days} days yet",
     "variantChoose": "Choose a variant",
     "variantOne": "Variant: {variant}",
-    "acceptedOther": "You accepted another variant of this offer. Accepting this one replaces it."
+    "acceptedOther": "You accepted another variant of this offer. Accepting this one replaces it.",
+    "subtitle": "{car}, {city}: {count, plural, one {# offer} other {# offers}}",
+    "sorted": "Sorted by the most you can pay, lowest first. The ceiling is guaranteed; a projection is not.",
+    "lowest": "Lowest of {count}",
+    "moreThanLowest": "{amount} more than the lowest",
+    "mixedVariants": "These offers show different variants, so the gaps compare different cars.",
+    "minimumNeeded": "Minimum {min} confirmed {min, plural, one {buyer} other {buyers}} for this offer to go ahead.",
+    "rowMinimum": "Minimum to go ahead",
+    "rowNone": "None",
+    "loadFailed": "Offers could not be loaded.",
+    "row": {
+      "EX_SHOWROOM": "Ex-showroom price",
+      "DISCOUNT": "Dealer discount",
+      "ROAD_TAX": "Road tax",
+      "REGISTRATION": "Registration and smart card",
+      "INSURANCE": "Insurance",
+      "TCS": "TCS 1% (creditable against income tax)"
+    },
+    "legendTitle": "What the small words mean",
+    "legend": {
+      "DEALER_CONFIRMED": "the dealer stated it, or a verified rule sets it.",
+      "CATALOGUE_ESTIMATE": "our estimate from published figures, not the dealer's.",
+      "UNVERIFIED": "we could not verify it. Ask the dealer."
+    }
   },
   "signIn": {
     "title": "Sign in",
@@ -627,5 +651,10 @@
     "adminTitle": "Admin view (read-only, synthetic data)",
     "adminNote": "This is what the operations team sees, filled with made-up figures. Real admin powers need a passkey and are not offered publicly.",
     "emailOff": "Email sign-in is off on this public demo. Use Try the demo instead."
+  },
+  "countdown": {
+    "now": "Time now {time}",
+    "warning": "Your action must reach us before {time}. A slow network can make a last-second action miss.",
+    "closed": "This deadline has passed."
   }
 }

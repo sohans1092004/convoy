@@ -4,13 +4,13 @@ import * as React from 'react';
 import { cn } from '@/lib/cn';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55 min-h-11 px-4 text-[0.95rem]',
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55 min-h-[var(--control-h)] px-4 text-[0.95rem]',
   {
     variants: {
       variant: {
         primary: 'bg-primary text-primary-fg hover:brightness-110',
-        secondary: 'border border-border bg-surface text-fg hover:bg-surface-2',
-        danger: 'bg-danger text-white hover:brightness-110',
+        secondary: 'border border-control bg-surface text-fg hover:bg-surface-2',
+        danger: 'bg-danger text-danger-fg hover:brightness-110',
         link: 'min-h-6 px-0 text-primary underline underline-offset-4',
       },
       block: { true: 'w-full' },

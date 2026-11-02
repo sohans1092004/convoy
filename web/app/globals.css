@@ -1,17 +1,18 @@
 @import "tailwindcss";
 
-/* Design tokens (light + dark). Components use only these semantic names. Contrast targets: text >= 4.5:1. */
+/* Design tokens (light + dark). Components use only these semantic names. Contrast targets: text >= 4.5:1; --control (input and button borders) >= 3:1 on --bg and --surface; --border is a hairline, never the only edge of a control. */
 :root {
-  --bg: #f7f7f5;
+  --bg: #f6f7f6;
   --surface: #ffffff;
-  --surface-2: #efeee9;
+  --surface-2: #eceeec;
   --fg: #1b1d1f;
-  --muted: #55595e;
-  --border: #d4d2cb;
+  --muted: #4a5057;
+  --border: #d9dcd9;
+  --control: #858a8f;
   --primary: #0f5c4d;
   --primary-fg: #ffffff;
-  --accent: #b4520c;
   --danger: #a3261d;
+  --danger-fg: #ffffff;
   --danger-bg: #fbeceb;
   --warning-bg: #fdf3dd;
   --warning-fg: #6b4a00;
@@ -21,6 +22,7 @@
   --info-fg: #23406b;
   --focus: #1a56db;
   --radius: 0.625rem;
+  --control-h: 2.75rem; /* buyer density: 44 px targets */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,11 +32,12 @@
     --surface-2: #23272b;
     --fg: #ecedee;
     --muted: #a7acb1;
-    --border: #353a3f;
+    --border: #33383c;
+    --control: #6e757b;
     --primary: #4fbfa5;
     --primary-fg: #08201b;
-    --accent: #f0a05a;
     --danger: #f28b82;
+    --danger-fg: #2b0f0d;
     --danger-bg: #3a1d1b;
     --warning-bg: #3a2f14;
     --warning-fg: #f3d58a;
@@ -52,11 +55,12 @@
   --surface-2: #23272b;
   --fg: #ecedee;
   --muted: #a7acb1;
-  --border: #353a3f;
+  --border: #33383c;
+  --control: #6e757b;
   --primary: #4fbfa5;
   --primary-fg: #08201b;
-  --accent: #f0a05a;
   --danger: #f28b82;
+  --danger-fg: #2b0f0d;
   --danger-bg: #3a1d1b;
   --warning-bg: #3a2f14;
   --warning-fg: #f3d58a;
@@ -74,10 +78,11 @@
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-control: var(--control);
   --color-primary: var(--primary);
   --color-primary-fg: var(--primary-fg);
-  --color-accent: var(--accent);
   --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
   --color-danger-bg: var(--danger-bg);
   --color-warning-bg: var(--warning-bg);
   --color-warning-fg: var(--warning-fg);
@@ -87,11 +92,21 @@
   --color-info-fg: var(--info-fg);
   --color-focus: var(--focus);
   --radius-lg: var(--radius);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  /* Plex Sans first: Plex Devanagari has no rupee sign. Two weights only, so every heavy utility resolves to 600. */
+  --font-sans: var(--font-plex), var(--font-plex-deva), "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", sans-serif;
+  --font-weight-medium: 400;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
 }
 
 html { color-scheme: light dark; }
 body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .tabular { font-variant-numeric: tabular-nums; }
+/* Hindi needs more room between lines (matras) than the Latin defaults leave. */
+:lang(hi) { line-height: 1.7; }
+:lang(hi) :is(h1, h2, h3) { line-height: 1.35; }
+/* Work density (dealer and admin tools): smaller type and controls; buyer screens keep the defaults above. Targets stay above 24 px. */
+[data-density="work"] { --control-h: 2.25rem; --text-base: 0.875rem; --text-sm: 0.8125rem; font-size: 0.875rem; }
+@media (min-width: 1024px) { [data-density="work"] { --control-h: 2rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

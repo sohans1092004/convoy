@@ -13,10 +13,12 @@ import { Countdown } from '@/components/ui/countdown';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, etagVersion, type Schemas } from '@/lib/api';
+import { nextTier } from '@/lib/compare';
 import { ist, rupees } from '@/lib/format';
 import { timeline, type DepositState, type StepStatus } from '@/lib/order-timeline';
 import { paise } from '@/lib/quote-builder';
 import { useCommand } from '@/lib/use-command';
+import { useFetch } from '@/lib/use-fetch';
 import { useSnapshot } from '@/lib/use-snapshot';
 
 type Order = Schemas['order']['Order'];
@@ -97,12 +99,12 @@ function DisputeForm({ order }: { order: Order }) {
   return (
     <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); open.execute(); }}>
       <label className="flex flex-col gap-1 text-sm">{t('disputeCategory')}
-        <select className="rounded-lg border border-border bg-surface p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
+        <select className="rounded-lg border border-control bg-surface p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
           {DISPUTE_CATEGORIES.map((c) => <option key={c} value={c}>{t(`category.${c}`)}</option>)}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm">{t('disputeWhat')}
-        <textarea required maxLength={4000} rows={3} className="rounded-lg border border-border bg-surface p-2" value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea required maxLength={4000} rows={3} className="rounded-lg border border-control bg-surface p-2" value={text} onChange={(e) => setText(e.target.value)} />
       </label>
       <Button type="submit" variant="secondary" className="self-start" loading={open.state.kind === 'loading'}>{t('openDispute')}</Button>
       <CommandStatus state={open.state} />
@@ -124,7 +126,7 @@ function ReviewForm({ bookingId }: { bookingId: string }) {
         ))}
       </fieldset>
       <label className="flex flex-col gap-1 text-sm">{t('reviewText')}
-        <textarea maxLength={2000} rows={3} className="rounded-lg border border-border bg-surface p-2" value={body} onChange={(e) => setBody(e.target.value)} />
+        <textarea maxLength={2000} rows={3} className="rounded-lg border border-control bg-surface p-2" value={body} onChange={(e) => setBody(e.target.value)} />
       </label>
       <Button type="submit" className="self-start" loading={send.state.kind === 'loading'} disabled={send.state.kind === 'success'}>{t('postReview')}</Button>
       <CommandStatus state={send.state} successText={t('reviewPosted')} />
@@ -146,7 +148,7 @@ function InvoiceForm({ bookingId, confirmed }: { bookingId: string; confirmed: n
   return (
     <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); void send.execute(); }}>
       <label className="flex flex-col gap-1 text-sm">{t('invoiceTotal')}
-        <input inputMode="decimal" className="rounded-lg border border-border bg-surface p-2" value={total} onChange={(e) => setTotal(e.target.value)} required />
+        <input inputMode="decimal" className="rounded-lg border border-control bg-surface p-2" value={total} onChange={(e) => setTotal(e.target.value)} required />
       </label>
       <p className="text-xs text-muted">{t('invoiceNote')}</p>
       <Button type="submit" variant="secondary" className="self-start" loading={send.state.kind === 'loading'}>{t('invoiceConfirm')}</Button>
@@ -159,6 +161,7 @@ export function OrderView({ orderId }: { orderId: string }) {
   const to = useTranslations('order');
   const t = useTranslations('confirm');
   const tl = useTranslations('lifecycle');
+  const tt = useTranslations('timeline');
   const snap = useSnapshot(async () => {
     const o = await call(api.GET('/orders/{id}', { params: { path: { id: orderId } } }));
     // The deposit's state lives in payment: the pool membership names the payment.
@@ -197,6 +200,10 @@ export function OrderView({ orderId }: { orderId: string }) {
   });
   const [confirmCancel, setConfirmCancel] = React.useState(false);
   const o = snap.data?.order;
+  // The next rung of the ladder for the confirm screen; the order itself carries only its ceiling. No line if offers can't be read.
+  const offers = useFetch(['offers', o?.pool_id], async () => (await call(api.GET('/pools/{poolId}/quotes', { params: { path: { poolId: o!.pool_id } } }))).data, { enabled: o?.state === 'CONFIRMATION_PENDING' });
+  const pricedVariant = offers.data?.quotes.find((q) => q.quote_id === o?.quote_id)?.variants.find((v) => v.variant_id === o?.variant_id);
+  const next = pricedVariant ? nextTier(pricedVariant.tiers) : null;
   if (snap.loading && !o) return <Skeleton className="h-96" label={to('loading')} />;
   if (!o) return <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger">{snap.problem?.detail ?? to('loadFailed')}</p>;
   const ceiling = o.snapshots.ceiling!;
@@ -209,20 +216,30 @@ export function OrderView({ orderId }: { orderId: string }) {
         <Badge tone={['BOOKED', 'COMPLETED'].includes(o.state) ? 'success' : o.state === 'CONFIRMATION_PENDING' ? 'warning' : 'neutral'}>{o.state.replace(/_/g, ' ').toLowerCase()}</Badge>
       </div>
       {o.state === 'CONFIRMATION_PENDING' ? null : <CarAndDealer order={o} />}
-      <Timeline order={o} deposit={snap.data!.deposit} />
       {o.state === 'CONFIRMATION_PENDING' ? (
         <Card emphasis className="flex flex-col gap-3">
           <CarAndDealer order={o} />
-          <CardTitle>{t('title', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</CardTitle>
-          <p className="text-sm">{t('body', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</p>
-          <p className="text-sm">{t('consent')}</p>
+          <div>
+            <h2 className="text-sm font-semibold">{t('heroLabel')}</h2>
+            <p className="tabular text-4xl font-semibold leading-tight" data-testid="ceiling">{rupees(ceiling.output.cash_payable_paise)}</p>
+            <p className="text-xs font-semibold">{t('testTag')}</p>
+          </div>
+          {next ? <p className="text-sm">{t('drop', { nextMin: next.min, deadline: ist(o.confirmation_deadline), nextPrice: rupees(next.cash_payable_paise) })}</p> : null}
           <Countdown deadline={o.confirmation_deadline} label={to('confirmBy')} />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button loading={confirm.state.kind === 'loading'} onClick={() => confirm.execute()}>{t('cta', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</Button>
             <Button variant="secondary" loading={decline.state.kind === 'loading'} onClick={() => decline.execute()}>{to('decline')}</Button>
           </div>
+          <p className="text-sm">{t('body', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</p>
+          <p className="text-sm">{t('consent')}</p>
         </Card>
       ) : null}
+      {o.state === 'CONFIRMATION_PENDING' ? (
+        <details className="rounded-lg border border-border bg-surface p-3">
+          <summary className="min-h-6 cursor-pointer font-semibold">{tt('title')}</summary>
+          <div className="mt-2"><Timeline order={o} deposit={snap.data!.deposit} /></div>
+        </details>
+      ) : <Timeline order={o} deposit={snap.data!.deposit} />}
       <CommandStatus state={decline.state} successText={tl('declined')} />
       {/* Outside the card: the card disappears once the order is confirmed, the outcome must stay visible. */}
       <CommandStatus state={confirm.state} successText={to('confirmed')} />

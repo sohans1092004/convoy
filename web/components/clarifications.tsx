@@ -10,7 +10,7 @@ import { useCommand } from '@/lib/use-command';
 
 type Clarification = Schemas['quote']['Clarification'];
 const TYPES = ['DELIVERY_DATE', 'STOCK_COLOUR', 'PRICE_ITEM', 'INSURANCE', 'ACCESSORIES', 'DOCUMENTS', 'OTHER'] as const;
-const field = 'rounded-lg border border-border bg-surface p-2';
+const field = 'rounded-lg border border-control bg-surface p-2';
 
 function Item({ c, children }: { c: Clarification; children?: React.ReactNode }) {
   const t = useTranslations('clarify');
