@@ -11,6 +11,7 @@ Items come from the U.0 review. None are built. P1 parts that were outside the s
 
 ## P2
 - Pool title from a slug if the catalogue is unreachable: a hyphenated brand reads badly in that fallback only.
+- Model estimate: a ₹0 TCS line still shows on cars below the TCS threshold.
 - Raw formats: "2026-11" for the purchase month, ISO delivery dates, "PETROL · MT", lowercased pool membership states, ungrouped large counts ("12345").
 - Quote builder at 200% text: reaches about 515 px wide at a 360 px viewport.
 - Compare with 500 offers: about 330,000 px tall, one dealer request per card. Needs a paged matrix and a batched dealer lookup; no cap was found.
