@@ -14,11 +14,7 @@ terraform {
   }
 }
 
-variable "admin_cidr" {
-  description = "Your IP for SSH (x.x.x.x/32)"
-  type        = string
-}
-
+# Kept only because the instance's key_name cannot change without replacing the live host. No port accepts SSH.
 variable "ssh_public_key" {
   description = "Public half of ~/.ssh/convoy-ec2 (the private key never leaves the laptop)"
   type        = string
@@ -69,6 +65,7 @@ resource "aws_route_table_association" "r" {
   route_table_id = aws_route_table.r.id
 }
 
+# The description below is out of date (port 22 is closed; access is Systems Manager only), but changing it replaces the group.
 resource "aws_security_group" "host" {
   name        = "convoy-lite-host"
   description = "Convoy lite: web 80/443 public, SSH from the admin IP only"
@@ -83,13 +80,6 @@ resource "aws_security_group" "host" {
       cidr_blocks = ["0.0.0.0/0"]
     }
   }
-  ingress {
-    description = "SSH, admin only"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.admin_cidr]
-  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -103,12 +93,32 @@ resource "aws_key_pair" "admin" {
   public_key = var.ssh_public_key
 }
 
+# Session Manager and Run Command reach the host with this role instead of SSH: nothing else is granted to the instance.
+resource "aws_iam_role" "host" {
+  name = "convoy-lite-host"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Action = "sts:AssumeRole", Principal = { Service = "ec2.amazonaws.com" } }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "host_ssm" {
+  role       = aws_iam_role.host.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "host" {
+  name = "convoy-lite-host"
+  role = aws_iam_role.host.name
+}
+
 resource "aws_instance" "host" {
   ami                    = data.aws_ssm_parameter.ubuntu.value
   instance_type          = "t4g.medium" # 2 vCPU, 4 GiB: the lite stack idles at ~2.3 GiB (reports/p6/memory-laptop.md)
   subnet_id              = aws_subnet.s.id
   vpc_security_group_ids = [aws_security_group.host.id]
   key_name               = aws_key_pair.admin.key_name
+  iam_instance_profile   = aws_iam_instance_profile.host.name
   # The live host was launched with a public IP (true); the Elastic IP below is the address DuckDNS points at. Changing
   # this forces replacement, so it matches what runs (P8: the plan wanted to replace the live host over it).
   associate_public_ip_address = true
@@ -125,6 +135,37 @@ resource "aws_instance" "host" {
   }
 }
 
+# The only deploy path: "deploy this commit with these images", through the same checks SSH's forced command runs
+# (deploy-ssh.sh validates the sha and that every image is a digest from this repo). Run from the laptop: scripts/deploy-lite.sh.
+resource "aws_ssm_document" "deploy" {
+  name            = "convoy-deploy"
+  document_type   = "Command"
+  document_format = "JSON"
+  content = jsonencode({
+    schemaVersion = "2.2"
+    description   = "Deploy one commit to the Convoy lite host (deploy-ssh.sh, then deploy.sh)."
+    parameters = {
+      sha    = { type = "String", description = "Full commit sha", allowedPattern = "^[0-9a-f]{40}$" }
+      images = { type = "String", description = "images.env, base64", allowedPattern = "^[A-Za-z0-9+/=]+$", maxChars = 8192 }
+    }
+    mainSteps = [{
+      action = "aws:runShellScript"
+      name   = "deploy"
+      inputs = {
+        timeoutSeconds = "1800" # a normal deploy takes about 5 minutes; a failed one also rolls back
+        runCommand = [
+          "set -eu", # SSM runs this with sh, which has no pipefail
+          "tmp=$(mktemp)",
+          "trap 'rm -f \"$tmp\"' EXIT",
+          "printf '%s' '{{ images }}' | base64 -d > \"$tmp\"",
+          "cd /tmp",
+          "sudo -u deploy -H env SSH_ORIGINAL_COMMAND='deploy {{ sha }}' /opt/convoy/src/deploy/lite/deploy-ssh.sh < \"$tmp\"",
+        ]
+      }
+    }]
+  })
+}
+
 resource "aws_eip" "ip" {
   domain   = "vpc"
   instance = aws_instance.host.id
@@ -133,4 +174,5 @@ resource "aws_eip" "ip" {
 }
 
 output "public_ip" { value = aws_eip.ip.public_ip }
-output "ssh" { value = "ssh -i ~/.ssh/convoy-ec2 ubuntu@${aws_eip.ip.public_ip}" }
+output "instance_id" { value = aws_instance.host.id }
+output "shell" { value = "aws ssm start-session --profile convoy-aws --region ap-southeast-2 --target ${aws_instance.host.id}" }

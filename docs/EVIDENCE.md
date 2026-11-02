@@ -51,6 +51,9 @@ recorded the result. A number not in this file is not evidence. Missed and unmea
 | Demo journey on the public URL | PASS once, 4.5 min (real TLS, mobile-360; dealers simulated, payment simulated) | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Demo journey on the public URL, after the P8 redeploy | PASS once, 4.5 min: scenario 13.3 s, committed 20.8 s, 3 simulated offers 135.5 s, booked + voucher 263.1 s, dealer and admin views | live lite host | 2026-11-01 | 2278af4 | reports/p8/PROGRESS.md (P8.C) |
 | Deploy (`deploy.sh` via `scripts/deploy-lite.sh`: backup, one service at a time, smoke test) | 268 s, no rollback | live lite host | 2026-11-01 | 2278af4 | reports/p8/PROGRESS.md (P8.C) |
+| Deploy through Systems Manager (`scripts/deploy-lite.sh`, `convoy-deploy` document), same commit as already live | 21 s, no rollback, containers left running | live lite host | 2026-11-02 | 6267fda | reports/u1/PROGRESS.md |
+| Port 22 closed on the host | security group lists only 80 and 443; connections to 22 from the laptop time out; no scan from a second machine | live lite host | 2026-11-02 | 6267fda | reports/u1/PROGRESS.md |
+| Demo journey on the public URL, port 22 closed | PASS once, 4.4 min; asserts the variant, car and dealer are named | live lite host | 2026-11-02 | 6267fda | reports/u1/PROGRESS.md |
 | Reboot recovery | catalog API back after 120 s; all 17 containers healthy after 157 s | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Backup + restore drill | backup 68,639 bytes (age-encrypted, OCI bucket); restored 125 tables / 616 rows, no table with fewer rows than live; 10 restore errors, all role-grant `permission denied`, no data | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |
 | Memory, idle after the journey | host 3,031 of 3,824 MiB used, 792 MiB available (+2 GiB swap); containers 2,432 MiB | live lite host | 2026-11-01 | 03292c4 | reports/P6_REPORT.md §4 |

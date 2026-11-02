@@ -6,7 +6,7 @@
 # - opens 80/443 in the VM's iptables (Oracle's Ubuntu image rejects everything but 22), persisted
 # - a 2 GB swap file (swappiness 10)
 # - Docker + compose, with log rotation
-# - the restricted `deploy` user: its key can only run deploy-ssh.sh (GitHub Actions deploys through it)
+# - the restricted `deploy` user: its key can only run deploy-ssh.sh (for a host reached over SSH; EC2 deploys run it through Systems Manager)
 # - a checkout of the repo at /opt/convoy/src (public; the host env file and backups live beside it, never in git)
 # - cron: nightly encrypted backup, DuckDNS address refresh
 # Caddy itself runs in the compose stack and gets its Let's Encrypt certificate on first start.
