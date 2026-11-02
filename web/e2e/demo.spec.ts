@@ -12,8 +12,11 @@ test.use({
 // Try the demo -> own pool -> join + simulated deposit -> the simulated dealers quote -> compare -> accept -> confirm ->
 // booking voucher; then the dealer view of the visitor's own demo dealership and the read-only admin view.
 //   WEB_URL=https://convoy-demo.duckdns.org pnpm exec playwright test e2e/demo.spec.ts --project=mobile-360
+// Only a deployment has the Try the demo button (DEMO_PUBLIC), so the local suites skip this: set WEB_URL.
+test.skip(!process.env.WEB_URL, 'needs a deployment with the public demo: set WEB_URL');
+
 test('public demo: a stranger books through simulated dealers', async ({ page }, info) => {
-  test.setTimeout(15 * 60_000);
+  test.setTimeout(20 * 60_000);
   const t0 = Date.now();
   const step = (s: string) => console.log(`[${info.project.name}] ${((Date.now() - t0) / 1000).toFixed(1)}s ${s}`);
 
@@ -51,7 +54,7 @@ test('public demo: a stranger books through simulated dealers', async ({ page },
   await expect(page.getByTestId('car-and-dealer')).toContainText('Simulated Motors');
   await page.getByRole('button', { name: /Confirm at most/ }).click();
   await expect(page.getByText(/Confirmed\. Your final price is set/)).toBeVisible();
-  await expect(page.getByRole('img', { name: /QR code for booking voucher/ })).toBeVisible({ timeout: 4 * 60_000 });
+  await expect(page.getByRole('img', { name: /QR code for booking voucher/ })).toBeVisible({ timeout: 6 * 60_000 }); // the 3-minute confirmation window has to close first
   step('booked; voucher shown');
 
   await page.getByRole('button', { name: 'Switch to dealer view' }).click();

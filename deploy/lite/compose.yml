@@ -189,7 +189,7 @@ services:
       DEMO_SEALED_ROUND_SECONDS: ${DEMO_SEALED_ROUND_SECONDS:-90}
       DEMO_FINAL_ROUND_SECONDS: ${DEMO_FINAL_ROUND_SECONDS:-20}
       DEMO_DECISION_SECONDS: ${DEMO_DECISION_SECONDS:-300} # public demo: time to weigh three offers (U.0 1.4); the pool rules are unchanged
-      DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS:-60}
+      DEMO_CONFIRMATION_SECONDS: ${DEMO_CONFIRMATION_SECONDS:-180} # public demo: 60 s can run out on a slow connection; the rules are unchanged
       POOL_MIN_MEMBERS: ${POOL_MIN_MEMBERS:-1}
 
   realtime-1: # named as in the local stack: the journey checks it by this name

@@ -7,13 +7,10 @@ Items come from the U.0 review. None are built. P1 parts that were outside the s
 - **Quote builder as a work tool (1.13):** a sticky preview beside the tiers and copying figures between variants are not built. Typing inside a grouped amount moves the caret to the end.
 - **Admin layout (1.15):** the table with expandable rows, and counts on the tabs, are not built. Whether the server blocks self-approval from the UI path was not tested; `Payments.java` has the check.
 - **Hindi beyond the money screens (1.16):** the model page's remaining strings are marked `lang="en"`, not translated. The dealer tools are all English and marked as such. `scripts/i18n-untranslated.mjs` still undercounts. All Hindi remains an unreviewed machine draft.
-- **Demo confirmation window:** still 60 s, so the last-minute warning shows as soon as the confirm screen opens. Only the decision window was lengthened.
 
 ## Found during this pass
-- **Live LCP:** 3.3 to 8.9 s on 7c48456 against the 2.5 s gate, measured on a degraded link. Re-run `DEMO=1 WEB_URL=https://convoy-main.duckdns.org LH_OUT=../reports/ui/lighthouse-live.json node scripts/lighthouse.mjs` on a healthy link, or from another network. The code itself adds about 260 ms and 43 KB on discover (`lighthouse-ab-local.md`).
+- **Live LCP:** 3.3 to 8.9 s on 7c48456 against the 2.5 s gate, measured on a degraded link. The owner is re-measuring with PageSpeed Insights; those numbers go in `docs/EVIDENCE.md`, labelled "PageSpeed Insights, Google's servers". The code itself adds about 260 ms and 43 KB on discover (`lighthouse-ab-local.md`).
 - **Slow path to the host:** 2 to 30 KB/s from the laptop while Cloudflare gave 205 to 340 KB/s. Cause not established.
-- **Nightly browser job:** already failing on main: `e2e/demo.spec.ts` runs on a stack without `DEMO_PUBLIC`, and the failure skips the job's budget and Lighthouse steps.
-- **Demo confirmation window:** one capture over the slow link missed the 60 s window altogether. A visitor on a slow connection could too.
 
 ## P2
 - Pool title from a slug if the catalogue is unreachable: a hyphenated brand reads badly in that fallback only.
@@ -36,6 +33,3 @@ Items come from the U.0 review. None are built. P1 parts that were outside the s
 - Emoji bell; static `themeColor` in dark mode.
 - Snapshot hash and ruleset shown to buyers at full prominence.
 - `Price`'s `aria-label` on a span is dropped by the accessibility tree; the visible text still reads sensibly.
-
-## For the owner
-- **`docs/rules/deadline-rule.md` §3** words the countdown as "server time 17:58:41" and "must *reach our database*". The UI now shows the server time to the minute as "Time now" and says "must reach us", as directed. Enforcement and the last-60-second warning are unchanged, and the rule file was not edited. Aligning its wording needs an amendment.
