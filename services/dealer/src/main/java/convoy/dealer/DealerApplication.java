@@ -39,6 +39,16 @@ public class DealerApplication {
         return convoy.platform.web.Dto.as(Map.of("brand", brand, "city", city, "dealership_ids", ids, "count", ids.size()), Api.Eligibility.class);
     }
 
+    /** E174: the name a buyer's order shows for its dealership. Service token only. */
+    @GetMapping("/internal/dealerships/{id}/name")
+    @convoy.platform.security.RequiresScope("dealerships:read")
+    public Api.DealershipName dealershipName(@PathVariable UUID id) {
+        Caller.current().requireScope("dealerships:read");
+        List<String> names = jdbc.queryForList("select trade_name from dealerships where id = ?", String.class, id);
+        if (names.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such dealership.");
+        return new Api.DealershipName(names.get(0));
+    }
+
     /** E052 (built early for P1 as the dealer read API): public dealership profile. */
     @GetMapping("/dealerships/{id}")
     public Api.Dealership profile(@PathVariable UUID id) throws java.sql.SQLException {

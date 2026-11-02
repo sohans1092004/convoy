@@ -194,6 +194,10 @@ public class QuoteApplication {
         int confirmed = ((Number) q.get("confirmed")).intValue(), accepted = ((Number) q.get("accepted")).intValue();
         long n = confirmed > 0 ? confirmed : accepted;
         String basis = confirmed > 0 ? "confirmed buyers" : "buyers accepting now";
+        Map<String, String> variantNames = new java.util.HashMap<>();
+        for (String rv : quotes.jdbc().queryForList("select variants::text from rounds_replica where pool_id = ? and round_set = ? order by round_no desc limit 1", String.class, poolId, q.get("round_set"))) {
+            Quotes.readList(quotes.read("{\"v\":" + rv + "}").get("v")).forEach(x -> variantNames.put((String) x.get("id"), (String) x.get("name")));
+        }
         List<Map<String, Object>> variants = new ArrayList<>();
         for (Map<String, Object> vi : Quotes.readList(inputs.get("variant_inputs"))) {
             String vid = (String) vi.get("variant_id");
@@ -207,7 +211,9 @@ public class QuoteApplication {
             Integer projected = n >= minF ? Tiers.tierFor(ladder, n) : null;
             Map<String, Object> v = new LinkedHashMap<>();
             v.put("variant_id", vid);
-            v.put("variant_code", QuotePricing.m(QuotePricing.m(vi.get("input")).get("vehicle")).get("variant_id"));
+            Object code = QuotePricing.m(QuotePricing.m(vi.get("input")).get("vehicle")).get("variant_id");
+            v.put("variant_code", code);
+            v.put("variant_name", variantNames.getOrDefault(vid, String.valueOf(code)));
             v.put("ceiling", Map.of("tier_index", ceiling, "cash_payable_paise", ladder.get(ceiling).pricePaise(), "output", perTier.get(ceiling).get("output"),
                     "snapshot_sha256", perTier.get(ceiling).get("sha256")));
             Map<String, Object> projection = new LinkedHashMap<>();

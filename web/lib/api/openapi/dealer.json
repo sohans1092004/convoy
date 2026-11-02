@@ -172,6 +172,37 @@
         }
       }
     },
+    "/internal/dealerships/{id}/name": {
+      "get": {
+        "tags": [
+          "dealer-application"
+        ],
+        "operationId": "dealershipName",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealershipName"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dealerships/{id}": {
       "get": {
         "tags": [
@@ -451,6 +482,16 @@
           "city",
           "count",
           "dealership_ids"
+        ]
+      },
+      "DealershipName": {
+        "properties": {
+          "trade_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trade_name"
         ]
       },
       "Dealership": {

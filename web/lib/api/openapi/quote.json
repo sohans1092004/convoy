@@ -936,6 +936,9 @@
           "variant_code" : {
             "type" : "string"
           },
+          "variant_name" : {
+            "type" : "string"
+          },
           "ceiling" : {
             "$ref" : "#/components/schemas/Ceiling"
           },
@@ -952,7 +955,7 @@
             "$ref" : "#/components/schemas/Stock"
           }
         },
-        "required" : [ "ceiling", "projection", "stock", "tiers", "variant_code", "variant_id" ]
+        "required" : [ "ceiling", "projection", "stock", "tiers", "variant_code", "variant_id", "variant_name" ]
       },
       "Offers" : {
         "properties" : {

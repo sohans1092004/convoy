@@ -945,6 +945,20 @@
         },
         "required" : [ "cancel_reason", "cancelled_at", "contact_released_at", "dealer_confirm_deadline", "dealership_id", "delivered_at", "delivery_slot", "id", "invoice_confirmed_at", "invoice_total_paise", "overdue_flag", "promised_delivery_date", "scheduled_date", "state", "version", "voucher_active" ]
       },
+      "CarRef" : {
+        "properties" : {
+          "brand" : {
+            "type" : "string"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "variant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "brand", "model", "variant" ]
+      },
       "DisputeRef" : {
         "properties" : {
           "id" : {
@@ -1067,9 +1081,19 @@
           },
           "server_time" : {
             "type" : "string"
+          },
+          "car" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CarRef"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dealership_name" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "booking", "buyer_id", "cancel_reason", "cancelled_at", "ceiling_snapshot_id", "confirmation_deadline", "confirmed_at", "confirmed_ceiling_paise", "created_at", "dealership_id", "decline_reason", "disputes", "id", "pool_id", "quote_id", "round_set", "server_time", "snapshots", "state", "variant_id", "version" ]
+        "required" : [ "booking", "buyer_id", "cancel_reason", "cancelled_at", "car", "ceiling_snapshot_id", "confirmation_deadline", "confirmed_at", "confirmed_ceiling_paise", "created_at", "dealership_id", "dealership_name", "decline_reason", "disputes", "id", "pool_id", "quote_id", "round_set", "server_time", "snapshots", "state", "variant_id", "version" ]
       },
       "PriceOutput" : {
         "properties" : {
@@ -1399,9 +1423,12 @@
           },
           "verification" : {
             "type" : "string"
+          },
+          "dealership_name" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "dealership_id", "id", "promised_delivery_date", "qr_payload", "state", "verification" ]
+        "required" : [ "dealership_id", "dealership_name", "id", "promised_delivery_date", "qr_payload", "state", "verification" ]
       },
       "OrderList" : {
         "properties" : {

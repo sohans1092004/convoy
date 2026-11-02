@@ -85,6 +85,37 @@
         }
       }
     },
+    "/internal/variants/{id}": {
+      "get": {
+        "tags": [
+          "catalog-controller"
+        ],
+        "operationId": "internalVariant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarRef"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/models/{slug}": {
       "get": {
         "tags": [
@@ -304,6 +335,24 @@
         },
         "required": [
           "cars"
+        ]
+      },
+      "CarRef": {
+        "properties": {
+          "brand": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "brand",
+          "model",
+          "variant"
         ]
       },
       "InternalModel": {
@@ -845,11 +894,18 @@
             "items": {
               "$ref": "#/components/schemas/CityPrice"
             }
+          },
+          "estimate_cities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "code",
           "engine_cc",
+          "estimate_cities",
           "fuel",
           "id",
           "name",

@@ -383,6 +383,7 @@ export interface components {
         OfferVariant: {
             variant_id: string;
             variant_code: string;
+            variant_name: string;
             ceiling: components["schemas"]["Ceiling"];
             projection: components["schemas"]["Projection"];
             tiers: components["schemas"]["TierView"][];

@@ -42,6 +42,19 @@
 - Tata Motors: [Nexon](https://cars.tatamotors.com/nexon/ice/price.html), [Punch](https://cars.tatamotors.com/punch/ice.html) (TLS failure)
 - Toyota Bharat: [Innova Hycross](https://www.toyotabharat.com/showroom/innova-hycross/), [Fortuner](https://www.toyotabharat.com/showroom/fortuner/) (404/403)
 
+## Engine and fuel additions (U.1, read 2026-11-02)
+`specs.yaml` adds what P0 could not read, per variant, with its source. `models.yaml` stays as collected, because migration V2 is applied history.
+
+| Model | Added | Source |
+|---|---|---|
+| Dzire | 1197 cc | [Maruti Suzuki Arena](https://www.marutisuzuki.com/arena/dzire) |
+| Ertiga | 1462 cc | [Maruti Suzuki Arena](https://www.marutisuzuki.com/arena/ertiga) |
+| Creta | 1497 cc MPi, 1493 cc CRDi, 1482 cc Turbo GDi | [Hyundai specifications](https://www.hyundai.com/in/en/find-a-car/creta/specification), page data. A FAQ on Hyundai's performance page says 1497 cc for the turbo; both are in the same insurance slab. |
+| Hector | Petrol, 1451 cc | Fuel: [MG Hector](https://www.mgmotor.co.in/vehicles/mghector), which gives litres only. cc: [MG Hector Plus 7 Seater](https://www.mgmotor.co.in/vehicles/mghector-plus-7-seater.html), for the same named engine. |
+| Windsor EV | Nothing | The engine does not estimate EV insurance (`insurance-baseline.yaml`), so there is no on-road estimate and the model is not listed. |
+
+Still no estimate, by the existing rules: Ertiga Smart Hybrid variants in Maharashtra and Delhi (`HYBRID` road tax unverified in `rto.yaml`), and CNG in Delhi.
+
 ## Cross-check
 The Swift LXi price (₹5,83,900) also appears as the "Price starts at" figure on Maruti's model page [marutisuzuki.com/swift/price](https://www.marutisuzuki.com/swift/price). Two official pages agree.
 

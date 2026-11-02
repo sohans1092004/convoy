@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Breakdown, type EngineOutput } from './breakdown';
-import { addonFlags, StockNote, stockConfidence, TierLadder } from './compare-view';
+import { addonFlags, OfferCard, StockNote, stockConfidence, TierLadder } from './compare-view';
 import { rupees } from '@/lib/format';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
@@ -72,5 +72,37 @@ describe('dealer-required add-on flag', () => {
   it('flags an add-on only one offer requires, not one every offer requires', () => {
     expect(Object.keys(addonFlags([offer('a', [addon]), offer('b', []), offer('c', [])]))).toEqual(['a']);
     expect(addonFlags([offer('a', [addon]), offer('b', [addon])])).toEqual({});
+  });
+});
+
+describe('offer variants (U.1)', () => {
+  const variant = (id: string, name: string, cash: number, addon = false) => ({
+    variant_id: id, variant_code: id, variant_name: name, projection: { label: 'If the count stays at 1', count: 1, guaranteed: false, cash_payable_paise: cash, note: 'Projection, not guaranteed.' },
+    tiers: [{ min: 1, max: null, cash_payable_paise: cash, is_ceiling: true }], stock: { units: 3, colours: [], delivery_date: null, evidence: 'DEALER_CONFIRMED' },
+    ceiling: { tier_index: 0, cash_payable_paise: cash, snapshot_sha256: 'x', output: { ...output, lines: addon ? [{ code: 'ACCESSORY:MUDFLAPS', amount_paise: 600000, evidence: 'DEALER_CONFIRMED', in_cash_payable: true, flags: ['DEALER_REQUIRED'] }] : output.lines } },
+  });
+  const offer = (variants: ReturnType<typeof variant>[], id = 'q1') => ({ quote_id: id, dealership_id: 'd1', state: 'FINAL', version_no: 1, committed_at: '2026-11-02T07:55:52Z', min_fulfilment: 1, max_units: null, snapshot_sha256: 'x', variants, clarifications: [] }) as unknown as Parameters<typeof addonFlags>[0][number];
+  const card = (o: ReturnType<typeof offer>, acceptedVariantId: string | null = null) => render(<OfferCard offer={o} poolId="p1" acceptedVariantId={acceptedVariantId} canAccept committed={1} flagged={[]} onAccepted={() => {}} />);
+
+  it('names a single variant without offering a choice', () => {
+    const html = card(offer([variant('v1', 'LXi MT', 58390000)]));
+    expect(html).toContain('Variant: LXi MT');
+    expect(html).not.toContain('type="radio"');
+  });
+  it('offers every priced variant, and the figures follow the one selected', () => {
+    const html = card(offer([variant('v1', 'LXi MT', 58390000), variant('v2', 'VXi AMT', 71290000)]), 'v2');
+    expect(html).toContain('Choose a variant');
+    expect(html.match(/type="radio"/g)?.length).toBe(2);
+    expect(html).toContain('LXi MT');
+    expect(html).toContain(rupees(71290000).replace(/&/g, '&amp;'));
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>.*Accepted/s); // v2 is the accepted one, so its button is spent
+  });
+  it('lets a buyer switch away from the accepted variant', () => {
+    const html = card(offer([variant('v1', 'LXi MT', 58390000), variant('v2', 'VXi AMT', 71290000)]), 'v9');
+    expect(html).toContain('You accepted another variant');
+  });
+  it('lists an add-on once when an offer repeats it on several variants', () => {
+    const flags = addonFlags([offer([variant('v1', 'LXi MT', 1, true), variant('v2', 'VXi AMT', 2, true)]), offer([variant('v3', 'LXi MT', 3)], 'q2')]);
+    expect(flags.q1).toHaveLength(1);
   });
 });

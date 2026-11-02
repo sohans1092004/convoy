@@ -135,7 +135,7 @@ test.describe('join states', () => {
   test('empty (no verified price here)', async ({ page }) => {
     await mock(page, { [est]: [problem(422, 'QUOTE_INVALID', 'RTO_UNVERIFIED')] });
     await page.goto('/models/maruti-swift');
-    await expect(page.getByText(/No verified price for/)).toBeVisible();
+    await expect(page.getByText(/No on-road estimate for/)).toBeVisible();
   });
   test('error keeps the choices', async ({ page }) => {
     await mock(page, { [est]: [problem(503, 'DEPENDENCY_UNAVAILABLE', 'down')] });

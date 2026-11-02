@@ -142,6 +142,8 @@ Conventions (apply to every row, not repeated):
 | E170 | identity | POST | /auth/demo | anonymous | no | no | demo-capacity-reached | P6 | AZ-E170-A |
 | E171 | identity | POST | /internal/demo/sessions | service:demo-bots | no | no | not-found | P6 | AZ-E171-A, AZ-E171-D |
 | E172 | dealer | POST | /internal/demo/dealerships | service:identity | no | no | - | P6 | AZ-E172-A, AZ-E172-D |
+| E173 | catalog | GET | /internal/variants/{id} | service:order | no | no | not-found | U1 | AZ-E173-A, AZ-E173-D |
+| E174 | dealer | GET | /internal/dealerships/{id}/name | service:order | no | no | not-found | U1 | AZ-E174-A, AZ-E174-D |
 
 ## Notes per group
 - **Pool snapshot (E033)** returns counts, state, deadlines, accepted variants, own membership (buyer) — never member identities (AZ-T1). Dealers of invited dealerships see counts only.

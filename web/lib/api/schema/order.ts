@@ -451,6 +451,11 @@ export interface components {
             invoice_total_paise: number | null;
             invoice_confirmed_at: string | null;
         };
+        CarRef: {
+            brand: string;
+            model: string;
+            variant: string;
+        };
         DisputeRef: {
             id: string;
             category: string;
@@ -494,6 +499,8 @@ export interface components {
             disputes: components["schemas"]["DisputeRef"][];
             dealership_id: string;
             server_time: string;
+            car: components["schemas"]["CarRef"] | null;
+            dealership_name: string | null;
         };
         PriceOutput: {
             status: string;
@@ -609,6 +616,7 @@ export interface components {
             promised_delivery_date: string | null;
             dealership_id: string;
             verification: string;
+            dealership_name: string | null;
         };
         OrderList: {
             orders: components["schemas"]["OrderRow"][];

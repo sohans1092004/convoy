@@ -61,8 +61,10 @@ public class Orders {
     private final OrderApplication.Rules rules;
     private final Vouchers vouchers;
     private final OrderApplication.OrderSettings settings;
+    private final OrderNames names;
 
-    public Orders(JdbcTemplate jdbc, Outbox outbox, ObjectMapper json, OrderApplication.Rules rules, Vouchers vouchers, OrderApplication.OrderSettings settings) {
+    public Orders(JdbcTemplate jdbc, Outbox outbox, ObjectMapper json, OrderApplication.Rules rules, Vouchers vouchers, OrderApplication.OrderSettings settings, OrderNames names) {
+        this.names = names;
         this.jdbc = jdbc;
         this.outbox = outbox;
         this.json = json;
@@ -351,6 +353,8 @@ public class Orders {
         o.put("booking", b.isEmpty() ? null : iso(b.get(0)));
         o.put("disputes", jdbc.queryForList("select id, category, state, opened_by, created_at from disputes where order_id = ? order by created_at", orderId).stream().map(Orders::iso).toList());
         o.put("dealership_id", jdbc.queryForObject("select dealership_id::text from quote_replica where quote_id = ?::uuid", String.class, o.get("quote_id")));
+        o.put("car", names.car(UUID.fromString(String.valueOf(o.get("variant_id")))));
+        o.put("dealership_name", names.dealership(UUID.fromString((String) o.get("dealership_id"))));
         o.put("server_time", jdbc.queryForObject("select clock_timestamp()", Timestamp.class).toInstant().toString());
         return o;
     }
@@ -364,6 +368,7 @@ public class Orders {
         Map<String, Object> out = iso(b.get(0));
         out.put("qr_payload", out.remove("voucher_token"));
         out.put("verification", "ES256-signed token; the dealer scans it at handover (booking.yaml).");
+        out.put("dealership_name", names.dealership(UUID.fromString(String.valueOf(out.get("dealership_id")))));
         return out;
     }
 

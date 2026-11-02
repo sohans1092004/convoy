@@ -23,6 +23,18 @@ type Order = Schemas['order']['Order'];
 type Voucher = Schemas['order']['Voucher'];
 const DISPUTE_CATEGORIES = ['NOT_DELIVERED', 'DELIVERY_OVERDUE', 'PRICE_NOT_HONOURED', 'WRONG_VARIANT', 'CHARGES_DISPUTE', 'REFUND_NOT_RECEIVED', 'OTHER'] as const;
 
+/** The car and the dealership, named wherever the buyer sees an amount (null only while their owners are unreachable). */
+function CarAndDealer({ order, className }: { order: Order; className?: string }) {
+  const t = useTranslations('order');
+  if (!order.car && !order.dealership_name) return <p role="status" className={`text-sm text-muted ${className ?? ''}`}>{t('namesUnavailable')}</p>;
+  return (
+    <div className={className} data-testid="car-and-dealer">
+      {order.car ? <p className="font-bold">{t('carAndDealer', order.car)}</p> : null}
+      {order.dealership_name ? <p className="text-sm">{t('dealerLine', { dealer: order.dealership_name })}</p> : null}
+    </div>
+  );
+}
+
 function VoucherCard({ orderId }: { orderId: string }) {
   const to = useTranslations('order');
   const [v, setV] = React.useState<Voucher | null>(null);
@@ -41,7 +53,7 @@ function VoucherCard({ orderId }: { orderId: string }) {
         <CardTitle>{to('voucher')}</CardTitle>
         <p className="text-sm">{to('booking')} <span className="font-mono">{v.id.slice(-8).toUpperCase()}</span> · <Badge tone="success">{v.state.replace(/_/g, ' ').toLowerCase()}</Badge></p>
         {v.promised_delivery_date ? <p className="text-sm">{to('promised', { date: v.promised_delivery_date })}</p> : null}
-        <CardText>{to('qrNote')}</CardText>
+        <CardText>{v.dealership_name ? to('qrNoteAt', { dealer: v.dealership_name }) : to('qrNote')}</CardText>
       </div>
     </Card>
   );
@@ -196,9 +208,11 @@ export function OrderView({ orderId }: { orderId: string }) {
         <h1 className="text-2xl font-extrabold">{to('title')}</h1>
         <Badge tone={['BOOKED', 'COMPLETED'].includes(o.state) ? 'success' : o.state === 'CONFIRMATION_PENDING' ? 'warning' : 'neutral'}>{o.state.replace(/_/g, ' ').toLowerCase()}</Badge>
       </div>
+      {o.state === 'CONFIRMATION_PENDING' ? null : <CarAndDealer order={o} />}
       <Timeline order={o} deposit={snap.data!.deposit} />
       {o.state === 'CONFIRMATION_PENDING' ? (
         <Card emphasis className="flex flex-col gap-3">
+          <CarAndDealer order={o} />
           <CardTitle>{t('title', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</CardTitle>
           <p className="text-sm">{t('body', { ceiling: rupees(ceiling.output.cash_payable_paise) })}</p>
           <p className="text-sm">{t('consent')}</p>
