@@ -23,7 +23,7 @@ Not proven live: the simulated dealers price one variant each, so the compare pa
 | Step | Result |
 |---|---|
 | IAM role and instance profile (`AmazonSSMManagedInstanceCore` only) | Applied: 3 added, 1 changed, 0 destroyed. Site stayed up. |
-| Agent registration | Agent 3.3.4793.0 was already on the host. It registered as `Online` only after `snap restart amazon-ssm-agent`, about 8 minutes after the profile was attached. |
+| Agent registration | Agent 3.3.4793.0 was already on the host. It had not registered 3 minutes after the profile was attached, and showed `Online` straight after `snap restart amazon-ssm-agent`. |
 | `convoy-deploy` document | Version 2 is active. |
 | Deploy through SSM | 21 s, no rollback, containers left running. Same commit as already live, so no image changed. |
 | Journey after that deploy | PASS once, 4.4 min. |
