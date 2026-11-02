@@ -13,7 +13,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.WEB_URL || 'http://localhost:3000',
     actionTimeout: 30_000,
-    navigationTimeout: 30_000,
+    navigationTimeout: process.env.REMOTE ? 120_000 : 30_000, // REMOTE runs cross a link we don't control (the laptop to Sydney measured 11-30 KB/s on 2026-11-02)
     trace: 'retain-on-failure',
     video: process.env.RECORD_VIDEO ? 'on' : 'retain-on-failure',
     screenshot: 'only-on-failure',

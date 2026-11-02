@@ -6,7 +6,7 @@ import * as React from 'react';
 import { Breakdown } from '@/components/breakdown';
 import { CommandStatus } from '@/components/command-status';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Price } from '@/components/ui/price';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError, api, call, type Schemas } from '@/lib/api';
@@ -45,6 +45,7 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
     api.POST('/pools', { body: { model_slug: slug, city, purchase_month: month }, headers: { 'Idempotency-Key': key } })));
 
   const variant = variants.find((v) => v.id === variantId);
+  const shownEstimate = noPrice ? undefined : current ?? previous;
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <Card className="flex flex-col gap-4">
@@ -63,9 +64,35 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
             {CITIES.map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
+        <section aria-labelledby="estimate" className="flex flex-col gap-3 border-t border-border pt-4">
+          <h2 id="estimate" className="text-lg font-semibold">{t('estimateTitle', { city })}</h2>
+          {estimate.isPending && estimate.isFetching ? <Skeleton className="h-24" label={t('calculating')} /> : null}
+          {estimate.isFetching && previous ? <p aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
+          {noPrice ? (
+            <div><p className="text-sm"><strong>{t('noPriceTitle', { variant: variant?.name ?? t('car'), city })}</strong></p>
+              <p className="mt-2 text-sm text-muted">{variant?.fuel === 'EV' ? t('noPriceEv') : t('noPriceGeneric')}</p></div>
+          ) : estimate.isError && !current ? (
+            <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger">
+              <p>{t('estimateFailed')}</p>
+              <Button variant="secondary" onClick={() => estimate.refetch()}>{t('retry')}</Button>
+            </div>
+          ) : null}
+          {(estimate.isError && current && !noPrice) || (!online && current) ? (
+            <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">
+              This estimate was calculated {ist(current.snapshot.computed_at)} and could not be refreshed{!online ? ' (offline)' : ''}. It may be out of date.
+            </p>
+          ) : null}
+          {shownEstimate ? (
+            <div className={previous ? 'opacity-60' : undefined} aria-busy={Boolean(previous)}>
+              <h3 className="text-sm font-semibold">{t('cash')}</h3>
+              <Price paise={shownEstimate.snapshot.output.cash_payable_paise} evidence="CATALOGUE_ESTIMATE" size="lg" />
+              <p className="mt-1 text-sm text-muted">Catalogue figures only: registration and insurance are estimated from published rules. {shownEstimate.city_confirmed ? '' : 'Manufacturer price; city not confirmed.'}</p>
+            </div>
+          ) : null}
+        </section>
         <div className="flex flex-col gap-2 border-t border-border pt-4">
-          <h2 className="font-bold">{t('title', { city })}</h2>
-          <p className="text-sm text-muted">{t('body', { variant: variant?.name ?? t('car') })}</p>
+          <h2 className="font-semibold">{t('title', { city })}</h2>
+          <p className="text-sm text-muted">{t('body')}</p>
           {!online ? <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">{t('offline')}</p> : null}
           {canJoin ? (
             <Button disabled={!online} loading={start.state.kind === 'loading'} onClick={async () => { const r = await start.execute(); if (r) router.push(`/pools/${r.data.pool.id}`); }}>
@@ -79,36 +106,12 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
           <CommandStatus state={start.state} successText={t('ready')} />
         </div>
       </Card>
-      <section aria-labelledby="estimate" className="flex flex-col gap-3">
-        <h2 id="estimate" className="text-lg font-bold">{t('estimateTitle', { city })}</h2>
-        {estimate.isPending && estimate.isFetching ? <Skeleton className="h-64" label={t('calculating')} /> : null}
-        {estimate.isFetching && previous ? <p aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
-        {noPrice ? (
-          <Card><p className="text-sm"><strong>{t('noPriceTitle', { variant: variant?.name ?? t('car'), city })}</strong></p>
-            <p className="mt-2 text-sm text-muted">{variant?.fuel === 'EV' ? t('noPriceEv') : t('noPriceGeneric')}</p></Card>
-        ) : estimate.isError && !current ? (
-          <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger">
-            <p>{t('estimateFailed')}</p>
-            <Button variant="secondary" onClick={() => estimate.refetch()}>{t('retry')}</Button>
-          </div>
-        ) : null}
-        {(estimate.isError && current && !noPrice) || (!online && current) ? (
-          <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">
-            This estimate was calculated {ist(current.snapshot.computed_at)} and could not be refreshed{!online ? ' (offline)' : ''}. It may be out of date.
-          </p>
-        ) : null}
-        {(current ?? previous) && !noPrice ? (
-          <div className={previous ? 'opacity-60' : undefined} aria-busy={Boolean(previous)}>
-            <Card emphasis className="flex flex-col gap-1">
-              <CardTitle as="h3" className="text-base">{t('cash')}</CardTitle>
-              <Price paise={(current ?? previous)!.snapshot.output.cash_payable_paise} evidence="CATALOGUE_ESTIMATE" size="lg" />
-              <p className="text-sm text-muted">Catalogue figures only: registration and insurance are estimated from published rules. {(current ?? previous)!.city_confirmed ? '' : 'Manufacturer price; city not confirmed.'}</p>
-            </Card>
-            <div className="mt-3"><Breakdown output={(current ?? previous)!.snapshot.output} caption={`On-road estimate, ${variant?.name}, ${city}`} /></div>
-            <p className="mt-2 text-xs text-muted">Ruleset {(current ?? previous)!.snapshot.ruleset_version} · calculated {ist((current ?? previous)!.snapshot.computed_at)} · snapshot {(current ?? previous)!.snapshot.sha256.slice(0, 12)}</p>
-          </div>
-        ) : null}
-      </section>
+      {shownEstimate && !noPrice ? (
+        <div className={previous ? 'opacity-60' : undefined} aria-busy={Boolean(previous)}>
+          <Breakdown estimate output={shownEstimate.snapshot.output} caption={`On-road estimate, ${variant?.name}, ${city}`} />
+          <p className="mt-2 text-xs text-muted">Ruleset {shownEstimate.snapshot.ruleset_version} · calculated {ist(shownEstimate.snapshot.computed_at)} · snapshot {shownEstimate.snapshot.sha256.slice(0, 12)}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

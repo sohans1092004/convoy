@@ -4,7 +4,7 @@ import { ReroundChoice } from '@/components/reround-choice';
 import Link from 'next/link';
 import * as React from 'react';
 import { CommandStatus } from '@/components/command-status';
-import { Badge } from '@/components/ui/badge';
+import { Badge, EvidenceBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardText, CardTitle } from '@/components/ui/card';
 import { Countdown } from '@/components/ui/countdown';
@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api, call, type Schemas } from '@/lib/api';
 import { ist, rupees } from '@/lib/format';
 import { useCommand } from '@/lib/use-command';
+import { useModel } from '@/lib/use-model';
 import { useOnline } from '@/lib/use-online';
 import { type LiveStatus, useLiveSnapshot } from '@/lib/use-live-snapshot';
 import { useQuoteCount } from '@/lib/use-quote-count';
@@ -43,6 +44,12 @@ function ClosedCard({ pool, me }: { pool: Schemas['pool']['Pool']; me: Membershi
       <Button asChild variant="secondary" className="self-start"><Link href={`/models/${pool.model_slug}`}>{t('again')}</Link></Button>
     </Card>
   );
+}
+
+/** The lowest listed ex-showroom price for the pool's city; the catalogue's own label says how far it applies to that city. */
+function lowestPrice(model: ReturnType<typeof useModel>, city: string) {
+  const prices = (model?.variants ?? []).flatMap((v) => v.prices.filter((x) => x.city === city));
+  return prices.length ? prices.reduce((a, b) => (b.ex_showroom_paise < a.ex_showroom_paise ? b : a)) : null;
 }
 
 /** Live / reconnecting / delayed, announced politely when it changes. */
@@ -83,6 +90,7 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   const [ack, setAck] = React.useState(false);
   const pool = snap.data;
   const me = pool?.my_membership;
+  const model = useModel(pool?.model_slug);
   const isMember = !!me && me.state !== 'LEFT';
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the stream URL follows the loaded membership
   React.useEffect(() => { setMember(isMember); }, [isMember]);
@@ -167,6 +175,8 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   // Stale: the last good snapshot is shown but may be behind (offline, or the latest refresh failed).
   const stale = !online || Boolean(snap.problem);
 
+  const car = model ? `${model.brand} ${model.name}` : `${pool.brand} ${pool.model_slug.split('-').slice(1).join(' ')}`;
+  const from = lowestPrice(model, pool.city);
   const sealed = pool.rounds.find((r) => r.kind === 'SEALED');
   const joinable = ['FORMING', 'READY_FOR_QUOTES', 'QUOTE_OPEN'].includes(pool.state);
   const canCommit = joinable && (!me || ['INTERESTED'].includes(me.state));
@@ -177,10 +187,17 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-extrabold">{pool.brand} {pool.model_slug.split('-').slice(1).join(' ')} pool, {pool.city}</h1>
+        <h1 className="text-2xl font-semibold">{tp('title', { car, city: pool.city })}</h1>
         <Badge tone="info">{STATES.includes(pool.state) ? tp(`state.${pool.state}`) : pool.state}</Badge>
         {isMember ? <LiveIndicator status={online ? snap.status : 'delayed'} /> : <span className="text-sm text-muted">{tp('live.membersOnly')}</span>}
       </div>
+      {from ? (
+        <p className="-mt-3 flex flex-wrap items-center gap-x-2 text-sm" data-testid="pool-price">
+          <span className="tabular font-semibold">{tp('fromPrice', { price: rupees(from.ex_showroom_paise) })}</span>
+          <EvidenceBadge evidence={from.evidence} />
+          {from.city_confirmed ? null : <span className="text-xs text-muted">{tp('cityNotConfirmed')}</span>}
+        </p>
+      ) : null}
       {!online ? (
         <p role="status" className="rounded-lg bg-warning-bg p-3 text-sm text-warning-fg">{tp('offline')}</p>
       ) : stale ? (
@@ -224,17 +241,21 @@ export function PoolView({ poolId, checkoutUrl }: { poolId: string; checkoutUrl:
           <CommandStatus state={join.state} successText={tp('joined')} />
           {canCommit ? (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-2 p-3">
-              <h3 className="font-bold">{t('title')}</h3>
-              <ul className="list-disc space-y-1 pl-5 text-sm">
+              <h3 className="font-semibold">{t('title')}</h3>
+              <p className="text-sm font-semibold">{car}, {pool.city}{from ? ` · ${tp('fromPrice', { price: rupees(from.ex_showroom_paise) })}` : ''}</p>
+              <ul className="flex flex-col gap-2 text-sm">
                 <li>{t('deposit')}</li>
                 <li>{t('leave', { decisionDeadline: pool.decision_deadline ? ist(pool.decision_deadline) : t('decisionLater') })}</li>
-                <li>{t('minimum', { min: pool.min_members, formingDeadline: ist(pool.forming_deadline) })}</li>
-                <li>{t('noOffer')}</li>
                 <li>{t('ceiling')}</li>
-                <li>{t('cancel')}</li>
-                <li>{t('dealer')}</li>
-                <li>{t('refunds')}</li>
               </ul>
+              <h4 className="border-t border-control pt-3 text-sm font-semibold">{t('ifTitle')}</h4>
+              <dl className="flex flex-col gap-2 text-sm">
+                <div><dt className="font-semibold">{t('if.minimum')}</dt><dd>{t('minimum', { min: pool.min_members, formingDeadline: ist(pool.forming_deadline) })}</dd></div>
+                <div><dt className="font-semibold">{t('if.noOffer')}</dt><dd>{t('noOffer')}</dd></div>
+                <div><dt className="font-semibold">{t('if.cancel')}</dt><dd>{t('cancel')}</dd></div>
+                <div><dt className="font-semibold">{t('if.dealer')}</dt><dd>{t('dealer')}</dd></div>
+                <div><dt className="font-semibold">{t('if.refunds')}</dt><dd>{t('refunds')}</dd></div>
+              </dl>
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" className="mt-0.5 size-5 accent-[var(--primary)]" checked={ack} onChange={(e) => setAck(e.target.checked)} />
                 <span>{t('ack', { version: pool.terms_version })}</span>

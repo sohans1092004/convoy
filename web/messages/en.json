@@ -16,11 +16,30 @@
     "dealerAnalytics": "Analytics"
   },
   "home": {
-    "title": "Buy the same car together, with prices you can check",
-    "lede": "Join buyers who want the same model in your city. Verified dealers compete with sealed, itemised offers. You decide alone, and your price can only fall.",
+    "title": "Dealers compete for you. You don't haggle.",
+    "lede": "Join buyers who want the same model in your city. Verified dealers send sealed, itemised offers. You decide alone, and your price can only fall.",
     "from": "From {price} ex-showroom",
     "variants": "{count, plural, one {# variant} other {# variants}}",
-    "cityNotConfirmed": "Manufacturer price; city not confirmed"
+    "cityNotConfirmed": "Manufacturer price; city not confirmed",
+    "howTitle": "How it works",
+    "how": {
+      "join": {
+        "title": "Join a pool",
+        "body": "Same model, same city. A ₹999 test deposit holds your place, and you get it back in full if you leave before confirming."
+      },
+      "quote": {
+        "title": "Dealers quote, sealed",
+        "body": "One sealed round, then one best-and-final. No dealer sees another's price."
+      },
+      "check": {
+        "title": "Check every line",
+        "body": "Each price line says what it is based on: the dealer's figure, a catalogue estimate, or unverified."
+      },
+      "decide": {
+        "title": "Decide alone",
+        "body": "Confirm at an exact ceiling that can only fall, or leave. Nobody else's choice binds you."
+      }
+    }
   },
   "precommit": {
     "title": "Before you commit — TEST MODE: no real money",
@@ -34,7 +53,15 @@
     "refunds": "Refunds go back to the original payment method; in test mode no money moves.",
     "ack": "I've read these terms (version {version})",
     "commit": "Commit with ₹999 test deposit",
-    "decisionLater": "the decision deadline, once offers are in"
+    "decisionLater": "the decision deadline, once offers are in",
+    "ifTitle": "What happens if",
+    "if": {
+      "minimum": "The pool does not fill",
+      "noOffer": "No offer can go ahead",
+      "cancel": "You confirm, then cancel",
+      "dealer": "The dealer lets you down",
+      "refunds": "Where a refund goes"
+    }
   },
   "confirm": {
     "body": "You will never pay more than {ceiling}. If fewer buyers confirm than the dealer's minimum, this offer can't go ahead and your ₹999 test deposit is refunded (or, if the pool tries once more, you choose to keep your place). You can cancel after confirming and still get your ₹999 back.",
@@ -58,7 +85,7 @@
     "again": "Start or join another pool for this car"
   },
   "discover": {
-    "heading": "Cars with checked prices",
+    "heading": "Choose a car",
     "search": "Search cars",
     "searchPlaceholder": "Brand, model or body type",
     "city": "City",
@@ -138,14 +165,17 @@
       "stillConfirming": "Still confirming with Razorpay. You can leave this page; we will show it here once confirmed.",
       "failed": "The test payment failed. Nothing was charged; you can try again.",
       "loading": "Loading the pool"
-    }
+    },
+    "title": "{car} pool, {city}",
+    "fromPrice": "From {price} ex-showroom",
+    "cityNotConfirmed": "Manufacturer price; city not confirmed"
   },
   "join": {
     "variant": "Variant",
     "city": "City",
     "title": "Buy with others in {city}",
     "car": "car",
-    "body": "Join buyers who want a {variant} this month. Dealers then compete for the whole group.",
+    "body": "Join buyers who want this car this month. Dealers then compete for the whole group.",
     "offline": "You are offline. Joining is paused until you reconnect; your choices are kept.",
     "join": "Join or start a pool in {city}",
     "dealerNo": "Dealer accounts cannot join pools.",
