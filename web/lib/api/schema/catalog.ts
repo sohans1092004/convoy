@@ -116,6 +116,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CarRef: {
+            brand: string;
+            model: string;
+            variant: string;
+        };
         SavedCar: {
             model_id: string;
             slug: string;
@@ -253,6 +258,7 @@ export interface components {
             variants: components["schemas"]["Variant"][];
         };
         Variant: {
+            estimate_cities: string[];
             id: string;
             code: string;
             name: string;

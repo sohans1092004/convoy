@@ -1,0 +1,28 @@
+# Engine and fuel facts added in U.1 (2026-11-02). Official manufacturer pages only, with source and date; no guesses.
+# Generates V4__variant_specs.sql (tools/gen_catalog_seed.py). models.yaml keeps the P0 collection as it was read, because V2 is applied history.
+# The engine uses engine_cc only for the third-party insurance slab (up to 1000 cc, up to 1500 cc, above).
+collected_on: "2026-11-02"
+sources:
+  dzire: {url: "https://www.marutisuzuki.com/arena/dzire", title: "Maruti Suzuki Arena - Dzire", read: "'1197 CC'"}
+  ertiga: {url: "https://www.marutisuzuki.com/arena/ertiga", title: "Maruti Suzuki Arena - Ertiga", read: "'1462 cc'"}
+  creta: {url: "https://www.hyundai.com/in/en/find-a-car/creta/specification", title: "Hyundai India - Creta specifications", read: "Page data (EngineSpecification): 1.5l MPi 1497 CC, 1.5l U2 CRDi 1493 CC, 1.5l Turbo GDi 1482 CC"}
+  hector_fuel: {url: "https://www.mgmotor.co.in/vehicles/mghector", title: "MG Motor India - Hector", read: "Style, Smart Pro, Sharp Pro, Savvy Pro: '1.5L Turbocharged Intercooled Petrol'; litres only"}
+  hector_cc: {url: "https://www.mgmotor.co.in/vehicles/mghector-plus-7-seater.html", title: "MG Motor India - Hector Plus 7 Seater", read: "1.5L Turbocharged Intercooled Petrol: 'Engine (cc)' 1451"}
+variants:
+  - {code: dzire-lxi-mt, fuel: PETROL, engine_cc: 1197, source: dzire, note: null}
+  - {code: dzire-vxi-amt, fuel: PETROL, engine_cc: 1197, source: dzire, note: null}
+  - {code: dzire-vxi-cng, fuel: CNG, engine_cc: 1197, source: dzire, note: null}
+  - {code: dzire-zxip-amt, fuel: PETROL, engine_cc: 1197, source: dzire, note: null}
+  - {code: ertiga-lxi-mt, fuel: HYBRID, engine_cc: 1462, source: ertiga, note: "Page fuel label 'Smart Hybrid' (mild hybrid petrol). HYBRID road tax is unverified for MH and DL, so no estimate there (rto.yaml)."}
+  - {code: ertiga-vxi-cng, fuel: CNG, engine_cc: 1462, source: ertiga, note: null}
+  - {code: ertiga-zxi-at, fuel: HYBRID, engine_cc: 1462, source: ertiga, note: "HYBRID road tax is unverified for MH and DL, so no estimate there (rto.yaml)."}
+  - {code: ertiga-zxip-at, fuel: HYBRID, engine_cc: 1462, source: ertiga, note: "HYBRID road tax is unverified for MH and DL, so no estimate there (rto.yaml)."}
+  - {code: creta-e-mt, fuel: PETROL, engine_cc: 1497, source: creta, note: null}
+  - {code: creta-exo-ivt, fuel: PETROL, engine_cc: 1497, source: creta, note: null}
+  - {code: creta-king-dct, fuel: PETROL, engine_cc: 1482, source: creta, note: "Hyundai's performance page FAQ says 1497 cc for this engine, its specification data says 1482. Both fall in the same insurance slab, so the estimate is unaffected."}
+  - {code: creta-d-e-mt, fuel: DIESEL, engine_cc: 1493, source: creta, note: null}
+  - {code: creta-d-king-at, fuel: DIESEL, engine_cc: 1493, source: creta, note: null}
+  - {code: hector-style, fuel: PETROL, engine_cc: 1451, source: hector_cc, note: "Fuel from the Hector page, which gives litres only. cc from MG's Hector Plus page, same named engine. Transmission inferred from trim naming (UNVERIFIED)."}
+  - {code: hector-smart-pro-cvt, fuel: PETROL, engine_cc: 1451, source: hector_cc, note: "Fuel from the Hector page, which gives litres only. cc from MG's Hector Plus page, same named engine."}
+  - {code: hector-sharp-pro-mt-7s, fuel: PETROL, engine_cc: 1451, source: hector_cc, note: "Fuel from the Hector page, which gives litres only. cc from MG's Hector Plus page, same named engine."}
+  - {code: hector-savvy-pro-cvt, fuel: PETROL, engine_cc: 1451, source: hector_cc, note: "Fuel from the Hector page, which gives litres only. cc from MG's Hector Plus page, same named engine."}

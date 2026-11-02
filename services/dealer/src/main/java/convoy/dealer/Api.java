@@ -7,6 +7,8 @@ import java.util.List;
 public final class Api {
     private Api() {}
 
+    public record DealershipName(String tradeName) {}
+
     public record Eligibility(String brand, String city, List<String> dealershipIds, int count) {}
 
     public record Registration(String id, String tradeName, String legalName, String gstin, String city, String stateCode, List<String> brands,

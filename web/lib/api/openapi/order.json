@@ -817,6 +817,21 @@
   },
   "components" : {
     "schemas" : {
+      "CarRef" : {
+        "type" : "object",
+        "properties" : {
+          "brand" : {
+            "type" : "string"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "variant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "brand", "model", "variant" ]
+      },
       "DeliveryBody" : {
         "properties" : {
           "scheduled_date" : {
@@ -992,6 +1007,12 @@
       },
       "Order" : {
         "properties" : {
+          "dealership_name" : {
+            "type" : "string"
+          },
+          "car" : {
+            "$ref" : "#/components/schemas/CarRef"
+          },
           "id" : {
             "type" : "string"
           },
@@ -1382,6 +1403,9 @@
       },
       "Voucher" : {
         "properties" : {
+          "dealership_name" : {
+            "type" : "string"
+          },
           "id" : {
             "type" : "string"
           },

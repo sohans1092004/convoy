@@ -85,8 +85,8 @@ export const MODELS: Schemas['catalog']['ModelList'] = {
 };
 
 export const VARIANTS: Schemas['catalog']['Variant'][] = [
-  { id: '96a9e043-f401-5b03-b82a-52e617913ce5', code: 'swift-lxi-mt', name: 'LXi MT', fuel: 'PETROL', transmission: 'MT', engine_cc: 1197, note: null, prices: [] },
-  { id: '709324c3-8db5-5baf-a801-575995a81409', code: 'swift-vxi-amt', name: 'VXi AMT', fuel: 'PETROL', transmission: 'AMT', engine_cc: 1197, note: null, prices: [] },
+  { id: '96a9e043-f401-5b03-b82a-52e617913ce5', code: 'swift-lxi-mt', name: 'LXi MT', fuel: 'PETROL', transmission: 'MT', engine_cc: 1197, note: null, prices: [], estimate_cities: ['Pune'] },
+  { id: '709324c3-8db5-5baf-a801-575995a81409', code: 'swift-vxi-amt', name: 'VXi AMT', fuel: 'PETROL', transmission: 'AMT', engine_cc: 1197, note: null, prices: [], estimate_cities: ['Pune'] },
 ];
 
 export const ESTIMATE: Schemas['catalog']['Estimate'] = {

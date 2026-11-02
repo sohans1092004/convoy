@@ -116,6 +116,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DealershipName: {
+            trade_name: string;
+        };
         Register: {
             trade_name: string;
             legal_name: string;

@@ -27,8 +27,9 @@ type Estimate = Schemas['catalog']['Estimate'];
  */
 export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: string; variants: Variant[]; canJoin: boolean; signedIn: boolean }) {
   const router = useRouter();
-  const [variantId, setVariantId] = React.useState(variants[0]?.id);
   const [city, setCity] = React.useState<(typeof CITIES)[number]>('Pune');
+  // Open on a variant that has an estimate in the default city, when one exists.
+  const [variantId, setVariantId] = React.useState((variants.find((v) => v.estimate_cities?.includes('Pune')) ?? variants[0])?.id);
   const online = useOnline();
   const t = useTranslations('join');
   const estimate = useFetch<Estimate, ApiError>(['estimate', variantId, city],
@@ -83,8 +84,8 @@ export function ModelEstimate({ slug, variants, canJoin, signedIn }: { slug: str
         {estimate.isPending && estimate.isFetching ? <Skeleton className="h-64" label={t('calculating')} /> : null}
         {estimate.isFetching && previous ? <p aria-live="polite" className="text-sm text-muted">Updating the estimate for {variant?.name} in {city}…</p> : null}
         {noPrice ? (
-          <Card><p className="text-sm"><strong>No verified price for {variant?.name} in {city} yet.</strong> {estimate.error?.problem?.detail}</p>
-            <p className="mt-2 text-sm text-muted">{t('onlyVerified')}</p></Card>
+          <Card><p className="text-sm"><strong>{t('noPriceTitle', { variant: variant?.name ?? t('car'), city })}</strong></p>
+            <p className="mt-2 text-sm text-muted">{variant?.fuel === 'EV' ? t('noPriceEv') : t('noPriceGeneric')}</p></Card>
         ) : estimate.isError && !current ? (
           <div role="alert" className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger">
             <p>{t('estimateFailed')}</p>

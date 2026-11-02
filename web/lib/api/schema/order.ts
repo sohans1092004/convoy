@@ -404,6 +404,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CarRef: {
+            brand: string;
+            model: string;
+            variant: string;
+        };
         DeliveryBody: {
             /** Format: date */
             scheduled_date: string;
@@ -468,6 +473,8 @@ export interface components {
             flags: string[];
         };
         Order: {
+            dealership_name?: string;
+            car?: components["schemas"]["CarRef"];
             id: string;
             pool_id: string;
             /** Format: int32 */
@@ -603,6 +610,7 @@ export interface components {
             owner_id: string | null;
         };
         Voucher: {
+            dealership_name?: string;
             id: string;
             state: string;
             qr_payload: string;

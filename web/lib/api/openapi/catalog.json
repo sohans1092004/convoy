@@ -267,6 +267,21 @@
   },
   "components": {
     "schemas": {
+      "CarRef": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [ "brand", "model", "variant" ]
+      },
       "SavedCar": {
         "properties": {
           "model_id": {
@@ -806,6 +821,12 @@
       },
       "Variant": {
         "properties": {
+          "estimate_cities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -847,7 +868,7 @@
             }
           }
         },
-        "required": [
+        "required": [ "estimate_cities",
           "code",
           "engine_cc",
           "fuel",

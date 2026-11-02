@@ -77,7 +77,7 @@ public final class Api {
 
     public record TierView(long min, @Nullable Long max, long cashPayablePaise, boolean isCeiling) {}
 
-    public record OfferVariant(String variantId, String variantCode, Ceiling ceiling, Projection projection, List<TierView> tiers, Stock stock) {}
+    public record OfferVariant(String variantId, String variantCode, String variantName, Ceiling ceiling, Projection projection, List<TierView> tiers, Stock stock) {}
 
     public record Offer(String quoteId, String dealershipId, String state, int versionNo, String committedAt, long minFulfilment, @Nullable Long maxUnits,
                         String snapshotSha256, List<OfferVariant> variants, List<Clarification> clarifications) {}

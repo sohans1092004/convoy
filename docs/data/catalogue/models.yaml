@@ -1,5 +1,5 @@
 # Convoy catalogue seed (P0). 30 models / 8 brands. Prices in paise. Every price has a source + access date or is null with status UNVERIFIED.
-# See SOURCES.md for method, terms checks and counts. Re-verify before any public use; prices change without notice.
+# Engine and fuel facts added later are in specs.yaml. See SOURCES.md for method, terms checks and counts. Re-verify before any public use; prices change without notice.
 ruleset_version: "2026.10.24-p0"
 collected_on: "2026-10-24"
 cities: [Mumbai, Delhi, Bengaluru, Pune]

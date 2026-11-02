@@ -13,6 +13,9 @@ public final class Api {
 
     public record OrderList(List<OrderRow> orders) {}
 
+    /** What the buyer is buying. Null on an order only while the catalogue is unreachable. */
+    public record CarRef(String brand, String model, String variant) {}
+
     public record Snapshot(int tierIndex, PriceOutput output, String sha256, String computedAt) {}
 
     public record BookingRef(String id, String state, long version, @Nullable String promisedDeliveryDate, String dealerConfirmDeadline, String dealershipId, boolean voucherActive,
@@ -25,9 +28,10 @@ public final class Api {
     public record Order(String id, String poolId, int roundSet, String buyerId, String quoteId, String variantId, String state, String confirmationDeadline,
                         @Nullable String confirmedAt, @Nullable String cancelledAt, @Nullable String declineReason, @Nullable String cancelReason, long version, String createdAt,
                         @Nullable String ceilingSnapshotId, @Nullable Long confirmedCeilingPaise,
-                        Map<String, Snapshot> snapshots, @Nullable BookingRef booking, List<DisputeRef> disputes, String dealershipId, String serverTime) {}
+                        Map<String, Snapshot> snapshots, @Nullable BookingRef booking, List<DisputeRef> disputes, String dealershipId, String serverTime,
+                        @Nullable CarRef car, @Nullable String dealershipName) {}
 
-    public record Voucher(String id, String state, String qrPayload, @Nullable String promisedDeliveryDate, String dealershipId, String verification) {}
+    public record Voucher(String id, String state, String qrPayload, @Nullable String promisedDeliveryDate, String dealershipId, String verification, @Nullable String dealershipName) {}
 
     public record DealerBooking(String id, String orderId, String state, long version, @Nullable String promisedDeliveryDate, String dealerConfirmDeadline,
                                 @Nullable String scheduledDate, @Nullable String deliverySlot, @Nullable String deliveredAt, boolean overdueFlag, @Nullable String cancelReason,

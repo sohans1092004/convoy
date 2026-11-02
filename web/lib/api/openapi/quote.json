@@ -930,6 +930,9 @@
       },
       "OfferVariant" : {
         "properties" : {
+          "variant_name" : {
+            "type" : "string"
+          },
           "variant_id" : {
             "type" : "string"
           },
@@ -952,7 +955,7 @@
             "$ref" : "#/components/schemas/Stock"
           }
         },
-        "required" : [ "ceiling", "projection", "stock", "tiers", "variant_code", "variant_id" ]
+        "required" : [ "variant_name", "ceiling", "projection", "stock", "tiers", "variant_code", "variant_id" ]
       },
       "Offers" : {
         "properties" : {

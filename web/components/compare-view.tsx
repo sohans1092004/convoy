@@ -63,7 +63,8 @@ export function addonFlags(offers: Offer[]): Record<string, Line[]> {
   const out: Record<string, Line[]> = {};
   for (const o of offers) {
     const others = new Set(offers.filter((x) => x.quote_id !== o.quote_id).flatMap((x) => requiredAddons(x).map((l) => l.code)));
-    const lonely = requiredAddons(o).filter((l) => !others.has(l.code));
+    // One row per add-on: an offer pricing several variants repeats the same line on each.
+    const lonely = [...new Map(requiredAddons(o).filter((l) => !others.has(l.code)).map((l) => [l.code, l])).values()];
     if (lonely.length) out[o.quote_id] = lonely;
   }
   return out;
@@ -87,10 +88,14 @@ export function ReliabilityNote({ r }: { r: Reliability | null }) {
     : t('reliability', { honoured: r.honoured, total: r.total, days: r.window_days, percent: r.score_percent ?? 0 })}</p>;
 }
 
-function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onAccepted }: { offer: Offer; poolId: string; accepted: boolean; canAccept: boolean; committed: number; flagged: Line[]; onAccepted: () => void }) {
+export function OfferCard({ offer, poolId, acceptedVariantId, canAccept, committed, flagged, onAccepted }: { offer: Offer; poolId: string; acceptedVariantId: string | null; canAccept: boolean; committed: number; flagged: Line[]; onAccepted: () => void }) {
   const t = useTranslations('compare');
   const { name, reliability } = useDealer(offer.dealership_id);
-  const v = offer.variants[0];
+  const [chosenId, setChosenId] = React.useState<string | null>(null);
+  // The buyer's explicit choice, else the variant already accepted on this offer, else the first one priced.
+  const v = offer.variants.find((x) => x.variant_id === (chosenId ?? acceptedVariantId)) ?? offer.variants[0];
+  const accepted = acceptedVariantId !== null && acceptedVariantId === v.variant_id;
+  const acceptedOther = acceptedVariantId !== null && !accepted;
   const accept = useCommand(async (key: string) => {
     const me = await call(api.GET('/pools/{id}/members/me', { params: { path: { id: poolId } } }));
     await call(api.PUT('/pools/{id}/members/me/acceptance', {
@@ -107,6 +112,19 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onA
         <Badge>{offer.state === 'FINAL' ? t('finalOffer') : t('sealedOffer', { version: offer.version_no })}</Badge>
         <span className="basis-full"><ReliabilityNote r={reliability} /></span>
       </div>
+      {offer.variants.length > 1 ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-semibold">{t('variantChoose')}</legend>
+          {offer.variants.map((x) => (
+            <label key={x.variant_id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3 has-[:checked]:border-primary has-[:checked]:bg-surface-2">
+              <input type="radio" name={`variant-${offer.quote_id}`} checked={x.variant_id === v.variant_id} onChange={() => setChosenId(x.variant_id)} className="size-4 accent-[var(--primary)]" />
+              <span className="flex-1">{x.variant_name}</span>
+              <span className="tabular font-semibold">{rupees(x.ceiling.cash_payable_paise)}</span>
+            </label>
+          ))}
+        </fieldset>
+      ) : <p className="font-semibold">{t('variantOne', { variant: v.variant_name })}</p>}
+      {acceptedOther ? <p className="text-sm text-muted">{t('acceptedOther')}</p> : null}
       {flagged.length ? (
         <p role="note" className="rounded-lg bg-warning-bg p-2 text-sm text-warning-fg">
           {t('addonFlag', { items: flagged.map((l) => `${lineLabel(l.code)} ${rupees(l.amount_paise)}`).join(', ') })}
@@ -126,7 +144,7 @@ function OfferCard({ offer, poolId, accepted, canAccept, committed, flagged, onA
       <p className="text-sm"><span className="font-semibold">{t('stock')}</span> <StockNote stock={v.stock} committed={committed} /></p>
       <details>
         <summary className="min-h-6 cursor-pointer text-sm font-semibold">{t('breakdownSummary')}</summary>
-        <div className="mt-2"><Breakdown output={v.ceiling.output} caption={`${name}: breakdown at the ceiling tier`} /></div>
+        <div className="mt-2"><Breakdown output={v.ceiling.output} caption={`${name}, ${v.variant_name}: breakdown at the ceiling tier`} /></div>
       </details>
       {offer.state === 'FINAL' ? <BuyerClarifications poolId={poolId} quoteId={offer.quote_id} items={offer.clarifications} onChange={onAccepted} /> : null}
       {canAccept ? (
@@ -160,7 +178,7 @@ export function CompareView({ poolId }: { poolId: string }) {
       {offers.data.quotes.length === 0 ? <Card><p>{t('none')}</p></Card> : null}
       <div className="grid gap-4 lg:grid-cols-2">
         {(() => { const flags = addonFlags(offers.data.quotes); return offers.data.quotes.map((o) => (
-          <OfferCard key={o.quote_id} offer={o} poolId={poolId} accepted={p?.my_membership?.accepted_quote_id === o.quote_id} canAccept={canAccept} committed={p?.committed_count ?? 0} flagged={flags[o.quote_id] ?? []}
+          <OfferCard key={o.quote_id} offer={o} poolId={poolId} acceptedVariantId={p?.my_membership?.accepted_quote_id === o.quote_id ? p.my_membership.accepted_variant_id ?? o.variants[0].variant_id : null} canAccept={canAccept} committed={p?.committed_count ?? 0} flagged={flags[o.quote_id] ?? []}
             onAccepted={() => { pool.refresh(); offers.refresh(); }} />
         )); })()}
       </div>

@@ -381,6 +381,7 @@ export interface components {
             clarifications: components["schemas"]["Clarification"][];
         };
         OfferVariant: {
+            variant_name: string;
             variant_id: string;
             variant_code: string;
             ceiling: components["schemas"]["Ceiling"];

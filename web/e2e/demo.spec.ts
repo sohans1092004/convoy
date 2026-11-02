@@ -37,6 +37,7 @@ test('public demo: a stranger books through simulated dealers', async ({ page },
   await page.getByRole('link', { name: 'Compare offers' }).click();
   const offers = page.getByRole('button', { name: 'Accept this offer (not binding)' });
   await expect(offers.first()).toBeVisible();
+  await expect(page.getByText(/^Variant: /).first()).toBeVisible(); // U.1: never an unnamed variant
   step(`${await offers.count()} offer(s) from simulated dealers`);
   await offers.first().click();
   await expect(page.getByText('Accepted. You can change your mind')).toBeVisible();
@@ -46,6 +47,8 @@ test('public demo: a stranger books through simulated dealers', async ({ page },
     return page.getByRole('link', { name: /^Order / }).count();
   }, { timeout: 4 * 60_000, intervals: [5000] }).toBeGreaterThan(0);
   await page.getByRole('link', { name: /^Order / }).first().click();
+  await expect(page.getByTestId('car-and-dealer')).toContainText('Maruti Suzuki Swift'); // U.1: what, and from whom, above the amount
+  await expect(page.getByTestId('car-and-dealer')).toContainText('Simulated Motors');
   await page.getByRole('button', { name: /Confirm at most/ }).click();
   await expect(page.getByText(/Confirmed\. Your final price is set/)).toBeVisible();
   await expect(page.getByRole('img', { name: /QR code for booking voucher/ })).toBeVisible({ timeout: 4 * 60_000 });

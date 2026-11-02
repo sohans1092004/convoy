@@ -74,7 +74,7 @@ identity:
       scopes: { payment: [deposits:create], quote: [rounds:summary], dealer: [eligibility:read], order: [resolution:read], catalog: [models:read], identity: [privacy:write] }
     order:
       secret: "${CLIENT_SECRET_ORDER}"
-      scopes: { identity: [contacts:read, privacy:write] } # P4.B: a buyer's contact, only for a released booking
+      scopes: { identity: [contacts:read, privacy:write], catalog: [models:read], dealer: [dealerships:read] } # P4.B: a buyer's contact, only for a released booking; U.1: the names on an order
     notification:
       secret: "${CLIENT_SECRET_NOTIFICATION}"
       scopes: { identity: [contacts:read, privacy:write] } # P5.A: the recipient's email, read at send time

@@ -70,6 +70,8 @@ convoy:
 order:
   sweeper-interval: ${ORDER_SWEEPER_INTERVAL:5s}
   identity-url: ${IDENTITY_URL:http://identity:8080}
+  catalog-url: ${CATALOG_URL:http://catalog:8080}
+  dealer-url: ${DEALER_URL:http://dealer:8080}
   evidence:
     bucket: ${EVIDENCE_BUCKET:convoy-dispute-evidence}
     # LocalStack: pre-signed URLs must name the address the browser reaches (the published port), not the in-network host.

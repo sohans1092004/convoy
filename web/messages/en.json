@@ -155,7 +155,9 @@
     "calculating": "Calculating the on-road estimate",
     "estimateFailed": "The estimate could not be calculated right now. Your variant and city are kept.",
     "retry": "Try again",
-    "onlyVerified": "We only estimate when every input is published or verified. Try another city, or join a pool: a dealer's quote gives exact figures."
+    "noPriceTitle": "No on-road estimate for {variant} in {city} yet.",
+    "noPriceGeneric": "We estimate only when every figure is published or verified, and one is missing here. Join a pool: a dealer's quote gives exact figures.",
+    "noPriceEv": "We don't estimate insurance for electric cars, so there is no on-road figure here. Join a pool: a dealer's quote includes insurance."
   },
   "errorPage": {
     "title": "This page could not be loaded right now",
@@ -207,7 +209,10 @@
       "statementWithDate": "(the dealer's statement, delivery from {date})"
     },
     "reliability": "{honoured} of {total} final offers honoured through delivery, last {days} days ({percent}%)",
-    "reliabilityNone": "No completed bookings in the last {days} days yet"
+    "reliabilityNone": "No completed bookings in the last {days} days yet",
+    "variantChoose": "Choose a variant",
+    "variantOne": "Variant: {variant}",
+    "acceptedOther": "You accepted another variant of this offer. Accepting this one replaces it."
   },
   "signIn": {
     "title": "Sign in",
@@ -243,7 +248,11 @@
     "priceStayed": "The price stayed at your ceiling.",
     "finalBreakdown": "Final price breakdown",
     "ceilingBreakdown": "Breakdown at your ceiling",
-    "snapshot": "Snapshot {sha} · calculated {at}"
+    "snapshot": "Snapshot {sha} · calculated {at}",
+    "carAndDealer": "{brand} {model} {variant}",
+    "dealerLine": "From {dealer}",
+    "namesUnavailable": "The car and dealer names could not be loaded right now. Your order is safe; try again shortly.",
+    "qrNoteAt": "Show this QR code at {dealer}. It carries a signed token the dealer scans to check your booking."
   },
   "myCars": {
     "seePools": "See pools for my cars",

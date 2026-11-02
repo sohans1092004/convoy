@@ -23,10 +23,20 @@ public class CatalogController {
     static final List<String> CITIES = List.of("Mumbai", "Pune", "Delhi", "Bengaluru");
     private final JdbcTemplate jdbc;
     private final CatalogApplication.Ruleset ruleset;
+    private final Map<String, Boolean> estimable = new java.util.concurrent.ConcurrentHashMap<>();
 
     public CatalogController(JdbcTemplate jdbc, CatalogApplication.Ruleset ruleset) {
         this.jdbc = jdbc;
         this.ruleset = ruleset;
+    }
+
+    /** Whether the engine can price this variant in this city. Memoised: the inputs are fixed for the life of the process. */
+    @SuppressWarnings("unchecked")
+    private boolean estimable(Map<String, Object> r) {
+        return estimable.computeIfAbsent(r.get("code") + "@" + r.get("city"), k -> {
+            Map<String, Object> output = (Map<String, Object>) PriceEngine.snapshotBody(estimateInputs(r, ruleset.version()), ruleset.rules()).get("output");
+            return "OK".equals(output.get("status"));
+        });
     }
 
     static String city(String c) {
@@ -35,17 +45,38 @@ public class CatalogController {
         throw ApiProblem.of(ProblemType.VALIDATION_FAILED, "City must be one of " + CITIES + ".");
     }
 
-    /** E020: models with the lowest seeded ex-showroom price (catalogue estimate) per model. */
+    /**
+     * E020: models a buyer can get an on-road estimate for, with the lowest ex-showroom price among those variants. A model
+     * the engine cannot estimate in this city (missing input, or a rule with no verified figure) is not listed.
+     */
     @GetMapping("/catalog/models")
     public Api.ModelList models(@RequestParam(required = false) String city) {
         String c = city(city);
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-                select m.id::text as id, m.slug, m.name, b.name as brand, m.body_type, count(distinct v.id) as variant_count,
-                       min(p.ex_showroom_paise) as from_ex_showroom_paise, bool_or(p.city_confirmed) as any_city_confirmed
+        Map<String, Map<String, Object>> byModel = new LinkedHashMap<>();
+        Map<String, java.util.Set<Object>> variants = new LinkedHashMap<>();
+        for (Map<String, Object> r : jdbc.queryForList("""
+                select m.id::text as id, m.slug, m.name, b.name as brand, m.body_type, v.id as variant_id, v.code, v.fuel, v.engine_cc,
+                       p.city, p.state_code, p.ex_showroom_paise, p.evidence, p.city_confirmed
                 from models m join brands b on b.id = m.brand_id join variants v on v.model_id = m.id
                 join variant_prices p on p.variant_id = v.id and (cast(? as text) is null or p.city = ?)
-                group by m.id, m.slug, m.name, b.name, m.body_type order by b.name, m.name""", c, c);
-        rows.forEach(r -> r.put("evidence", "CATALOGUE_ESTIMATE"));
+                order by b.name, m.name""", c, c)) {
+            if (!estimable(r)) continue;
+            String id = (String) r.get("id");
+            long ex = ((Number) r.get("ex_showroom_paise")).longValue();
+            Map<String, Object> row = byModel.computeIfAbsent(id, k -> {
+                Map<String, Object> n = new LinkedHashMap<>();
+                for (String f : List.of("id", "slug", "name", "brand", "body_type")) n.put(f, r.get(f));
+                n.put("from_ex_showroom_paise", ex);
+                n.put("any_city_confirmed", false);
+                n.put("evidence", "CATALOGUE_ESTIMATE");
+                return n;
+            });
+            row.merge("from_ex_showroom_paise", ex, (a, b) -> Math.min((Long) a, (Long) b));
+            row.merge("any_city_confirmed", r.get("city_confirmed"), (a, b) -> (Boolean) a || (Boolean) b);
+            variants.computeIfAbsent(id, k -> new java.util.HashSet<>()).add(r.get("variant_id"));
+            row.put("variant_count", variants.get(id).size());
+        }
+        List<Map<String, Object>> rows = new ArrayList<>(byModel.values());
         return convoy.platform.web.Dto.as(Map.of("models", rows, "cities", CITIES, "ruleset_version", ruleset.version()), Api.ModelList.class);
     }
 
@@ -89,11 +120,29 @@ public class CatalogController {
         List<Map<String, Object>> variants = jdbc.queryForList(
                 "select id, code, name, fuel, transmission, engine_cc, note from variants where model_id = ? order by name", out.get("id"));
         for (Map<String, Object> v : variants) {
-            v.put("prices", jdbc.queryForList("select city, state_code, ex_showroom_paise, evidence, city_confirmed, source_url, accessed_on::text as accessed_on "
-                    + "from variant_prices where variant_id = ? order by city", v.get("id")));
+            List<Map<String, Object>> prices = jdbc.queryForList("select city, state_code, ex_showroom_paise, evidence, city_confirmed, source_url, accessed_on::text as accessed_on "
+                    + "from variant_prices where variant_id = ? order by city", v.get("id"));
+            v.put("prices", prices);
+            v.put("estimate_cities", prices.stream().filter(p -> {
+                Map<String, Object> row = new LinkedHashMap<>(v);
+                row.putAll(p);
+                return estimable(row);
+            }).map(p -> p.get("city")).toList());
         }
         out.put("variants", variants);
         return convoy.platform.web.Dto.as(out, Api.Model.class);
+    }
+
+    /** E173 internal (scope models:read): the names a buyer's order shows for its variant. */
+    @GetMapping("/internal/variants/{id}")
+    @convoy.platform.security.RequiresScope("models:read")
+    public Api.CarRef internalVariant(@PathVariable UUID id) {
+        convoy.platform.security.Caller.current().requireScope("models:read");
+        List<Map<String, Object>> r = jdbc.queryForList("""
+                select b.name as brand, m.name as model, v.name as variant
+                from variants v join models m on m.id = v.model_id join brands b on b.id = m.brand_id where v.id = ?""", id);
+        if (r.isEmpty()) throw ApiProblem.of(ProblemType.NOT_FOUND, "No such variant.");
+        return convoy.platform.web.Dto.as(r.get(0), Api.CarRef.class);
     }
 
     /**
@@ -148,7 +197,7 @@ public class CatalogController {
         Map<String, Object> body = PriceEngine.snapshotBody(inputs, ruleset.rules());
         @SuppressWarnings("unchecked") Map<String, Object> output = (Map<String, Object>) body.get("output");
         if (!"OK".equals(output.get("status"))) {
-            throw ApiProblem.of(ProblemType.QUOTE_INVALID, "An on-road estimate is not available for this variant: " + output.get("errors") + ".")
+            throw ApiProblem.of(ProblemType.QUOTE_INVALID, "An on-road estimate is not available for this variant in " + c + ".")
                     .with("errors", output.get("errors")).with("variant_id", id.toString()).with("city", c);
         }
         String sha = CanonicalJson.sha256(body);
