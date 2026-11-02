@@ -9,7 +9,7 @@ Items come from the U.0 review. None are built. P1 parts that were outside the s
 - **Hindi beyond the money screens (1.16):** the model page's remaining strings are marked `lang="en"`, not translated. The dealer tools are all English and marked as such. `scripts/i18n-untranslated.mjs` still undercounts. All Hindi remains an unreviewed machine draft.
 
 ## Found during this pass
-- **Live LCP:** 3.3 to 8.9 s on 7c48456 against the 2.5 s gate, measured on a degraded link. The owner is re-measuring with PageSpeed Insights; those numbers go in `docs/EVIDENCE.md`, labelled "PageSpeed Insights, Google's servers". The code itself adds about 260 ms and 43 KB on discover (`lighthouse-ab-local.md`).
+- **Pool page LCP:** 3,524 ms on the GitHub runner, and 3.3 to 7.3 s from the laptop on a degraded link, against the 2.5 s gate. PageSpeed Insights met the gate on discover and model (0.9 s each), but it can't reach the pool page without a demo session, so the pool page still needs a run on a healthy link. The code adds about 260 ms and 43 KB on discover (`lighthouse-ab-local.md`).
 - **Slow path to the host:** 2 to 30 KB/s from the laptop while Cloudflare gave 205 to 340 KB/s. Cause not established.
 
 ## P2

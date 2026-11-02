@@ -97,7 +97,16 @@ A laptop A/B with no network link shows what the code itself adds on discover: L
 
 Same build and date: demo journey on the public URL PASS once, 9.9 min at 360 px, including the 5-minute demo decision window, with the journey's navigation limit raised to 120 s for remote runs. Route JS budgets all within budget, measured on the live build: discover 163.7, model 167.6, pool 168.2, compare 169.2, confirm 180, my cars 164.7, quote builder 190.7 KB gzip. Axe: 0 violations at 360 and 1280 px in light and dark on 10 screen states, against mocked API replies, not the live data (the model page is server-rendered, so it had no mocked axe run here; the CI journey covers it). Storybook page states 52/52 on the branch in CI. Not run on this build: real screen readers, physical phones, Firefox and Safari.
 
-Build **02c83b3** (AMENDMENT-014 copy, demo decision window 300 s and confirmation window 180 s, both read from the running pool container): demo journey on the public URL PASS once, 10.4 min at 360 px, 2026-11-02. The nightly jobs all passed on this code on the branch (run 41482784793), after `e2e/demo.spec.ts` was limited to deployments. That run's Lighthouse, on a GitHub runner against a local stack with no link to Sydney: LCP discover 2,418 ms, model 2,574 ms, pool 3,524 ms, against the 2.5 s gate; CLS 0 / 0.012 / 0.031. **So model and pool miss the gate there too, and the slow link does not explain all of the live misses.** Live figures from PageSpeed Insights are pending.
+Build **02c83b3** (AMENDMENT-014 copy, demo decision window 300 s and confirmation window 180 s, both read from the running pool container): demo journey on the public URL PASS once, 10.4 min at 360 px, 2026-11-02. The nightly jobs all passed on this code on the branch (run 41482784793), after `e2e/demo.spec.ts` was limited to deployments. That run's Lighthouse, on a GitHub runner against a local stack with no link to Sydney: LCP discover 2,418 ms, model 2,574 ms, pool 3,524 ms, against the 2.5 s gate; CLS 0 / 0.012 / 0.031. **So model and pool miss the gate there too, and the slow link does not explain all of the live misses.**
+
+**PageSpeed Insights, Google's servers** (build 02c83b3, live site, 2026-11-02, run by the owner; one run per page, mobile, Lighthouse 13.6.0, emulated Moto G Power, slow 4G throttling):
+
+| Page | Captured (IST) | LCP | FCP | TBT | CLS | Speed Index | Performance | Gate |
+|---|---|---|---|---|---|---|---|---|
+| discover | 23:06 | 0.9 s | 0.9 s | 90 ms | 0 | 3.6 s | 98 | met |
+| model | 23:10 | 0.9 s | 0.9 s | 20 ms | 0.029 | 1.7 s | 100 | met |
+
+The pool page was not measured here: it needs a demo session, which Google's servers don't have. Its gate result on the live site remains the miss above, and 3,524 ms on the GitHub runner. These runs came after the misses above, from a different network, so they point to the laptop's link as the main cause of the discover and model misses but don't prove it.
 
 **Lighthouse, live site** (mobile preset, simulated slow 4G, median of 3 runs, @lhci/cli 0.15.1; pool page through a
 fresh "Try the demo" session). Lab gate (docs/testing/frontend-quality.md §2): LCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1,
