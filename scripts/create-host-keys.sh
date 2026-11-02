@@ -45,4 +45,4 @@ print(f"{kind}: new key written to {path} (id ending ...{kid[-4:]})")
 }
 write convoy-lite-host host
 write convoy-lite-smtp smtp
-echo "done. Never commit $env_file; copy it to the VM (scp, then chmod 600, owner deploy)."
+echo "done. Never commit $env_file; copy it to the host (runbook: a shell on the host; then chmod 600, owner deploy)."

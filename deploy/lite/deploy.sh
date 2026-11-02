@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy one commit to the lite host (P6.D):
-#   deploy.sh <sha> <images.env>   (normally via deploy-ssh.sh from GitHub Actions)
+#   deploy.sh <sha> <images.env>   (normally via deploy-ssh.sh, from the convoy-deploy SSM document: scripts/deploy-lite.sh)
 # 1. back up Postgres
 # 2. check out <sha> (compose file, Caddyfile, scripts)
 # 3. pull images by digest

@@ -1,7 +1,7 @@
 name: deploy-lite
 
-# Lite deploys run from the owner's laptop (scripts/deploy-lite.sh, docs/runbooks/lite-host.md): the host accepts SSH
-# only from the owner's IP, and port 22 is never opened to GitHub runners. This workflow never runs on push; started by
+# Lite deploys run from the owner's laptop (scripts/deploy-lite.sh, docs/runbooks/lite-host.md), through Systems Manager
+# with the owner's aws login session; the host has no inbound SSH. This workflow never runs on push; started by
 # hand it stops at once and says where deploys happen.
 on:
   workflow_dispatch:
